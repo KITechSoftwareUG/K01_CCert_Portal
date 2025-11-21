@@ -1,15 +1,24 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { AuditCard } from '@/components/AuditCard';
+import { NewAuditDialog } from '@/components/NewAuditDialog';
 import { mockAudits } from '@/lib/mockData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Search, Filter } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Audit } from '@/types/audit';
 
 const Audits = () => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'scheduled' | 'in-progress' | 'completed'>('all');
+  const [showNewAuditDialog, setShowNewAuditDialog] = useState(false);
+
+  const handleViewDetails = (audit: Audit) => {
+    navigate(`/audits/${audit.id}`);
+  };
 
   const filteredAudits = mockAudits.filter(audit => {
     const matchesSearch = audit.clientName.toLowerCase().includes(searchQuery.toLowerCase());
@@ -26,7 +35,7 @@ const Audits = () => {
             <h1 className="text-3xl font-bold text-foreground mb-2">Audits</h1>
             <p className="text-muted-foreground">Verwaltung und Planung aller Zertifizierungsaudits</p>
           </div>
-          <Button className="gap-2">
+          <Button className="gap-2" onClick={() => setShowNewAuditDialog(true)}>
             <Plus className="h-4 w-4" />
             Neues Audit
           </Button>
@@ -66,13 +75,15 @@ const Audits = () => {
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                 {filteredAudits.map((audit) => (
-                  <AuditCard key={audit.id} audit={audit} />
+                  <AuditCard key={audit.id} audit={audit} onViewDetails={handleViewDetails} />
                 ))}
               </div>
             )}
           </TabsContent>
         </Tabs>
       </div>
+      
+      <NewAuditDialog open={showNewAuditDialog} onOpenChange={setShowNewAuditDialog} />
     </Layout>
   );
 };

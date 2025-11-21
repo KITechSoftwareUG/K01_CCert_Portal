@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { Layout } from '@/components/Layout';
+import { NewClientDialog } from '@/components/NewClientDialog';
 import { mockClients } from '@/lib/mockData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -7,10 +9,10 @@ import { Input } from '@/components/ui/input';
 import { Building2, Mail, Phone, MapPin, Plus, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { useState } from 'react';
 
 const Clients = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [showNewClientDialog, setShowNewClientDialog] = useState(false);
 
   const filteredClients = mockClients.filter(client =>
     client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -26,11 +28,13 @@ const Clients = () => {
             <h1 className="text-3xl font-bold text-foreground mb-2">Kunden</h1>
             <p className="text-muted-foreground">Verwaltung aller zertifizierten Unternehmen</p>
           </div>
-          <Button className="gap-2">
+          <Button className="gap-2" onClick={() => setShowNewClientDialog(true)}>
             <Plus className="h-4 w-4" />
             Neuer Kunde
           </Button>
         </div>
+
+        <NewClientDialog open={showNewClientDialog} onOpenChange={setShowNewClientDialog} />
 
         {/* Search */}
         <div className="relative">
