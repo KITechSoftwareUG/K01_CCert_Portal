@@ -5,9 +5,9 @@ import {
   LayoutDashboard, 
   Users, 
   ClipboardCheck, 
-  Calendar,
-  FileCheck
+  Calendar
 } from 'lucide-react';
+import logo from '@/assets/logo.png';
 
 interface LayoutProps {
   children: ReactNode;
@@ -27,12 +27,8 @@ export const Layout = ({ children }: LayoutProps) => {
     <div className="flex min-h-screen bg-background">
       {/* Sidebar */}
       <aside className="w-64 bg-sidebar border-r border-sidebar-border">
-        <div className="flex items-center gap-2 p-6 border-b border-sidebar-border">
-          <FileCheck className="h-8 w-8 text-sidebar-primary" />
-          <div>
-            <h1 className="text-lg font-bold text-sidebar-foreground">Audit Manager</h1>
-            <p className="text-xs text-sidebar-foreground/60">Zertifizierungs-Tool</p>
-          </div>
+        <div className="flex items-center p-4 border-b border-sidebar-border">
+          <img src={logo} alt="cert consulting pane·spark" className="h-12 w-auto" />
         </div>
         <nav className="p-4 space-y-2">
           {navigation.map((item) => {
