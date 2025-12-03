@@ -15,8 +15,11 @@ import {
   AlertCircle,
   ArrowLeft,
   User,
-  FileText
+  FileText,
+  CalendarPlus
 } from 'lucide-react';
+import { exportAuditToCalendar } from '@/lib/calendarExport';
+import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -284,6 +287,20 @@ const AuditDetail = () => {
                 <CardTitle>Aktionen</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => {
+                    exportAuditToCalendar(audit);
+                    toast({
+                      title: "Kalenderexport",
+                      description: "ICS-Datei wurde heruntergeladen. Öffnen Sie diese, um den Termin in Outlook zu importieren.",
+                    });
+                  }}
+                >
+                  <CalendarPlus className="h-4 w-4 mr-2" />
+                  Zu Outlook hinzufügen
+                </Button>
                 <Button variant="outline" className="w-full justify-start">
                   Audit bearbeiten
                 </Button>

@@ -2,11 +2,14 @@ import { Layout } from '@/components/Layout';
 import { mockAudits } from '@/lib/mockData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar as CalendarIcon, Clock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Calendar as CalendarIcon, Clock, Download } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { exportAllAuditsToCalendar } from '@/lib/calendarExport';
+import { toast } from '@/hooks/use-toast';
 
 const Calendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -28,11 +31,25 @@ const Calendar = () => {
             <h1 className="text-3xl font-bold text-foreground mb-2">Kalender</h1>
             <p className="text-muted-foreground">Übersicht aller geplanten Audits und Termine</p>
           </div>
-          <div className="flex items-center gap-2">
-            <CalendarIcon className="h-5 w-5 text-muted-foreground" />
-            <span className="text-lg font-medium text-foreground">
-              {format(currentDate, 'MMMM yyyy', { locale: de })}
-            </span>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <CalendarIcon className="h-5 w-5 text-muted-foreground" />
+              <span className="text-lg font-medium text-foreground">
+                {format(currentDate, 'MMMM yyyy', { locale: de })}
+              </span>
+            </div>
+            <Button 
+              onClick={() => {
+                exportAllAuditsToCalendar(mockAudits);
+                toast({
+                  title: "Alle Audits exportiert",
+                  description: "ICS-Datei wurde heruntergeladen. Öffnen Sie diese, um alle Termine in Outlook zu importieren.",
+                });
+              }}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Alle zu Outlook exportieren
+            </Button>
           </div>
         </div>
 
