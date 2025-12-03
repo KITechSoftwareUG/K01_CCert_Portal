@@ -8,6 +8,7 @@ import {
   Calendar
 } from 'lucide-react';
 import logo from '@/assets/logo.png';
+import ChatBot from './ChatBot';
 
 interface LayoutProps {
   children: ReactNode;
@@ -56,6 +57,9 @@ export const Layout = ({ children }: LayoutProps) => {
       <main className="flex-1 overflow-auto">
         {children}
       </main>
+
+      {/* ChatBot */}
+      <ChatBot />
     </div>
   );
 };
