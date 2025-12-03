@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { exportAllAuditsToCalendar } from '@/lib/calendarExport';
 import { toast } from '@/hooks/use-toast';
+import { OutlookIntegration } from '@/components/OutlookIntegration';
 
 const Calendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -101,34 +102,40 @@ const Calendar = () => {
             </CardContent>
           </Card>
 
-          {/* Upcoming Events */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Anstehende Termine</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {mockAudits
-                .filter(a => a.status !== 'completed' && a.status !== 'cancelled')
-                .sort((a, b) => a.scheduledDate.getTime() - b.scheduledDate.getTime())
-                .slice(0, 5)
-                .map((audit) => (
-                  <div key={audit.id} className="space-y-2 pb-4 border-b last:border-0">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-1 flex-1">
-                        <p className="font-medium text-sm text-foreground">{audit.clientName}</p>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          {format(audit.scheduledDate, 'dd. MMM yyyy', { locale: de })}
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Outlook Integration */}
+            <OutlookIntegration auditCount={mockAudits.filter(a => a.status !== 'completed' && a.status !== 'cancelled').length} />
+
+            {/* Upcoming Events */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Anstehende Termine</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {mockAudits
+                  .filter(a => a.status !== 'completed' && a.status !== 'cancelled')
+                  .sort((a, b) => a.scheduledDate.getTime() - b.scheduledDate.getTime())
+                  .slice(0, 5)
+                  .map((audit) => (
+                    <div key={audit.id} className="space-y-2 pb-4 border-b last:border-0">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-1 flex-1">
+                          <p className="font-medium text-sm text-foreground">{audit.clientName}</p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            {format(audit.scheduledDate, 'dd. MMM yyyy', { locale: de })}
+                          </div>
                         </div>
+                        <Badge variant="outline" className="text-xs">
+                          {audit.certifications[0]}
+                        </Badge>
                       </div>
-                      <Badge variant="outline" className="text-xs">
-                        {audit.certifications[0]}
-                      </Badge>
                     </div>
-                  </div>
-                ))}
-            </CardContent>
-          </Card>
+                  ))}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </Layout>
