@@ -33,9 +33,14 @@ export const mockClients: Client[] = [
   },
 ];
 
+// Helper to create dates relative to today
+const daysFromNow = (days: number) => {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return date;
+};
+
 const getTasksForAuditType = (type: AuditType, auditId: string): any[] => {
-  const baseDate = new Date();
-  
   if (type === 'initial') {
     return [
       {
@@ -43,8 +48,8 @@ const getTasksForAuditType = (type: AuditType, auditId: string): any[] => {
         title: 'Registrierung beim Zertifizierer',
         description: 'Registrierung beim Zertifizierer und im SURE-EU-System durchführen (oder nur beim Zertifizierer, je nach System)',
         status: 'completed',
-        dueDate: new Date(baseDate.getTime() - 20 * 24 * 60 * 60 * 1000),
-        completedAt: new Date(baseDate.getTime() - 23 * 24 * 60 * 60 * 1000),
+        dueDate: daysFromNow(-20),
+        completedAt: daysFromNow(-23),
         assignedTo: 'Hans Müller',
       },
       {
@@ -52,7 +57,7 @@ const getTasksForAuditType = (type: AuditType, auditId: string): any[] => {
         title: 'Training und Dokumentation',
         description: 'Schulung der Mitarbeiter durchführen und vollständige Dokumentation erstellen',
         status: 'in-progress',
-        dueDate: new Date(baseDate.getTime() + 5 * 24 * 60 * 60 * 1000),
+        dueDate: daysFromNow(-2), // Overdue!
         assignedTo: 'Anna Schmidt',
       },
       {
@@ -60,7 +65,7 @@ const getTasksForAuditType = (type: AuditType, auditId: string): any[] => {
         title: 'Zertifizierungsaudit und Umsetzung',
         description: 'Vollständiges Zertifizierungsaudit durchführen und Umsetzung der Standards prüfen',
         status: 'pending',
-        dueDate: new Date(baseDate.getTime() + 30 * 24 * 60 * 60 * 1000),
+        dueDate: daysFromNow(2), // Due very soon!
         assignedTo: 'Michael Weber',
       },
     ];
@@ -71,7 +76,7 @@ const getTasksForAuditType = (type: AuditType, auditId: string): any[] => {
         title: 'Zusendung der Unterlagen',
         description: 'Alle relevanten Unterlagen für die interne Überprüfung (internes Audit) zusenden',
         status: 'in-progress',
-        dueDate: new Date(baseDate.getTime() + 10 * 24 * 60 * 60 * 1000),
+        dueDate: daysFromNow(1), // Due tomorrow!
         assignedTo: 'Anna Schmidt',
       },
       {
@@ -79,7 +84,7 @@ const getTasksForAuditType = (type: AuditType, auditId: string): any[] => {
         title: 'Austausch und Korrektur',
         description: 'Feedback vom Zertifizierer besprechen und notwendige Korrekturen durchführen',
         status: 'pending',
-        dueDate: new Date(baseDate.getTime() + 20 * 24 * 60 * 60 * 1000),
+        dueDate: daysFromNow(8),
         assignedTo: 'Hans Müller',
       },
     ];
@@ -90,7 +95,7 @@ const getTasksForAuditType = (type: AuditType, auditId: string): any[] => {
         title: 'Vorbereitung Re-Zertifizierung',
         description: 'Alle Dokumente aktualisieren und für Re-Zertifizierung vorbereiten',
         status: 'pending',
-        dueDate: new Date(baseDate.getTime() + 45 * 24 * 60 * 60 * 1000),
+        dueDate: daysFromNow(20),
         assignedTo: 'Michael Weber',
       },
       {
@@ -98,7 +103,7 @@ const getTasksForAuditType = (type: AuditType, auditId: string): any[] => {
         title: 'Interne Überprüfung',
         description: 'Internes Audit zur Sicherstellung der Standards durchführen',
         status: 'pending',
-        dueDate: new Date(baseDate.getTime() + 60 * 24 * 60 * 60 * 1000),
+        dueDate: daysFromNow(35),
         assignedTo: 'Anna Schmidt',
       },
       {
@@ -106,7 +111,7 @@ const getTasksForAuditType = (type: AuditType, auditId: string): any[] => {
         title: 'Re-Zertifizierungsaudit',
         description: 'Vollständiges Re-Zertifizierungsaudit durchführen',
         status: 'pending',
-        dueDate: new Date(baseDate.getTime() + 85 * 24 * 60 * 60 * 1000),
+        dueDate: daysFromNow(42),
         assignedTo: 'Hans Müller',
       },
     ];
@@ -117,7 +122,7 @@ const getTasksForAuditType = (type: AuditType, auditId: string): any[] => {
         title: 'Statusbericht erstellen',
         description: '6-Monats-Bericht über die Umsetzung der Zertifizierungsanforderungen erstellen',
         status: 'in-progress',
-        dueDate: new Date(baseDate.getTime() + 15 * 24 * 60 * 60 * 1000),
+        dueDate: daysFromNow(5),
         assignedTo: 'Anna Schmidt',
       },
       {
@@ -125,7 +130,7 @@ const getTasksForAuditType = (type: AuditType, auditId: string): any[] => {
         title: 'Dokumentation prüfen',
         description: 'Vollständigkeit und Aktualität der Dokumentation überprüfen',
         status: 'pending',
-        dueDate: new Date(baseDate.getTime() + 25 * 24 * 60 * 60 * 1000),
+        dueDate: daysFromNow(15),
         assignedTo: 'Michael Weber',
       },
     ];
@@ -140,7 +145,7 @@ export const mockAudits: Audit[] = [
     clientName: 'Holz GmbH',
     type: 'initial',
     certifications: ['FSC', 'PEFC'],
-    scheduledDate: new Date('2025-01-10'),
+    scheduledDate: daysFromNow(5), // In 5 days!
     status: 'in-progress',
     tasks: getTasksForAuditType('initial', 'a1'),
     notes: 'Initialaudit für FSC und PEFC Zertifizierung',
@@ -152,7 +157,7 @@ export const mockAudits: Audit[] = [
     clientName: 'Energie AG',
     type: 'surveillance',
     certifications: ['ISCC'],
-    scheduledDate: new Date('2024-12-20'),
+    scheduledDate: daysFromNow(12), // In 12 days
     status: 'scheduled',
     tasks: getTasksForAuditType('surveillance', 'a2'),
     notes: 'Jährliches Überwachungsaudit',
@@ -164,7 +169,7 @@ export const mockAudits: Audit[] = [
     clientName: 'Produktions KG',
     type: 'recertification',
     certifications: ['ISO 9001', 'ISO 14001'],
-    scheduledDate: new Date('2025-02-15'),
+    scheduledDate: daysFromNow(45), // In 45 days
     status: 'scheduled',
     tasks: getTasksForAuditType('recertification', 'a3'),
     notes: 'Re-Zertifizierung nach 3 Jahren',
@@ -176,7 +181,7 @@ export const mockAudits: Audit[] = [
     clientName: 'Holz GmbH',
     type: 'six-month',
     certifications: ['FSC'],
-    scheduledDate: new Date('2025-01-25'),
+    scheduledDate: daysFromNow(25), // In 25 days
     status: 'scheduled',
     tasks: getTasksForAuditType('six-month', 'a4'),
     notes: '6-Monats-Überwachung im ersten Jahr',
