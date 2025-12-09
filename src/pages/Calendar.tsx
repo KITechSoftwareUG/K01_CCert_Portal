@@ -1,3 +1,4 @@
+import { useState, useMemo, useCallback } from 'react';
 import { Layout } from '@/components/Layout';
 import { mockAudits } from '@/lib/mockData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,26 +7,49 @@ import { Button } from '@/components/ui/button';
 import { Calendar as CalendarIcon, Clock, Download } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { exportAllAuditsToCalendar } from '@/lib/calendarExport';
 import { toast } from '@/hooks/use-toast';
 import { OutlookIntegration } from '@/components/OutlookIntegration';
+import { getActiveAudits, sortAuditsByDate } from '@/lib/auditUtils';
 
 const Calendar = () => {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate] = useState(new Date());
   
-  const monthStart = startOfMonth(currentDate);
-  const monthEnd = endOfMonth(currentDate);
-  const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
+  const { daysInMonth, monthStart } = useMemo(() => {
+    const start = startOfMonth(currentDate);
+    const end = endOfMonth(currentDate);
+    return {
+      monthStart: start,
+      daysInMonth: eachDayOfInterval({ start, end }),
+    };
+  }, [currentDate]);
 
-  const getAuditsForDay = (day: Date) => {
+  const getAuditsForDay = useCallback((day: Date) => {
     return mockAudits.filter(audit => isSameDay(audit.scheduledDate, day));
-  };
+  }, []);
+
+  const handleExportAll = useCallback(() => {
+    exportAllAuditsToCalendar(mockAudits);
+    toast({
+      title: "Alle Audits exportiert",
+      description: "ICS-Datei wurde heruntergeladen. Öffnen Sie diese, um alle Termine in Outlook zu importieren.",
+    });
+  }, []);
+
+  const upcomingAudits = useMemo(
+    () => sortAuditsByDate(getActiveAudits(mockAudits)).slice(0, 5),
+    []
+  );
+
+  const activeAuditCount = useMemo(
+    () => getActiveAudits(mockAudits).length,
+    []
+  );
 
   return (
     <Layout>
-      <div className="p-8 space-y-8">
+      <div className="p-8 space-y-8 animate-fade-in">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -39,15 +63,7 @@ const Calendar = () => {
                 {format(currentDate, 'MMMM yyyy', { locale: de })}
               </span>
             </div>
-            <Button 
-              onClick={() => {
-                exportAllAuditsToCalendar(mockAudits);
-                toast({
-                  title: "Alle Audits exportiert",
-                  description: "ICS-Datei wurde heruntergeladen. Öffnen Sie diese, um alle Termine in Outlook zu importieren.",
-                });
-              }}
-            >
+            <Button onClick={handleExportAll}>
               <Download className="h-4 w-4 mr-2" />
               Alle zu Outlook exportieren
             </Button>
@@ -70,19 +86,20 @@ const Calendar = () => {
                 {daysInMonth.map((day) => {
                   const audits = getAuditsForDay(day);
                   const hasAudits = audits.length > 0;
+                  const isToday = isSameDay(day, new Date());
                   
                   return (
                     <div
-                      key={day.toString()}
+                      key={day.toISOString()}
                       className={cn(
                         'min-h-24 p-2 border rounded-lg transition-colors',
                         hasAudits ? 'bg-primary/5 border-primary/20' : 'border-border',
-                        isSameDay(day, new Date()) && 'ring-2 ring-primary'
+                        isToday && 'ring-2 ring-primary'
                       )}
                     >
                       <div className={cn(
                         'text-sm font-medium mb-1',
-                        isSameDay(day, new Date()) ? 'text-primary' : 'text-foreground',
+                        isToday ? 'text-primary' : 'text-foreground',
                         !isSameMonth(day, currentDate) && 'text-muted-foreground'
                       )}>
                         {format(day, 'd')}
@@ -105,7 +122,7 @@ const Calendar = () => {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Outlook Integration */}
-            <OutlookIntegration auditCount={mockAudits.filter(a => a.status !== 'completed' && a.status !== 'cancelled').length} />
+            <OutlookIntegration auditCount={activeAuditCount} />
 
             {/* Upcoming Events */}
             <Card>
@@ -113,26 +130,22 @@ const Calendar = () => {
                 <CardTitle>Anstehende Termine</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {mockAudits
-                  .filter(a => a.status !== 'completed' && a.status !== 'cancelled')
-                  .sort((a, b) => a.scheduledDate.getTime() - b.scheduledDate.getTime())
-                  .slice(0, 5)
-                  .map((audit) => (
-                    <div key={audit.id} className="space-y-2 pb-4 border-b last:border-0">
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-1 flex-1">
-                          <p className="font-medium text-sm text-foreground">{audit.clientName}</p>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Clock className="h-3 w-3" />
-                            {format(audit.scheduledDate, 'dd. MMM yyyy', { locale: de })}
-                          </div>
+                {upcomingAudits.map((audit) => (
+                  <div key={audit.id} className="space-y-2 pb-4 border-b last:border-0">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1 flex-1">
+                        <p className="font-medium text-sm text-foreground">{audit.clientName}</p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          {format(audit.scheduledDate, 'dd. MMM yyyy', { locale: de })}
                         </div>
-                        <Badge variant="outline" className="text-xs">
-                          {audit.certifications[0]}
-                        </Badge>
                       </div>
+                      <Badge variant="outline" className="text-xs">
+                        {audit.certifications[0]}
+                      </Badge>
                     </div>
-                  ))}
+                  </div>
+                ))}
               </CardContent>
             </Card>
           </div>

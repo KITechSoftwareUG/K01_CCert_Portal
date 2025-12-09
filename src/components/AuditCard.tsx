@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Audit } from '@/types/audit';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -6,53 +7,42 @@ import { Calendar, Building2, CheckCircle2, Clock, AlertCircle } from 'lucide-re
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { AUDIT_TYPE_LABELS, AUDIT_STATUS_CONFIG } from '@/lib/constants';
+import { calculateProgress } from '@/lib/auditUtils';
 
 interface AuditCardProps {
   audit: Audit;
   onViewDetails?: (audit: Audit) => void;
 }
 
-const auditTypeLabels = {
-  initial: 'Initialaudit',
-  surveillance: 'Überwachungsaudit',
-  recertification: 'Re-Zertifizierung',
-  'six-month': '6-Monats-Überwachung',
+const StatusIcon = {
+  scheduled: Clock,
+  'in-progress': AlertCircle,
+  completed: CheckCircle2,
+  cancelled: AlertCircle,
 };
 
-const statusConfig = {
-  scheduled: { label: 'Geplant', variant: 'secondary' as const, icon: Clock },
-  'in-progress': { label: 'In Bearbeitung', variant: 'default' as const, icon: AlertCircle },
-  completed: { label: 'Abgeschlossen', variant: 'default' as const, icon: CheckCircle2 },
-  cancelled: { label: 'Abgebrochen', variant: 'destructive' as const, icon: AlertCircle },
-};
-
-export const AuditCard = ({ audit, onViewDetails }: AuditCardProps) => {
-  const statusInfo = statusConfig[audit.status];
-  const StatusIcon = statusInfo.icon;
-  
-  const completedTasks = audit.tasks.filter(t => t.status === 'completed').length;
-  const totalTasks = audit.tasks.length;
+export const AuditCard = memo(({ audit, onViewDetails }: AuditCardProps) => {
+  const statusInfo = AUDIT_STATUS_CONFIG[audit.status];
+  const Icon = StatusIcon[audit.status];
+  const { completed, total, percentage } = calculateProgress(audit.tasks);
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card className="card-hover">
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="space-y-2">
             <CardTitle className="text-lg">{audit.clientName}</CardTitle>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Building2 className="h-4 w-4" />
-              <span>{auditTypeLabels[audit.type]}</span>
+              <span>{AUDIT_TYPE_LABELS[audit.type]}</span>
             </div>
           </div>
           <Badge 
             variant={statusInfo.variant}
-            className={cn(
-              'flex items-center gap-1',
-              audit.status === 'in-progress' && 'bg-warning text-warning-foreground',
-              audit.status === 'completed' && 'bg-success text-success-foreground'
-            )}
+            className={cn('flex items-center gap-1', statusInfo.className)}
           >
-            <StatusIcon className="h-3 w-3" />
+            <Icon className="h-3 w-3" />
             {statusInfo.label}
           </Badge>
         </div>
@@ -74,18 +64,18 @@ export const AuditCard = ({ audit, onViewDetails }: AuditCardProps) => {
           </div>
         </div>
 
-        {totalTasks > 0 && (
+        {total > 0 && (
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Aufgaben</span>
               <span className="font-medium text-foreground">
-                {completedTasks}/{totalTasks}
+                {completed}/{total}
               </span>
             </div>
             <div className="w-full bg-secondary rounded-full h-2">
               <div
-                className="bg-primary h-2 rounded-full transition-all"
-                style={{ width: `${totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0}%` }}
+                className="bg-primary h-2 rounded-full transition-all duration-300"
+                style={{ width: `${percentage}%` }}
               />
             </div>
           </div>
@@ -101,4 +91,6 @@ export const AuditCard = ({ audit, onViewDetails }: AuditCardProps) => {
       </CardContent>
     </Card>
   );
-};
+});
+
+AuditCard.displayName = 'AuditCard';

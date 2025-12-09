@@ -1,4 +1,5 @@
-import { Client, Audit, AuditType, CertificationStandard } from '@/types/audit';
+import { Client, Audit, AuditType } from '@/types/audit';
+import { daysFromNow } from './dateUtils';
 
 export const mockClients: Client[] = [
   {
@@ -33,109 +34,98 @@ export const mockClients: Client[] = [
   },
 ];
 
-// Helper to create dates relative to today
-const daysFromNow = (days: number) => {
-  const date = new Date();
-  date.setDate(date.getDate() + days);
-  return date;
-};
-
-const getTasksForAuditType = (type: AuditType, auditId: string): any[] => {
-  if (type === 'initial') {
-    return [
+const getTasksForAuditType = (type: AuditType, auditId: string) => {
+  const taskTemplates: Record<AuditType, Array<{ title: string; description: string; status: string; dueDays: number; completedDays?: number; assignedTo: string }>> = {
+    initial: [
       {
-        id: `${auditId}-1`,
         title: 'Registrierung beim Zertifizierer',
-        description: 'Registrierung beim Zertifizierer und im SURE-EU-System durchführen (oder nur beim Zertifizierer, je nach System)',
+        description: 'Registrierung beim Zertifizierer und im SURE-EU-System durchführen',
         status: 'completed',
-        dueDate: daysFromNow(-20),
-        completedAt: daysFromNow(-23),
+        dueDays: -20,
+        completedDays: -23,
         assignedTo: 'Hans Müller',
       },
       {
-        id: `${auditId}-2`,
         title: 'Training und Dokumentation',
         description: 'Schulung der Mitarbeiter durchführen und vollständige Dokumentation erstellen',
         status: 'in-progress',
-        dueDate: daysFromNow(-2), // Overdue!
+        dueDays: -2,
         assignedTo: 'Anna Schmidt',
       },
       {
-        id: `${auditId}-3`,
         title: 'Zertifizierungsaudit und Umsetzung',
         description: 'Vollständiges Zertifizierungsaudit durchführen und Umsetzung der Standards prüfen',
         status: 'pending',
-        dueDate: daysFromNow(2), // Due very soon!
+        dueDays: 2,
         assignedTo: 'Michael Weber',
       },
-    ];
-  } else if (type === 'surveillance') {
-    return [
+    ],
+    surveillance: [
       {
-        id: `${auditId}-1`,
         title: 'Zusendung der Unterlagen',
-        description: 'Alle relevanten Unterlagen für die interne Überprüfung (internes Audit) zusenden',
+        description: 'Alle relevanten Unterlagen für die interne Überprüfung zusenden',
         status: 'in-progress',
-        dueDate: daysFromNow(1), // Due tomorrow!
+        dueDays: 1,
         assignedTo: 'Anna Schmidt',
       },
       {
-        id: `${auditId}-2`,
         title: 'Austausch und Korrektur',
         description: 'Feedback vom Zertifizierer besprechen und notwendige Korrekturen durchführen',
         status: 'pending',
-        dueDate: daysFromNow(8),
+        dueDays: 8,
         assignedTo: 'Hans Müller',
       },
-    ];
-  } else if (type === 'recertification') {
-    return [
+    ],
+    recertification: [
       {
-        id: `${auditId}-1`,
         title: 'Vorbereitung Re-Zertifizierung',
         description: 'Alle Dokumente aktualisieren und für Re-Zertifizierung vorbereiten',
         status: 'pending',
-        dueDate: daysFromNow(20),
+        dueDays: 20,
         assignedTo: 'Michael Weber',
       },
       {
-        id: `${auditId}-2`,
         title: 'Interne Überprüfung',
         description: 'Internes Audit zur Sicherstellung der Standards durchführen',
         status: 'pending',
-        dueDate: daysFromNow(35),
+        dueDays: 35,
         assignedTo: 'Anna Schmidt',
       },
       {
-        id: `${auditId}-3`,
         title: 'Re-Zertifizierungsaudit',
         description: 'Vollständiges Re-Zertifizierungsaudit durchführen',
         status: 'pending',
-        dueDate: daysFromNow(42),
+        dueDays: 42,
         assignedTo: 'Hans Müller',
       },
-    ];
-  } else if (type === 'six-month') {
-    return [
+    ],
+    'six-month': [
       {
-        id: `${auditId}-1`,
         title: 'Statusbericht erstellen',
         description: '6-Monats-Bericht über die Umsetzung der Zertifizierungsanforderungen erstellen',
         status: 'in-progress',
-        dueDate: daysFromNow(5),
+        dueDays: 5,
         assignedTo: 'Anna Schmidt',
       },
       {
-        id: `${auditId}-2`,
         title: 'Dokumentation prüfen',
         description: 'Vollständigkeit und Aktualität der Dokumentation überprüfen',
         status: 'pending',
-        dueDate: daysFromNow(15),
+        dueDays: 15,
         assignedTo: 'Michael Weber',
       },
-    ];
-  }
-  return [];
+    ],
+  };
+
+  return taskTemplates[type].map((task, index) => ({
+    id: `${auditId}-${index + 1}`,
+    title: task.title,
+    description: task.description,
+    status: task.status as 'pending' | 'in-progress' | 'completed',
+    dueDate: daysFromNow(task.dueDays),
+    completedAt: task.completedDays ? daysFromNow(task.completedDays) : undefined,
+    assignedTo: task.assignedTo,
+  }));
 };
 
 export const mockAudits: Audit[] = [
@@ -145,7 +135,7 @@ export const mockAudits: Audit[] = [
     clientName: 'Holz GmbH',
     type: 'initial',
     certifications: ['FSC', 'PEFC'],
-    scheduledDate: daysFromNow(5), // In 5 days!
+    scheduledDate: daysFromNow(5),
     status: 'in-progress',
     tasks: getTasksForAuditType('initial', 'a1'),
     notes: 'Initialaudit für FSC und PEFC Zertifizierung',
@@ -157,7 +147,7 @@ export const mockAudits: Audit[] = [
     clientName: 'Energie AG',
     type: 'surveillance',
     certifications: ['ISCC'],
-    scheduledDate: daysFromNow(12), // In 12 days
+    scheduledDate: daysFromNow(12),
     status: 'scheduled',
     tasks: getTasksForAuditType('surveillance', 'a2'),
     notes: 'Jährliches Überwachungsaudit',
@@ -169,7 +159,7 @@ export const mockAudits: Audit[] = [
     clientName: 'Produktions KG',
     type: 'recertification',
     certifications: ['ISO 9001', 'ISO 14001'],
-    scheduledDate: daysFromNow(45), // In 45 days
+    scheduledDate: daysFromNow(45),
     status: 'scheduled',
     tasks: getTasksForAuditType('recertification', 'a3'),
     notes: 'Re-Zertifizierung nach 3 Jahren',
@@ -181,7 +171,7 @@ export const mockAudits: Audit[] = [
     clientName: 'Holz GmbH',
     type: 'six-month',
     certifications: ['FSC'],
-    scheduledDate: daysFromNow(25), // In 25 days
+    scheduledDate: daysFromNow(25),
     status: 'scheduled',
     tasks: getTasksForAuditType('six-month', 'a4'),
     notes: '6-Monats-Überwachung im ersten Jahr',

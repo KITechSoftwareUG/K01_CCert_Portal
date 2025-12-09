@@ -1,36 +1,31 @@
-import { Audit, AuditTask } from '@/types/audit';
+import { memo, useMemo } from 'react';
+import { Audit } from '@/types/audit';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle2, Circle, Clock, AlertTriangle, ListChecks } from 'lucide-react';
-import { format, differenceInDays, isPast, isToday } from 'date-fns';
-import { de } from 'date-fns/locale';
+import { CheckCircle2, Circle, AlertTriangle, ListChecks } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { AUDIT_TYPE_LABELS } from '@/lib/constants';
+import { getActiveAudits, calculateProgress, getOverdueTasks } from '@/lib/auditUtils';
+import { getDaysUntil, isOverdue } from '@/lib/dateUtils';
 
 interface PreparationChecklistProps {
   audits: Audit[];
 }
 
-const auditTypeLabels = {
-  initial: 'Initialaudit',
-  surveillance: 'Überwachungsaudit',
-  recertification: 'Re-Zertifizierung',
-  'six-month': '6-Monats-Überwachung',
-};
-
-export const PreparationChecklist = ({ audits }: PreparationChecklistProps) => {
+export const PreparationChecklist = memo(({ audits }: PreparationChecklistProps) => {
   const navigate = useNavigate();
 
-  // Get audits happening within next 60 days that need preparation
-  const auditsNeedingPrep = audits
-    .filter(a => {
-      if (a.status === 'completed' || a.status === 'cancelled') return false;
-      const days = differenceInDays(new Date(a.scheduledDate), new Date());
-      return days >= 0 && days <= 60;
-    })
-    .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime())
-    .slice(0, 4);
+  const auditsNeedingPrep = useMemo(() => {
+    return getActiveAudits(audits)
+      .filter(a => {
+        const days = getDaysUntil(a.scheduledDate);
+        return days >= 0 && days <= 60;
+      })
+      .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime())
+      .slice(0, 4);
+  }, [audits]);
 
   return (
     <Card>
@@ -45,31 +40,20 @@ export const PreparationChecklist = ({ audits }: PreparationChecklistProps) => {
           <p className="text-muted-foreground text-center py-4">Keine Audits in den nächsten 60 Tagen</p>
         ) : (
           auditsNeedingPrep.map((audit) => {
-            const completedTasks = audit.tasks.filter(t => t.status === 'completed').length;
-            const totalTasks = audit.tasks.length;
-            const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
-            const daysUntil = differenceInDays(new Date(audit.scheduledDate), new Date());
-            const overdueTasks = audit.tasks.filter(t => 
-              t.status !== 'completed' && isPast(new Date(t.dueDate)) && !isToday(new Date(t.dueDate))
-            ).length;
-
-            const getStatusColor = () => {
-              if (overdueTasks > 0) return 'destructive';
-              if (progress >= 100) return 'success';
-              if (progress >= 50) return 'warning';
-              return 'secondary';
-            };
+            const { completed, total, percentage } = calculateProgress(audit.tasks);
+            const daysUntil = getDaysUntil(audit.scheduledDate);
+            const overdueTasks = getOverdueTasks(audit.tasks);
 
             return (
               <div
                 key={audit.id}
                 onClick={() => navigate(`/audits/${audit.id}`)}
-                className="p-4 rounded-lg border border-border bg-card hover:shadow-md transition-all cursor-pointer"
+                className="p-4 rounded-lg border border-border bg-card card-hover cursor-pointer"
               >
                 <div className="flex items-start justify-between mb-3">
                   <div>
                     <p className="font-semibold text-foreground">{audit.clientName}</p>
-                    <p className="text-sm text-muted-foreground">{auditTypeLabels[audit.type]}</p>
+                    <p className="text-sm text-muted-foreground">{AUDIT_TYPE_LABELS[audit.type]}</p>
                   </div>
                   <Badge 
                     variant="outline" 
@@ -89,36 +73,33 @@ export const PreparationChecklist = ({ audits }: PreparationChecklistProps) => {
                     <span className="text-muted-foreground">Fortschritt</span>
                     <span className={cn(
                       'font-medium',
-                      progress >= 100 ? 'text-success' :
-                      progress >= 50 ? 'text-foreground' :
+                      percentage >= 100 ? 'text-success' :
+                      percentage >= 50 ? 'text-foreground' :
                       'text-warning'
                     )}>
-                      {completedTasks}/{totalTasks} Aufgaben
+                      {completed}/{total} Aufgaben
                     </span>
                   </div>
-                  <Progress value={progress} className="h-2" />
+                  <Progress value={percentage} className="h-2" />
                 </div>
 
-                {overdueTasks > 0 && (
+                {overdueTasks.length > 0 && (
                   <div className="mt-2 flex items-center gap-1 text-xs text-destructive">
                     <AlertTriangle className="h-3 w-3" />
-                    {overdueTasks} Aufgabe{overdueTasks > 1 ? 'n' : ''} überfällig
+                    {overdueTasks.length} Aufgabe{overdueTasks.length > 1 ? 'n' : ''} überfällig
                   </div>
                 )}
 
                 {/* Task preview */}
                 <div className="mt-3 space-y-1">
                   {audit.tasks.slice(0, 3).map((task) => {
-                    const isOverdue = task.status !== 'completed' && isPast(new Date(task.dueDate)) && !isToday(new Date(task.dueDate));
+                    const taskOverdue = task.status !== 'completed' && isOverdue(task.dueDate);
                     
                     return (
-                      <div 
-                        key={task.id} 
-                        className="flex items-center gap-2 text-xs"
-                      >
+                      <div key={task.id} className="flex items-center gap-2 text-xs">
                         {task.status === 'completed' ? (
                           <CheckCircle2 className="h-3 w-3 text-success shrink-0" />
-                        ) : isOverdue ? (
+                        ) : taskOverdue ? (
                           <AlertTriangle className="h-3 w-3 text-destructive shrink-0" />
                         ) : (
                           <Circle className="h-3 w-3 text-muted-foreground shrink-0" />
@@ -126,7 +107,7 @@ export const PreparationChecklist = ({ audits }: PreparationChecklistProps) => {
                         <span className={cn(
                           'truncate',
                           task.status === 'completed' ? 'text-muted-foreground line-through' :
-                          isOverdue ? 'text-destructive' : 'text-foreground'
+                          taskOverdue ? 'text-destructive' : 'text-foreground'
                         )}>
                           {task.title}
                         </span>
@@ -146,4 +127,6 @@ export const PreparationChecklist = ({ audits }: PreparationChecklistProps) => {
       </CardContent>
     </Card>
   );
-};
+});
+
+PreparationChecklist.displayName = 'PreparationChecklist';

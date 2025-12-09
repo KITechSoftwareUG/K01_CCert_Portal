@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { AuditCard } from '@/components/AuditCard';
@@ -10,25 +10,29 @@ import { Plus, Search, Filter } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Audit } from '@/types/audit';
 
+type StatusFilter = 'all' | 'scheduled' | 'in-progress' | 'completed';
+
 const Audits = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'scheduled' | 'in-progress' | 'completed'>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [showNewAuditDialog, setShowNewAuditDialog] = useState(false);
 
-  const handleViewDetails = (audit: Audit) => {
+  const handleViewDetails = useCallback((audit: Audit) => {
     navigate(`/audits/${audit.id}`);
-  };
+  }, [navigate]);
 
-  const filteredAudits = mockAudits.filter(audit => {
-    const matchesSearch = audit.clientName.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || audit.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const filteredAudits = useMemo(() => {
+    return mockAudits.filter(audit => {
+      const matchesSearch = audit.clientName.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || audit.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [searchQuery, statusFilter]);
 
   return (
     <Layout>
-      <div className="p-8 space-y-8">
+      <div className="p-8 space-y-8 animate-fade-in">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -59,7 +63,7 @@ const Audits = () => {
         </div>
 
         {/* Status Tabs */}
-        <Tabs defaultValue="all" onValueChange={(v) => setStatusFilter(v as any)}>
+        <Tabs defaultValue="all" onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
           <TabsList>
             <TabsTrigger value="all">Alle</TabsTrigger>
             <TabsTrigger value="scheduled">Geplant</TabsTrigger>
