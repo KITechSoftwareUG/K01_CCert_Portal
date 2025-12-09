@@ -1,83 +1,33 @@
-import { Audit, AuditTask } from '@/types/audit';
+import { memo, useMemo } from 'react';
+import { Audit } from '@/types/audit';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, Clock, CheckCircle2, ArrowRight } from 'lucide-react';
-import { format, differenceInDays, isPast, isToday } from 'date-fns';
-import { de } from 'date-fns/locale';
+import { AlertTriangle, Clock, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
-
-interface TaskWithAudit extends AuditTask {
-  auditId: string;
-  clientName: string;
-  auditType: string;
-}
+import { AUDIT_TYPE_LABELS, URGENCY_CONFIG } from '@/lib/constants';
+import { getAllPendingTasksWithContext } from '@/lib/auditUtils';
+import { getUrgencyLevel, formatDaysUntil } from '@/lib/dateUtils';
 
 interface UpcomingTasksCardProps {
   audits: Audit[];
   maxTasks?: number;
 }
 
-const auditTypeLabels = {
-  initial: 'Initialaudit',
-  surveillance: 'Überwachungsaudit',
-  recertification: 'Re-Zertifizierung',
-  'six-month': '6-Monats-Überwachung',
+const UrgencyIcon = {
+  overdue: AlertTriangle,
+  critical: Clock,
+  warning: Clock,
+  normal: CheckCircle2,
 };
 
-export const UpcomingTasksCard = ({ audits, maxTasks = 8 }: UpcomingTasksCardProps) => {
+export const UpcomingTasksCard = memo(({ audits, maxTasks = 8 }: UpcomingTasksCardProps) => {
   const navigate = useNavigate();
 
-  // Collect all pending tasks from all audits
-  const allTasks: TaskWithAudit[] = audits
-    .filter(a => a.status !== 'completed' && a.status !== 'cancelled')
-    .flatMap(audit => 
-      audit.tasks
-        .filter(t => t.status !== 'completed')
-        .map(task => ({
-          ...task,
-          auditId: audit.id,
-          clientName: audit.clientName,
-          auditType: auditTypeLabels[audit.type],
-        }))
-    )
-    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
-    .slice(0, maxTasks);
-
-  const getUrgencyLevel = (dueDate: Date) => {
-    const days = differenceInDays(new Date(dueDate), new Date());
-    if (isPast(dueDate) && !isToday(dueDate)) return 'overdue';
-    if (days <= 3) return 'critical';
-    if (days <= 7) return 'warning';
-    return 'normal';
-  };
-
-  const urgencyConfig = {
-    overdue: { 
-      bg: 'bg-destructive/10 border-destructive/30', 
-      text: 'text-destructive',
-      icon: AlertTriangle,
-      badge: 'Überfällig'
-    },
-    critical: { 
-      bg: 'bg-warning/10 border-warning/30', 
-      text: 'text-warning',
-      icon: Clock,
-      badge: 'Dringend'
-    },
-    warning: { 
-      bg: 'bg-accent/10 border-accent/30', 
-      text: 'text-accent-foreground',
-      icon: Clock,
-      badge: 'Diese Woche'
-    },
-    normal: { 
-      bg: 'bg-card border-border', 
-      text: 'text-muted-foreground',
-      icon: CheckCircle2,
-      badge: null
-    },
-  };
+  const allTasks = useMemo(
+    () => getAllPendingTasksWithContext(audits, AUDIT_TYPE_LABELS).slice(0, maxTasks),
+    [audits, maxTasks]
+  );
 
   return (
     <Card>
@@ -93,9 +43,8 @@ export const UpcomingTasksCard = ({ audits, maxTasks = 8 }: UpcomingTasksCardPro
         ) : (
           allTasks.map((task) => {
             const urgency = getUrgencyLevel(task.dueDate);
-            const config = urgencyConfig[urgency];
-            const Icon = config.icon;
-            const daysUntil = differenceInDays(new Date(task.dueDate), new Date());
+            const config = URGENCY_CONFIG[urgency];
+            const Icon = UrgencyIcon[urgency];
 
             return (
               <div
@@ -126,12 +75,7 @@ export const UpcomingTasksCard = ({ audits, maxTasks = 8 }: UpcomingTasksCardPro
                       </Badge>
                     )}
                     <span className={cn('text-xs font-medium', config.text)}>
-                      {urgency === 'overdue' 
-                        ? `${Math.abs(daysUntil)} Tage überfällig`
-                        : daysUntil === 0 
-                          ? 'Heute fällig'
-                          : `In ${daysUntil} Tagen`
-                      }
+                      {formatDaysUntil(task.dueDate)}
                     </span>
                   </div>
                 </div>
@@ -142,4 +86,6 @@ export const UpcomingTasksCard = ({ audits, maxTasks = 8 }: UpcomingTasksCardPro
       </CardContent>
     </Card>
   );
-};
+});
+
+UpcomingTasksCard.displayName = 'UpcomingTasksCard';

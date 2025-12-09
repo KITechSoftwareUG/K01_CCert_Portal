@@ -1,69 +1,27 @@
+import { memo, useMemo } from 'react';
 import { Audit } from '@/types/audit';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Building2, AlertTriangle, Clock, CheckCircle2 } from 'lucide-react';
-import { format, differenceInDays, isPast, isToday, addDays } from 'date-fns';
+import { Calendar, Building2, AlertTriangle } from 'lucide-react';
+import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { AUDIT_TYPE_LABELS, TIMELINE_STATUS_CONFIG } from '@/lib/constants';
+import { getActiveAudits, sortAuditsByDate, calculateProgress, getOverdueTasks } from '@/lib/auditUtils';
+import { getDaysUntil, getTimelineStatus } from '@/lib/dateUtils';
 
 interface AuditTimelineProps {
   audits: Audit[];
 }
 
-const auditTypeLabels = {
-  initial: 'Initialaudit',
-  surveillance: 'Überwachungsaudit',
-  recertification: 'Re-Zertifizierung',
-  'six-month': '6-Monats-Überwachung',
-};
-
-export const AuditTimeline = ({ audits }: AuditTimelineProps) => {
+export const AuditTimeline = memo(({ audits }: AuditTimelineProps) => {
   const navigate = useNavigate();
 
-  const upcomingAudits = audits
-    .filter(a => a.status !== 'completed' && a.status !== 'cancelled')
-    .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime());
-
-  const getTimelineStatus = (scheduledDate: Date, audit: Audit) => {
-    const days = differenceInDays(new Date(scheduledDate), new Date());
-    const pendingTasks = audit.tasks.filter(t => t.status !== 'completed').length;
-    const overdueTasks = audit.tasks.filter(t => 
-      t.status !== 'completed' && isPast(new Date(t.dueDate)) && !isToday(new Date(t.dueDate))
-    ).length;
-
-    if (overdueTasks > 0) return 'critical';
-    if (days <= 7) return 'imminent';
-    if (days <= 30) return 'upcoming';
-    return 'planned';
-  };
-
-  const statusConfig = {
-    critical: {
-      color: 'bg-destructive',
-      dotColor: 'bg-destructive',
-      textColor: 'text-destructive',
-      label: 'Aufgaben überfällig',
-    },
-    imminent: {
-      color: 'bg-warning',
-      dotColor: 'bg-warning',
-      textColor: 'text-warning',
-      label: 'In < 7 Tagen',
-    },
-    upcoming: {
-      color: 'bg-primary',
-      dotColor: 'bg-primary',
-      textColor: 'text-primary',
-      label: 'In < 30 Tagen',
-    },
-    planned: {
-      color: 'bg-muted-foreground',
-      dotColor: 'bg-muted-foreground',
-      textColor: 'text-muted-foreground',
-      label: 'Geplant',
-    },
-  };
+  const upcomingAudits = useMemo(
+    () => sortAuditsByDate(getActiveAudits(audits)),
+    [audits]
+  );
 
   return (
     <Card>
@@ -82,15 +40,12 @@ export const AuditTimeline = ({ audits }: AuditTimelineProps) => {
             <div className="absolute left-3 top-2 bottom-2 w-0.5 bg-border" />
             
             <div className="space-y-4">
-              {upcomingAudits.map((audit, index) => {
-                const status = getTimelineStatus(audit.scheduledDate, audit);
-                const config = statusConfig[status];
-                const daysUntil = differenceInDays(new Date(audit.scheduledDate), new Date());
-                const completedTasks = audit.tasks.filter(t => t.status === 'completed').length;
-                const totalTasks = audit.tasks.length;
-                const overdueTasks = audit.tasks.filter(t => 
-                  t.status !== 'completed' && isPast(new Date(t.dueDate)) && !isToday(new Date(t.dueDate))
-                ).length;
+              {upcomingAudits.map((audit) => {
+                const overdueTasks = getOverdueTasks(audit.tasks);
+                const status = getTimelineStatus(audit.scheduledDate, overdueTasks.length > 0);
+                const config = TIMELINE_STATUS_CONFIG[status];
+                const daysUntil = getDaysUntil(audit.scheduledDate);
+                const { completed, total, percentage } = calculateProgress(audit.tasks);
 
                 return (
                   <div
@@ -106,16 +61,14 @@ export const AuditTimeline = ({ audits }: AuditTimelineProps) => {
 
                     <div className={cn(
                       'p-4 rounded-lg border transition-all group-hover:shadow-md',
-                      status === 'critical' ? 'border-destructive/30 bg-destructive/5' :
-                      status === 'imminent' ? 'border-warning/30 bg-warning/5' :
-                      'border-border bg-card'
+                      config.borderClass
                     )}>
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div className="space-y-1">
                           <p className="font-semibold text-foreground">{audit.clientName}</p>
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Building2 className="h-3.5 w-3.5" />
-                            <span>{auditTypeLabels[audit.type]}</span>
+                            <span>{AUDIT_TYPE_LABELS[audit.type]}</span>
                           </div>
                         </div>
                         <Badge variant="outline" className={cn('text-xs', config.textColor)}>
@@ -129,14 +82,14 @@ export const AuditTimeline = ({ audits }: AuditTimelineProps) => {
                           {daysUntil >= 0 && ` (in ${daysUntil} Tagen)`}
                         </span>
                         <div className="flex items-center gap-2">
-                          {overdueTasks > 0 && (
+                          {overdueTasks.length > 0 && (
                             <span className="flex items-center gap-1 text-xs text-destructive">
                               <AlertTriangle className="h-3 w-3" />
-                              {overdueTasks} überfällig
+                              {overdueTasks.length} überfällig
                             </span>
                           )}
                           <span className="text-xs text-muted-foreground">
-                            {completedTasks}/{totalTasks} Aufgaben
+                            {completed}/{total} Aufgaben
                           </span>
                         </div>
                       </div>
@@ -144,8 +97,8 @@ export const AuditTimeline = ({ audits }: AuditTimelineProps) => {
                       {/* Progress bar */}
                       <div className="mt-2 w-full bg-secondary rounded-full h-1.5">
                         <div
-                          className={cn('h-1.5 rounded-full transition-all', config.color)}
-                          style={{ width: `${totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0}%` }}
+                          className={cn('h-1.5 rounded-full transition-all duration-300', config.color)}
+                          style={{ width: `${percentage}%` }}
                         />
                       </div>
                     </div>
@@ -158,4 +111,6 @@ export const AuditTimeline = ({ audits }: AuditTimelineProps) => {
       </CardContent>
     </Card>
   );
-};
+});
+
+AuditTimeline.displayName = 'AuditTimeline';

@@ -1,11 +1,12 @@
+import { memo, useMemo } from 'react';
 import { Audit } from '@/types/audit';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { AlertTriangle, Bell, Calendar, ArrowRight } from 'lucide-react';
-import { format, differenceInDays, isPast, isToday, addDays } from 'date-fns';
-import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { AUDIT_TYPE_LABELS, ALERT_SEVERITY_CONFIG } from '@/lib/constants';
+import { getActiveAudits, getOverdueTasks, getPendingTasks } from '@/lib/auditUtils';
+import { getDaysUntil, isOverdue } from '@/lib/dateUtils';
 
 interface Alert {
   id: string;
@@ -20,93 +21,74 @@ interface AlertsCardProps {
   audits: Audit[];
 }
 
-const auditTypeLabels = {
-  initial: 'Initialaudit',
-  surveillance: 'Überwachungsaudit',
-  recertification: 'Re-Zertifizierung',
-  'six-month': '6-Monats-Überwachung',
+const AlertIcon = {
+  critical: AlertTriangle,
+  warning: Bell,
+  info: Calendar,
 };
 
-export const AlertsCard = ({ audits }: AlertsCardProps) => {
+export const AlertsCard = memo(({ audits }: AlertsCardProps) => {
   const navigate = useNavigate();
 
-  // Generate alerts from audits
-  const alerts: Alert[] = [];
+  const sortedAlerts = useMemo(() => {
+    const alerts: Alert[] = [];
 
-  audits
-    .filter(a => a.status !== 'completed' && a.status !== 'cancelled')
-    .forEach(audit => {
+    getActiveAudits(audits).forEach(audit => {
       // Check for overdue tasks
-      const overdueTasks = audit.tasks.filter(t => 
-        t.status !== 'completed' && isPast(new Date(t.dueDate)) && !isToday(new Date(t.dueDate))
-      );
+      const overdueTasks = getOverdueTasks(audit.tasks);
       
       if (overdueTasks.length > 0) {
         alerts.push({
           id: `overdue-${audit.id}`,
           type: 'overdue',
           title: `${overdueTasks.length} überfällige Aufgabe${overdueTasks.length > 1 ? 'n' : ''}`,
-          description: `${audit.clientName} - ${auditTypeLabels[audit.type]}`,
+          description: `${audit.clientName} - ${AUDIT_TYPE_LABELS[audit.type]}`,
           auditId: audit.id,
           severity: 'critical',
         });
       }
 
       // Check for audit coming up within 7 days
-      const daysUntilAudit = differenceInDays(new Date(audit.scheduledDate), new Date());
+      const daysUntilAudit = getDaysUntil(audit.scheduledDate);
       if (daysUntilAudit >= 0 && daysUntilAudit <= 7) {
-        const pendingTasks = audit.tasks.filter(t => t.status !== 'completed').length;
+        const pendingCount = getPendingTasks(audit.tasks).length;
         alerts.push({
           id: `upcoming-${audit.id}`,
           type: 'upcoming-audit',
           title: `Audit in ${daysUntilAudit} Tag${daysUntilAudit !== 1 ? 'en' : ''}`,
-          description: `${audit.clientName} - ${pendingTasks} offene Aufgaben`,
+          description: `${audit.clientName} - ${pendingCount} offene Aufgaben`,
           auditId: audit.id,
           severity: daysUntilAudit <= 3 ? 'critical' : 'warning',
         });
       }
 
       // Check for tasks due within 3 days
-      audit.tasks
-        .filter(t => t.status !== 'completed')
-        .forEach(task => {
-          const daysUntilDue = differenceInDays(new Date(task.dueDate), new Date());
-          if (daysUntilDue >= 0 && daysUntilDue <= 3 && !isPast(new Date(task.dueDate))) {
-            alerts.push({
-              id: `task-${task.id}`,
-              type: 'task-due-soon',
-              title: task.title,
-              description: `Fällig ${daysUntilDue === 0 ? 'heute' : `in ${daysUntilDue} Tag${daysUntilDue !== 1 ? 'en' : ''}`} - ${audit.clientName}`,
-              auditId: audit.id,
-              severity: daysUntilDue === 0 ? 'critical' : 'warning',
-            });
-          }
-        });
+      getPendingTasks(audit.tasks).forEach(task => {
+        const daysUntilDue = getDaysUntil(task.dueDate);
+        if (daysUntilDue >= 0 && daysUntilDue <= 3 && !isOverdue(task.dueDate)) {
+          alerts.push({
+            id: `task-${task.id}`,
+            type: 'task-due-soon',
+            title: task.title,
+            description: `Fällig ${daysUntilDue === 0 ? 'heute' : `in ${daysUntilDue} Tag${daysUntilDue !== 1 ? 'en' : ''}`} - ${audit.clientName}`,
+            auditId: audit.id,
+            severity: daysUntilDue === 0 ? 'critical' : 'warning',
+          });
+        }
+      });
     });
 
-  // Sort by severity
-  const sortedAlerts = alerts.sort((a, b) => {
+    // Sort by severity and limit
     const severityOrder = { critical: 0, warning: 1, info: 2 };
-    return severityOrder[a.severity] - severityOrder[b.severity];
-  }).slice(0, 6);
+    return alerts
+      .sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity])
+      .slice(0, 6);
+  }, [audits]);
 
-  const severityConfig = {
-    critical: {
-      bg: 'bg-destructive/10 border-destructive/30',
-      icon: AlertTriangle,
-      iconColor: 'text-destructive',
-    },
-    warning: {
-      bg: 'bg-warning/10 border-warning/30',
-      icon: Bell,
-      iconColor: 'text-warning',
-    },
-    info: {
-      bg: 'bg-accent/10 border-accent/30',
-      icon: Calendar,
-      iconColor: 'text-accent-foreground',
-    },
-  };
+  const criticalCount = useMemo(
+    () => sortedAlerts.filter(a => a.severity === 'critical').length,
+    [sortedAlerts]
+  );
 
   return (
     <Card className="border-destructive/20">
@@ -114,9 +96,9 @@ export const AlertsCard = ({ audits }: AlertsCardProps) => {
         <CardTitle className="flex items-center gap-2 text-destructive">
           <AlertTriangle className="h-5 w-5" />
           Warnungen & Erinnerungen
-          {sortedAlerts.filter(a => a.severity === 'critical').length > 0 && (
+          {criticalCount > 0 && (
             <span className="ml-auto bg-destructive text-destructive-foreground text-xs px-2 py-0.5 rounded-full">
-              {sortedAlerts.filter(a => a.severity === 'critical').length} kritisch
+              {criticalCount} kritisch
             </span>
           )}
         </CardTitle>
@@ -128,8 +110,8 @@ export const AlertsCard = ({ audits }: AlertsCardProps) => {
           </div>
         ) : (
           sortedAlerts.map((alert) => {
-            const config = severityConfig[alert.severity];
-            const Icon = config.icon;
+            const config = ALERT_SEVERITY_CONFIG[alert.severity];
+            const Icon = AlertIcon[alert.severity];
 
             return (
               <div
@@ -153,4 +135,6 @@ export const AlertsCard = ({ audits }: AlertsCardProps) => {
       </CardContent>
     </Card>
   );
-};
+});
+
+AlertsCard.displayName = 'AlertsCard';

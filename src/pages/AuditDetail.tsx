@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, memo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { mockAudits } from '@/lib/mockData';
@@ -23,28 +23,79 @@ import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { TaskStatus } from '@/types/audit';
+import { TaskStatus, AuditTask } from '@/types/audit';
+import { AUDIT_TYPE_LABELS, AUDIT_STATUS_CONFIG, TASK_STATUS_CONFIG } from '@/lib/constants';
+import { calculateProgress } from '@/lib/auditUtils';
+import { isOverdue } from '@/lib/dateUtils';
 
-const auditTypeLabels = {
-  initial: 'Initialaudit',
-  surveillance: 'Überwachungsaudit',
-  recertification: 'Re-Zertifizierung',
-  'six-month': '6-Monats-Überwachung',
+const StatusIcon = {
+  scheduled: Clock,
+  'in-progress': AlertCircle,
+  completed: CheckCircle2,
+  cancelled: AlertCircle,
 };
 
-const statusConfig = {
-  scheduled: { label: 'Geplant', variant: 'secondary' as const, icon: Clock },
-  'in-progress': { label: 'In Bearbeitung', variant: 'default' as const, icon: AlertCircle },
-  completed: { label: 'Abgeschlossen', variant: 'default' as const, icon: CheckCircle2 },
-  cancelled: { label: 'Abgebrochen', variant: 'destructive' as const, icon: AlertCircle },
-};
+interface TaskItemProps {
+  task: AuditTask;
+  index: number;
+  onToggle: (taskId: string) => void;
+}
 
-const taskStatusConfig = {
-  pending: { label: 'Ausstehend', color: 'text-muted-foreground', bg: 'bg-secondary' },
-  'in-progress': { label: 'In Bearbeitung', color: 'text-warning-foreground', bg: 'bg-warning' },
-  completed: { label: 'Abgeschlossen', color: 'text-success-foreground', bg: 'bg-success' },
-  overdue: { label: 'Überfällig', color: 'text-destructive-foreground', bg: 'bg-destructive' },
-};
+const TaskItem = memo(({ task, index, onToggle }: TaskItemProps) => {
+  const taskOverdue = task.status !== 'completed' && isOverdue(task.dueDate);
+  const displayStatus = taskOverdue ? TASK_STATUS_CONFIG.overdue : TASK_STATUS_CONFIG[task.status];
+  
+  return (
+    <div className="flex items-start gap-4 p-4 border rounded-lg hover:bg-accent/50 transition-colors">
+      <Checkbox
+        checked={task.status === 'completed'}
+        onCheckedChange={() => onToggle(task.id)}
+        className="mt-1"
+      />
+      <div className="flex-1 space-y-2">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <p className={cn(
+              "font-medium",
+              task.status === 'completed' && "line-through text-muted-foreground"
+            )}>
+              {index + 1}. {task.title}
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {task.description}
+            </p>
+          </div>
+          <Badge 
+            variant="outline"
+            className={cn(displayStatus.bg, displayStatus.color)}
+          >
+            {displayStatus.label}
+          </Badge>
+        </div>
+        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <Calendar className="h-3 w-3" />
+            {format(task.dueDate, 'dd.MM.yyyy', { locale: de })}
+          </div>
+          {task.assignedTo && (
+            <div className="flex items-center gap-1">
+              <User className="h-3 w-3" />
+              {task.assignedTo}
+            </div>
+          )}
+          {task.completedAt && (
+            <div className="flex items-center gap-1">
+              <CheckCircle2 className="h-3 w-3" />
+              Abgeschlossen: {format(task.completedAt, 'dd.MM.yyyy', { locale: de })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+});
+
+TaskItem.displayName = 'TaskItem';
 
 const AuditDetail = () => {
   const { id } = useParams();
@@ -53,6 +104,30 @@ const AuditDetail = () => {
   
   const [tasks, setTasks] = useState(audit?.tasks || []);
   const [notes, setNotes] = useState(audit?.notes || '');
+
+  const toggleTaskStatus = useCallback((taskId: string) => {
+    setTasks(prev => prev.map(task => {
+      if (task.id === taskId) {
+        const newStatus: TaskStatus = task.status === 'completed' ? 'pending' : 'completed';
+        return {
+          ...task,
+          status: newStatus,
+          completedAt: newStatus === 'completed' ? new Date() : undefined,
+        };
+      }
+      return task;
+    }));
+  }, []);
+
+  const handleExportCalendar = useCallback(() => {
+    if (audit) {
+      exportAuditToCalendar(audit);
+      toast({
+        title: "Kalenderexport",
+        description: "ICS-Datei wurde heruntergeladen. Öffnen Sie diese, um den Termin in Outlook zu importieren.",
+      });
+    }
+  }, [audit]);
 
   if (!audit) {
     return (
@@ -69,30 +144,13 @@ const AuditDetail = () => {
     );
   }
 
-  const statusInfo = statusConfig[audit.status];
-  const StatusIcon = statusInfo.icon;
-  
-  const completedTasks = tasks.filter(t => t.status === 'completed').length;
-  const totalTasks = tasks.length;
-  const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
-
-  const toggleTaskStatus = (taskId: string) => {
-    setTasks(tasks.map(task => {
-      if (task.id === taskId) {
-        const newStatus: TaskStatus = task.status === 'completed' ? 'pending' : 'completed';
-        return {
-          ...task,
-          status: newStatus,
-          completedAt: newStatus === 'completed' ? new Date() : undefined,
-        };
-      }
-      return task;
-    }));
-  };
+  const statusInfo = AUDIT_STATUS_CONFIG[audit.status];
+  const Icon = StatusIcon[audit.status];
+  const { completed, total, percentage } = calculateProgress(tasks);
 
   return (
     <Layout>
-      <div className="p-8 space-y-6">
+      <div className="p-8 space-y-6 animate-fade-in">
         {/* Header */}
         <div className="flex items-center gap-4">
           <Button 
@@ -104,17 +162,13 @@ const AuditDetail = () => {
           </Button>
           <div className="flex-1">
             <h1 className="text-3xl font-bold text-foreground">{audit.clientName}</h1>
-            <p className="text-muted-foreground">{auditTypeLabels[audit.type]}</p>
+            <p className="text-muted-foreground">{AUDIT_TYPE_LABELS[audit.type]}</p>
           </div>
           <Badge 
             variant={statusInfo.variant}
-            className={cn(
-              'flex items-center gap-1 text-sm px-4 py-2',
-              audit.status === 'in-progress' && 'bg-warning text-warning-foreground',
-              audit.status === 'completed' && 'bg-success text-success-foreground'
-            )}
+            className={cn('flex items-center gap-1 text-sm px-4 py-2', statusInfo.className)}
           >
-            <StatusIcon className="h-4 w-4" />
+            <Icon className="h-4 w-4" />
             {statusInfo.label}
           </Badge>
         </div>
@@ -130,14 +184,14 @@ const AuditDetail = () => {
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-2xl font-bold text-foreground">
-                    {completedTasks} / {totalTasks}
+                    {completed} / {total}
                   </span>
                   <span className="text-sm text-muted-foreground">Aufgaben abgeschlossen</span>
                 </div>
                 <div className="w-full bg-secondary rounded-full h-3">
                   <div
-                    className="bg-primary h-3 rounded-full transition-all"
-                    style={{ width: `${progress}%` }}
+                    className="bg-primary h-3 rounded-full transition-all duration-300"
+                    style={{ width: `${percentage}%` }}
                   />
                 </div>
               </CardContent>
@@ -154,63 +208,14 @@ const AuditDetail = () => {
                     Keine Aufgaben definiert
                   </p>
                 ) : (
-                  tasks.map((task, index) => {
-                    const taskStatusInfo = taskStatusConfig[task.status];
-                    const isOverdue = task.status !== 'completed' && new Date(task.dueDate) < new Date();
-                    const displayStatus = isOverdue ? taskStatusConfig.overdue : taskStatusInfo;
-                    
-                    return (
-                      <div
-                        key={task.id}
-                        className="flex items-start gap-4 p-4 border rounded-lg hover:bg-accent/50 transition-colors"
-                      >
-                        <Checkbox
-                          checked={task.status === 'completed'}
-                          onCheckedChange={() => toggleTaskStatus(task.id)}
-                          className="mt-1"
-                        />
-                        <div className="flex-1 space-y-2">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1">
-                              <p className={cn(
-                                "font-medium",
-                                task.status === 'completed' && "line-through text-muted-foreground"
-                              )}>
-                                {index + 1}. {task.title}
-                              </p>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {task.description}
-                              </p>
-                            </div>
-                            <Badge 
-                              variant="outline"
-                              className={cn(displayStatus.bg, displayStatus.color)}
-                            >
-                              {displayStatus.label}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              {format(task.dueDate, 'dd.MM.yyyy', { locale: de })}
-                            </div>
-                            {task.assignedTo && (
-                              <div className="flex items-center gap-1">
-                                <User className="h-3 w-3" />
-                                {task.assignedTo}
-                              </div>
-                            )}
-                            {task.completedAt && (
-                              <div className="flex items-center gap-1">
-                                <CheckCircle2 className="h-3 w-3" />
-                                Abgeschlossen: {format(task.completedAt, 'dd.MM.yyyy', { locale: de })}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
+                  tasks.map((task, index) => (
+                    <TaskItem 
+                      key={task.id} 
+                      task={task} 
+                      index={index} 
+                      onToggle={toggleTaskStatus} 
+                    />
+                  ))
                 )}
               </CardContent>
             </Card>
@@ -253,7 +258,7 @@ const AuditDetail = () => {
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <FileText className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-foreground">{auditTypeLabels[audit.type]}</span>
+                    <span className="text-foreground">{AUDIT_TYPE_LABELS[audit.type]}</span>
                   </div>
                 </div>
 
@@ -290,13 +295,7 @@ const AuditDetail = () => {
                 <Button 
                   variant="outline" 
                   className="w-full justify-start"
-                  onClick={() => {
-                    exportAuditToCalendar(audit);
-                    toast({
-                      title: "Kalenderexport",
-                      description: "ICS-Datei wurde heruntergeladen. Öffnen Sie diese, um den Termin in Outlook zu importieren.",
-                    });
-                  }}
+                  onClick={handleExportCalendar}
                 >
                   <CalendarPlus className="h-4 w-4 mr-2" />
                   Zu Outlook hinzufügen
