@@ -5,14 +5,62 @@ import { UpcomingTasksCard } from '@/components/UpcomingTasksCard';
 import { AuditTimeline } from '@/components/AuditTimeline';
 import { AlertsCard } from '@/components/AlertsCard';
 import { PreparationChecklist } from '@/components/PreparationChecklist';
-import { mockAudits } from '@/lib/mockData';
+import { useAudits, AuditWithClient } from '@/hooks/useAudits';
+import { useAuditTasks } from '@/hooks/useAuditTasks';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { ClipboardCheck, AlertTriangle, Calendar, ListTodo } from 'lucide-react';
-import { getActiveAudits, getOverdueTasks, getPendingTasks } from '@/lib/auditUtils';
-import { getDaysUntil } from '@/lib/dateUtils';
+import { getDaysUntil, isOverdue } from '@/lib/dateUtils';
+import { Audit } from '@/types/audit';
+
+// Transform database audit to local Audit type
+const transformAuditToLocal = (dbAudit: AuditWithClient, tasks: any[]): Audit => ({
+  id: dbAudit.id,
+  clientId: dbAudit.client_id,
+  clientName: dbAudit.clients?.name || 'Unbekannt',
+  type: dbAudit.type,
+  certifications: (dbAudit.certifications || []) as any,
+  scheduledDate: new Date(dbAudit.scheduled_date),
+  status: dbAudit.status,
+  tasks: tasks
+    .filter(t => t.audit_id === dbAudit.id)
+    .map(t => ({
+      id: t.id,
+      title: t.title,
+      description: t.description || '',
+      status: t.status,
+      dueDate: new Date(t.due_date),
+      assignedTo: t.assigned_to || undefined,
+      completedAt: t.completed_at ? new Date(t.completed_at) : undefined,
+    })),
+  notes: dbAudit.notes || undefined,
+  createdAt: new Date(dbAudit.created_at),
+});
+
+const StatCardSkeleton = () => (
+  <Card>
+    <CardHeader className="pb-2">
+      <Skeleton className="h-4 w-24" />
+    </CardHeader>
+    <CardContent>
+      <Skeleton className="h-8 w-16" />
+    </CardContent>
+  </Card>
+);
 
 const Dashboard = () => {
+  const { data: dbAudits = [], isLoading: auditsLoading } = useAudits();
+  const { data: tasks = [], isLoading: tasksLoading } = useAuditTasks();
+
+  const audits = useMemo(() => 
+    dbAudits.map(audit => transformAuditToLocal(audit, tasks)),
+    [dbAudits, tasks]
+  );
+
   const stats = useMemo(() => {
-    const activeAudits = getActiveAudits(mockAudits);
+    const activeAudits = audits.filter(a => 
+      a.status === 'scheduled' || a.status === 'in-progress'
+    );
     
     const upcomingThisMonth = activeAudits.filter(a => {
       const days = getDaysUntil(a.scheduledDate);
@@ -21,7 +69,7 @@ const Dashboard = () => {
 
     const allTasks = activeAudits.flatMap(a => a.tasks);
     const overdueTasks = allTasks.filter(t => 
-      t.status !== 'completed' && getOverdueTasks([{ tasks: [t] } as any]).length > 0
+      t.status !== 'completed' && isOverdue(t.dueDate)
     ).length;
 
     const pendingTasks = allTasks.filter(t => t.status !== 'completed').length;
@@ -32,7 +80,9 @@ const Dashboard = () => {
       overdueTasks,
       pendingTasks,
     };
-  }, []);
+  }, [audits]);
+
+  const isLoading = auditsLoading || tasksLoading;
 
   return (
     <Layout>
@@ -44,7 +94,7 @@ const Dashboard = () => {
         </div>
 
         {/* Critical Alerts Banner */}
-        {stats.overdueTasks > 0 && (
+        {!isLoading && stats.overdueTasks > 0 && (
           <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 flex items-center gap-3 animate-slide-up">
             <AlertTriangle className="h-6 w-6 text-destructive shrink-0" />
             <div className="flex-1">
@@ -60,48 +110,63 @@ const Dashboard = () => {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            title="Aktive Audits"
-            value={stats.activeAudits}
-            icon={ClipboardCheck}
-            variant="default"
-          />
-          <StatCard
-            title="Audits diesen Monat"
-            value={stats.upcomingThisMonth}
-            icon={Calendar}
-            variant="accent"
-          />
-          <StatCard
-            title="Offene Aufgaben"
-            value={stats.pendingTasks}
-            icon={ListTodo}
-            variant="warning"
-          />
-          <StatCard
-            title="Überfällige Aufgaben"
-            value={stats.overdueTasks}
-            icon={AlertTriangle}
-            variant={stats.overdueTasks > 0 ? 'warning' : 'success'}
-          />
+          {isLoading ? (
+            <>
+              <StatCardSkeleton />
+              <StatCardSkeleton />
+              <StatCardSkeleton />
+              <StatCardSkeleton />
+            </>
+          ) : (
+            <>
+              <StatCard
+                title="Aktive Audits"
+                value={stats.activeAudits}
+                icon={ClipboardCheck}
+                variant="default"
+              />
+              <StatCard
+                title="Audits diesen Monat"
+                value={stats.upcomingThisMonth}
+                icon={Calendar}
+                variant="accent"
+              />
+              <StatCard
+                title="Offene Aufgaben"
+                value={stats.pendingTasks}
+                icon={ListTodo}
+                variant="warning"
+              />
+              <StatCard
+                title="Überfällige Aufgaben"
+                value={stats.overdueTasks}
+                icon={AlertTriangle}
+                variant={stats.overdueTasks > 0 ? 'warning' : 'success'}
+              />
+            </>
+          )}
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Alerts & Tasks */}
-          <div className="lg:col-span-2 space-y-6">
-            <AlertsCard audits={mockAudits} />
-            <UpcomingTasksCard audits={mockAudits} />
-          </div>
+        {!isLoading && (
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left Column - Alerts & Tasks */}
+              <div className="lg:col-span-2 space-y-6">
+                <AlertsCard audits={audits} />
+                <UpcomingTasksCard audits={audits} />
+              </div>
 
-          {/* Right Column - Preparation */}
-          <div className="space-y-6">
-            <PreparationChecklist audits={mockAudits} />
-          </div>
-        </div>
+              {/* Right Column - Preparation */}
+              <div className="space-y-6">
+                <PreparationChecklist audits={audits} />
+              </div>
+            </div>
 
-        {/* Full Width Timeline */}
-        <AuditTimeline audits={mockAudits} />
+            {/* Full Width Timeline */}
+            <AuditTimeline audits={audits} />
+          </>
+        )}
       </div>
     </Layout>
   );

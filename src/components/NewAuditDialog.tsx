@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -18,9 +18,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { mockClients } from '@/lib/mockData';
-import { AuditType, CertificationStandard } from '@/types/audit';
 import { toast } from 'sonner';
+import { useClients, CertificationStandard } from '@/hooks/useClients';
+import { useCreateAudit, AuditType } from '@/hooks/useAudits';
+import { useCreateBulkAuditTasks } from '@/hooks/useAuditTasks';
+import { Constants } from '@/integrations/supabase/types';
+import { AUDIT_TYPE_LABELS } from '@/lib/constants';
+import { daysFromNow } from '@/lib/dateUtils';
 
 interface NewAuditDialogProps {
   open: boolean;
@@ -28,20 +32,44 @@ interface NewAuditDialogProps {
 }
 
 const auditTypeOptions: { value: AuditType; label: string }[] = [
-  { value: 'initial', label: 'Initialaudit' },
-  { value: 'surveillance', label: 'Überwachungsaudit' },
-  { value: 'recertification', label: 'Re-Zertifizierung' },
-  { value: 'six-month', label: '6-Monats-Überwachung' },
+  { value: 'initial', label: AUDIT_TYPE_LABELS['initial'] },
+  { value: 'surveillance', label: AUDIT_TYPE_LABELS['surveillance'] },
+  { value: 'recertification', label: AUDIT_TYPE_LABELS['recertification'] },
+  { value: 'six-month', label: AUDIT_TYPE_LABELS['six-month'] },
 ];
 
-const certificationOptions: CertificationStandard[] = [
-  'SURE',
-  'FSC',
-  'PEFC',
-  'ISCC',
-  'ISO 9001',
-  'ISO 14001',
-];
+const certificationOptions = Constants.public.Enums.certification_standard;
+
+const getDefaultTasksForAuditType = (type: AuditType, scheduledDate: Date) => {
+  const taskTemplates: Record<AuditType, Array<{ title: string; description: string; dueDays: number; assignedTo: string }>> = {
+    initial: [
+      { title: 'Registrierung beim Zertifizierer', description: 'Registrierung beim Zertifizierer und im SURE-EU-System durchführen', dueDays: -20, assignedTo: 'Auditor' },
+      { title: 'Training und Dokumentation', description: 'Schulung der Mitarbeiter durchführen und vollständige Dokumentation erstellen', dueDays: -2, assignedTo: 'Auditor' },
+      { title: 'Zertifizierungsaudit und Umsetzung', description: 'Vollständiges Zertifizierungsaudit durchführen und Umsetzung der Standards prüfen', dueDays: 2, assignedTo: 'Auditor' },
+    ],
+    surveillance: [
+      { title: 'Zusendung der Unterlagen', description: 'Alle relevanten Unterlagen für die interne Überprüfung zusenden', dueDays: 1, assignedTo: 'Auditor' },
+      { title: 'Austausch und Korrektur', description: 'Feedback vom Zertifizierer besprechen und notwendige Korrekturen durchführen', dueDays: 8, assignedTo: 'Auditor' },
+    ],
+    recertification: [
+      { title: 'Vorbereitung Re-Zertifizierung', description: 'Alle Dokumente aktualisieren und für Re-Zertifizierung vorbereiten', dueDays: 20, assignedTo: 'Auditor' },
+      { title: 'Interne Überprüfung', description: 'Internes Audit zur Sicherstellung der Standards durchführen', dueDays: 35, assignedTo: 'Auditor' },
+      { title: 'Re-Zertifizierungsaudit', description: 'Vollständiges Re-Zertifizierungsaudit durchführen', dueDays: 42, assignedTo: 'Auditor' },
+    ],
+    'six-month': [
+      { title: 'Statusbericht erstellen', description: '6-Monats-Bericht über die Umsetzung der Zertifizierungsanforderungen erstellen', dueDays: 5, assignedTo: 'Auditor' },
+      { title: 'Dokumentation prüfen', description: 'Vollständigkeit und Aktualität der Dokumentation überprüfen', dueDays: 15, assignedTo: 'Auditor' },
+    ],
+  };
+
+  return taskTemplates[type].map((task) => ({
+    title: task.title,
+    description: task.description,
+    due_date: daysFromNow(task.dueDays).toISOString(),
+    assigned_to: task.assignedTo,
+    status: 'pending' as const,
+  }));
+};
 
 export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
   const [selectedClient, setSelectedClient] = useState('');
@@ -49,6 +77,15 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
   const [selectedCertifications, setSelectedCertifications] = useState<CertificationStandard[]>([]);
   const [scheduledDate, setScheduledDate] = useState('');
   const [notes, setNotes] = useState('');
+
+  const { data: clients = [], isLoading: clientsLoading } = useClients();
+  const createAudit = useCreateAudit();
+  const createTasks = useCreateBulkAuditTasks();
+
+  const sortedClients = useMemo(() => 
+    [...clients].sort((a, b) => a.name.localeCompare(b.name)),
+    [clients]
+  );
 
   const toggleCertification = (cert: CertificationStandard) => {
     setSelectedCertifications(prev =>
@@ -58,7 +95,15 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const resetForm = () => {
+    setSelectedClient('');
+    setAuditType('initial');
+    setSelectedCertifications([]);
+    setScheduledDate('');
+    setNotes('');
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!selectedClient || !scheduledDate || selectedCertifications.length === 0) {
@@ -66,16 +111,32 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
       return;
     }
 
-    // Here you would normally save to backend
-    toast.success('Audit erfolgreich erstellt');
-    onOpenChange(false);
-    
-    // Reset form
-    setSelectedClient('');
-    setAuditType('initial');
-    setSelectedCertifications([]);
-    setScheduledDate('');
-    setNotes('');
+    try {
+      const audit = await createAudit.mutateAsync({
+        client_id: selectedClient,
+        type: auditType,
+        certifications: selectedCertifications,
+        scheduled_date: new Date(scheduledDate).toISOString(),
+        notes: notes || null,
+        status: 'scheduled',
+      });
+
+      // Create default tasks for the audit
+      const defaultTasks = getDefaultTasksForAuditType(auditType, new Date(scheduledDate));
+      await createTasks.mutateAsync(
+        defaultTasks.map(task => ({
+          ...task,
+          audit_id: audit.id,
+        }))
+      );
+
+      toast.success('Audit erfolgreich erstellt');
+      onOpenChange(false);
+      resetForm();
+    } catch (error) {
+      console.error('Error creating audit:', error);
+      toast.error('Fehler beim Erstellen des Audits');
+    }
   };
 
   return (
@@ -94,10 +155,10 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
             <Label htmlFor="client">Kunde *</Label>
             <Select value={selectedClient} onValueChange={setSelectedClient}>
               <SelectTrigger id="client">
-                <SelectValue placeholder="Kunde auswählen" />
+                <SelectValue placeholder={clientsLoading ? 'Lade Kunden...' : 'Kunde auswählen'} />
               </SelectTrigger>
               <SelectContent>
-                {mockClients.map((client) => (
+                {sortedClients.map((client) => (
                   <SelectItem key={client.id} value={client.id}>
                     {client.name}
                   </SelectItem>
@@ -173,8 +234,8 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Abbrechen
             </Button>
-            <Button type="submit">
-              Audit erstellen
+            <Button type="submit" disabled={createAudit.isPending || createTasks.isPending}>
+              {createAudit.isPending || createTasks.isPending ? 'Erstelle...' : 'Audit erstellen'}
             </Button>
           </div>
         </form>

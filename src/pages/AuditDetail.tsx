@@ -1,12 +1,14 @@
-import { useState, useCallback, memo } from 'react';
+import { useState, useCallback, memo, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
-import { mockAudits } from '@/lib/mockData';
+import { useAudit } from '@/hooks/useAudits';
+import { useAuditTasks, useUpdateAuditTask } from '@/hooks/useAuditTasks';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Calendar, 
   Building2, 
@@ -23,10 +25,10 @@ import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { TaskStatus, AuditTask } from '@/types/audit';
+import { AuditTask } from '@/types/audit';
 import { AUDIT_TYPE_LABELS, AUDIT_STATUS_CONFIG, TASK_STATUS_CONFIG } from '@/lib/constants';
-import { calculateProgress } from '@/lib/auditUtils';
 import { isOverdue } from '@/lib/dateUtils';
+import { DbAuditTask } from '@/hooks/useAuditTasks';
 
 const StatusIcon = {
   scheduled: Clock,
@@ -36,20 +38,23 @@ const StatusIcon = {
 };
 
 interface TaskItemProps {
-  task: AuditTask;
+  task: DbAuditTask;
   index: number;
-  onToggle: (taskId: string) => void;
+  onToggle: (taskId: string, currentStatus: string) => void;
+  isUpdating: boolean;
 }
 
-const TaskItem = memo(({ task, index, onToggle }: TaskItemProps) => {
-  const taskOverdue = task.status !== 'completed' && isOverdue(task.dueDate);
+const TaskItem = memo(({ task, index, onToggle, isUpdating }: TaskItemProps) => {
+  const dueDate = new Date(task.due_date);
+  const taskOverdue = task.status !== 'completed' && isOverdue(dueDate);
   const displayStatus = taskOverdue ? TASK_STATUS_CONFIG.overdue : TASK_STATUS_CONFIG[task.status];
   
   return (
     <div className="flex items-start gap-4 p-4 border rounded-lg hover:bg-accent/50 transition-colors">
       <Checkbox
         checked={task.status === 'completed'}
-        onCheckedChange={() => onToggle(task.id)}
+        onCheckedChange={() => onToggle(task.id, task.status)}
+        disabled={isUpdating}
         className="mt-1"
       />
       <div className="flex-1 space-y-2">
@@ -61,9 +66,11 @@ const TaskItem = memo(({ task, index, onToggle }: TaskItemProps) => {
             )}>
               {index + 1}. {task.title}
             </p>
-            <p className="text-sm text-muted-foreground mt-1">
-              {task.description}
-            </p>
+            {task.description && (
+              <p className="text-sm text-muted-foreground mt-1">
+                {task.description}
+              </p>
+            )}
           </div>
           <Badge 
             variant="outline"
@@ -75,18 +82,18 @@ const TaskItem = memo(({ task, index, onToggle }: TaskItemProps) => {
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-1">
             <Calendar className="h-3 w-3" />
-            {format(task.dueDate, 'dd.MM.yyyy', { locale: de })}
+            {format(dueDate, 'dd.MM.yyyy', { locale: de })}
           </div>
-          {task.assignedTo && (
+          {task.assigned_to && (
             <div className="flex items-center gap-1">
               <User className="h-3 w-3" />
-              {task.assignedTo}
+              {task.assigned_to}
             </div>
           )}
-          {task.completedAt && (
+          {task.completed_at && (
             <div className="flex items-center gap-1">
               <CheckCircle2 className="h-3 w-3" />
-              Abgeschlossen: {format(task.completedAt, 'dd.MM.yyyy', { locale: de })}
+              Abgeschlossen: {format(new Date(task.completed_at), 'dd.MM.yyyy', { locale: de })}
             </div>
           )}
         </div>
@@ -97,37 +104,86 @@ const TaskItem = memo(({ task, index, onToggle }: TaskItemProps) => {
 
 TaskItem.displayName = 'TaskItem';
 
+const AuditDetailSkeleton = () => (
+  <Layout>
+    <div className="p-8 space-y-6">
+      <div className="flex items-center gap-4">
+        <Skeleton className="h-10 w-10 rounded" />
+        <div className="flex-1">
+          <Skeleton className="h-8 w-48 mb-2" />
+          <Skeleton className="h-4 w-32" />
+        </div>
+        <Skeleton className="h-8 w-24" />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <Card>
+            <CardHeader><Skeleton className="h-6 w-24" /></CardHeader>
+            <CardContent><Skeleton className="h-24 w-full" /></CardContent>
+          </Card>
+        </div>
+        <div>
+          <Card>
+            <CardHeader><Skeleton className="h-6 w-32" /></CardHeader>
+            <CardContent><Skeleton className="h-48 w-full" /></CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  </Layout>
+);
+
 const AuditDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const audit = mockAudits.find(a => a.id === id);
   
-  const [tasks, setTasks] = useState(audit?.tasks || []);
-  const [notes, setNotes] = useState(audit?.notes || '');
+  const { data: audit, isLoading: auditLoading } = useAudit(id || '');
+  const { data: tasks = [], isLoading: tasksLoading } = useAuditTasks(id);
+  const updateTask = useUpdateAuditTask();
+  
+  const [notes, setNotes] = useState('');
 
-  const toggleTaskStatus = useCallback((taskId: string) => {
-    setTasks(prev => prev.map(task => {
-      if (task.id === taskId) {
-        const newStatus: TaskStatus = task.status === 'completed' ? 'pending' : 'completed';
-        return {
-          ...task,
-          status: newStatus,
-          completedAt: newStatus === 'completed' ? new Date() : undefined,
-        };
-      }
-      return task;
-    }));
-  }, []);
+  // Update notes when audit loads
+  useMemo(() => {
+    if (audit?.notes) {
+      setNotes(audit.notes);
+    }
+  }, [audit?.notes]);
+
+  const toggleTaskStatus = useCallback((taskId: string, currentStatus: string) => {
+    const newStatus = currentStatus === 'completed' ? 'pending' : 'completed';
+    updateTask.mutate({
+      id: taskId,
+      status: newStatus,
+      completed_at: newStatus === 'completed' ? new Date().toISOString() : null,
+    });
+  }, [updateTask]);
 
   const handleExportCalendar = useCallback(() => {
     if (audit) {
-      exportAuditToCalendar(audit);
+      const localAudit = {
+        id: audit.id,
+        clientId: audit.client_id,
+        clientName: audit.clients?.name || 'Unbekannt',
+        type: audit.type,
+        certifications: (audit.certifications || []) as any,
+        scheduledDate: new Date(audit.scheduled_date),
+        status: audit.status,
+        tasks: [],
+        notes: audit.notes || undefined,
+        createdAt: new Date(audit.created_at),
+      };
+      exportAuditToCalendar(localAudit);
       toast({
         title: "Kalenderexport",
         description: "ICS-Datei wurde heruntergeladen. Öffnen Sie diese, um den Termin in Outlook zu importieren.",
       });
     }
   }, [audit]);
+
+  if (auditLoading || tasksLoading) {
+    return <AuditDetailSkeleton />;
+  }
 
   if (!audit) {
     return (
@@ -146,7 +202,10 @@ const AuditDetail = () => {
 
   const statusInfo = AUDIT_STATUS_CONFIG[audit.status];
   const Icon = StatusIcon[audit.status];
-  const { completed, total, percentage } = calculateProgress(tasks);
+  
+  const completedTasks = tasks.filter(t => t.status === 'completed').length;
+  const totalTasks = tasks.length;
+  const percentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   return (
     <Layout>
@@ -161,7 +220,7 @@ const AuditDetail = () => {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="flex-1">
-            <h1 className="text-3xl font-bold text-foreground">{audit.clientName}</h1>
+            <h1 className="text-3xl font-bold text-foreground">{audit.clients?.name || 'Unbekannt'}</h1>
             <p className="text-muted-foreground">{AUDIT_TYPE_LABELS[audit.type]}</p>
           </div>
           <Badge 
@@ -184,7 +243,7 @@ const AuditDetail = () => {
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-2xl font-bold text-foreground">
-                    {completed} / {total}
+                    {completedTasks} / {totalTasks}
                   </span>
                   <span className="text-sm text-muted-foreground">Aufgaben abgeschlossen</span>
                 </div>
@@ -213,7 +272,8 @@ const AuditDetail = () => {
                       key={task.id} 
                       task={task} 
                       index={index} 
-                      onToggle={toggleTaskStatus} 
+                      onToggle={toggleTaskStatus}
+                      isUpdating={updateTask.isPending}
                     />
                   ))
                 )}
@@ -248,12 +308,12 @@ const AuditDetail = () => {
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm">
                     <Building2 className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-foreground font-medium">{audit.clientName}</span>
+                    <span className="text-foreground font-medium">{audit.clients?.name || 'Unbekannt'}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <span className="text-foreground">
-                      {format(audit.scheduledDate, 'dd. MMMM yyyy', { locale: de })}
+                      {format(new Date(audit.scheduled_date), 'dd. MMMM yyyy', { locale: de })}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
@@ -262,25 +322,27 @@ const AuditDetail = () => {
                   </div>
                 </div>
 
-                <div className="pt-4 border-t">
-                  <p className="text-sm font-medium text-muted-foreground mb-2">
-                    Zertifizierungen
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {audit.certifications.map((cert) => (
-                      <Badge key={cert} variant="secondary">
-                        {cert}
-                      </Badge>
-                    ))}
+                {audit.certifications && audit.certifications.length > 0 && (
+                  <div className="pt-4 border-t">
+                    <p className="text-sm font-medium text-muted-foreground mb-2">
+                      Zertifizierungen
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {audit.certifications.map((cert) => (
+                        <Badge key={cert} variant="secondary">
+                          {cert}
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="pt-4 border-t">
                   <p className="text-sm font-medium text-muted-foreground mb-2">
                     Erstellt am
                   </p>
                   <p className="text-sm text-foreground">
-                    {format(audit.createdAt, 'dd. MMMM yyyy', { locale: de })}
+                    {format(new Date(audit.created_at), 'dd. MMMM yyyy', { locale: de })}
                   </p>
                 </div>
               </CardContent>

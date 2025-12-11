@@ -3,14 +3,61 @@ import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { AuditCard } from '@/components/AuditCard';
 import { NewAuditDialog } from '@/components/NewAuditDialog';
-import { mockAudits } from '@/lib/mockData';
+import { useAudits, AuditWithClient } from '@/hooks/useAudits';
+import { useAuditTasks } from '@/hooks/useAuditTasks';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Plus, Search, Filter } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Audit } from '@/types/audit';
 
 type StatusFilter = 'all' | 'scheduled' | 'in-progress' | 'completed';
+
+// Transform database audit to local Audit type
+const transformAuditToLocal = (dbAudit: AuditWithClient, tasks: any[]): Audit => ({
+  id: dbAudit.id,
+  clientId: dbAudit.client_id,
+  clientName: dbAudit.clients?.name || 'Unbekannt',
+  type: dbAudit.type,
+  certifications: (dbAudit.certifications || []) as any,
+  scheduledDate: new Date(dbAudit.scheduled_date),
+  status: dbAudit.status,
+  tasks: tasks
+    .filter(t => t.audit_id === dbAudit.id)
+    .map(t => ({
+      id: t.id,
+      title: t.title,
+      description: t.description || '',
+      status: t.status,
+      dueDate: new Date(t.due_date),
+      assignedTo: t.assigned_to || undefined,
+      completedAt: t.completed_at ? new Date(t.completed_at) : undefined,
+    })),
+  notes: dbAudit.notes || undefined,
+  createdAt: new Date(dbAudit.created_at),
+});
+
+const AuditCardSkeleton = () => (
+  <Card>
+    <CardHeader>
+      <div className="flex items-center gap-3">
+        <Skeleton className="h-10 w-10 rounded-lg" />
+        <div>
+          <Skeleton className="h-6 w-32 mb-2" />
+          <Skeleton className="h-4 w-24" />
+        </div>
+      </div>
+    </CardHeader>
+    <CardContent className="space-y-4">
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-4 w-3/4" />
+      <Skeleton className="h-2 w-full" />
+      <Skeleton className="h-10 w-full" />
+    </CardContent>
+  </Card>
+);
 
 const Audits = () => {
   const navigate = useNavigate();
@@ -18,17 +65,27 @@ const Audits = () => {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [showNewAuditDialog, setShowNewAuditDialog] = useState(false);
 
+  const { data: dbAudits = [], isLoading: auditsLoading, error: auditsError } = useAudits();
+  const { data: tasks = [], isLoading: tasksLoading } = useAuditTasks();
+
+  const audits = useMemo(() => 
+    dbAudits.map(audit => transformAuditToLocal(audit, tasks)),
+    [dbAudits, tasks]
+  );
+
   const handleViewDetails = useCallback((audit: Audit) => {
     navigate(`/audits/${audit.id}`);
   }, [navigate]);
 
   const filteredAudits = useMemo(() => {
-    return mockAudits.filter(audit => {
+    return audits.filter(audit => {
       const matchesSearch = audit.clientName.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = statusFilter === 'all' || audit.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
-  }, [searchQuery, statusFilter]);
+  }, [audits, searchQuery, statusFilter]);
+
+  const isLoading = auditsLoading || tasksLoading;
 
   return (
     <Layout>
@@ -72,9 +129,26 @@ const Audits = () => {
           </TabsList>
 
           <TabsContent value={statusFilter} className="mt-6">
-            {filteredAudits.length === 0 ? (
+            {auditsError ? (
               <div className="text-center py-12">
-                <p className="text-muted-foreground">Keine Audits gefunden</p>
+                <p className="text-destructive">Fehler beim Laden der Audits</p>
+              </div>
+            ) : isLoading ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                {[1, 2, 3].map((i) => (
+                  <AuditCardSkeleton key={i} />
+                ))}
+              </div>
+            ) : filteredAudits.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">
+                  {searchQuery || statusFilter !== 'all' ? 'Keine Audits gefunden' : 'Noch keine Audits vorhanden'}
+                </p>
+                {!searchQuery && statusFilter === 'all' && (
+                  <Button className="mt-4" onClick={() => setShowNewAuditDialog(true)}>
+                    Erstes Audit erstellen
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
