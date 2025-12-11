@@ -6,6 +6,11 @@ export interface CertificationBody {
   name: string;
   short_name: string | null;
   website: string | null;
+  contact_person: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  notes: string | null;
   created_at: string;
 }
 
@@ -28,7 +33,16 @@ export const useCreateCertificationBody = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (body: { name: string; short_name?: string; website?: string }) => {
+    mutationFn: async (body: { 
+      name: string; 
+      short_name?: string; 
+      website?: string;
+      contact_person?: string;
+      email?: string;
+      phone?: string;
+      address?: string;
+      notes?: string;
+    }) => {
       const { data, error } = await supabase
         .from('certification_bodies')
         .insert(body)
@@ -40,6 +54,56 @@ export const useCreateCertificationBody = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['certification_bodies'] });
+    },
+  });
+};
+
+export const useUpdateCertificationBody = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ id, ...body }: { 
+      id: string;
+      name?: string; 
+      short_name?: string; 
+      website?: string;
+      contact_person?: string;
+      email?: string;
+      phone?: string;
+      address?: string;
+      notes?: string;
+    }) => {
+      const { data, error } = await supabase
+        .from('certification_bodies')
+        .update(body)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['certification_bodies'] });
+    },
+  });
+};
+
+export const useDeleteCertificationBody = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('certification_bodies')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['certification_bodies'] });
+      queryClient.invalidateQueries({ queryKey: ['client_certification_bodies'] });
     },
   });
 };
