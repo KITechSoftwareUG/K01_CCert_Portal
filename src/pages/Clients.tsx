@@ -8,9 +8,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Building2, Mail, Phone, MapPin, Plus, Search } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Building2, Mail, Phone, MapPin, Plus, Search, ChevronDown, Globe } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 interface ClientCardProps {
   client: DbClient;
@@ -19,55 +21,51 @@ interface ClientCardProps {
 
 const ClientCard = memo(({ client, onViewDetails }: ClientCardProps) => (
   <Card className="card-hover">
-    <CardHeader>
+    <CardHeader className="pb-3">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-primary/10 rounded-lg">
-            <Building2 className="h-6 w-6 text-primary" />
+            <Building2 className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <CardTitle className="text-xl">{client.name}</CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">
-              Kunde seit {format(new Date(client.created_at), 'MMMM yyyy', { locale: de })}
+            <CardTitle className="text-lg">{client.name}</CardTitle>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {format(new Date(client.created_at), 'MMM yyyy', { locale: de })}
             </p>
           </div>
         </div>
       </div>
     </CardHeader>
-    <CardContent className="space-y-4">
-      <div className="space-y-3">
-        <div className="flex items-center gap-2 text-sm">
-          <Mail className="h-4 w-4 text-muted-foreground" />
-          <span className="text-foreground">{client.email}</span>
+    <CardContent className="space-y-3 pt-0">
+      <div className="space-y-2 text-sm">
+        <div className="flex items-center gap-2">
+          <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-foreground truncate">{client.email}</span>
         </div>
         {client.phone && (
-          <div className="flex items-center gap-2 text-sm">
-            <Phone className="h-4 w-4 text-muted-foreground" />
+          <div className="flex items-center gap-2">
+            <Phone className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="text-foreground">{client.phone}</span>
-          </div>
-        )}
-        {client.address && (
-          <div className="flex items-center gap-2 text-sm">
-            <MapPin className="h-4 w-4 text-muted-foreground" />
-            <span className="text-foreground">{client.address}</span>
           </div>
         )}
       </div>
 
       {client.certifications && client.certifications.length > 0 && (
-        <div className="pt-4 border-t">
-          <p className="text-sm font-medium text-muted-foreground mb-2">Zertifizierungen</p>
-          <div className="flex flex-wrap gap-2">
-            {client.certifications.map((cert) => (
-              <Badge key={cert} variant="secondary">
-                {cert}
-              </Badge>
-            ))}
-          </div>
+        <div className="flex flex-wrap gap-1.5">
+          {client.certifications.slice(0, 3).map((cert) => (
+            <Badge key={cert} variant="secondary" className="text-xs">
+              {cert}
+            </Badge>
+          ))}
+          {client.certifications.length > 3 && (
+            <Badge variant="outline" className="text-xs">
+              +{client.certifications.length - 3}
+            </Badge>
+          )}
         </div>
       )}
 
-      <Button variant="outline" className="w-full" onClick={() => onViewDetails(client)}>
+      <Button variant="outline" size="sm" className="w-full" onClick={() => onViewDetails(client)}>
         Details anzeigen
       </Button>
     </CardContent>
@@ -78,23 +76,65 @@ ClientCard.displayName = 'ClientCard';
 
 const ClientCardSkeleton = () => (
   <Card>
-    <CardHeader>
+    <CardHeader className="pb-3">
       <div className="flex items-center gap-3">
-        <Skeleton className="h-10 w-10 rounded-lg" />
+        <Skeleton className="h-9 w-9 rounded-lg" />
         <div>
-          <Skeleton className="h-6 w-32 mb-2" />
-          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-5 w-28 mb-1" />
+          <Skeleton className="h-3 w-16" />
         </div>
       </div>
     </CardHeader>
-    <CardContent className="space-y-4">
+    <CardContent className="space-y-3 pt-0">
       <Skeleton className="h-4 w-full" />
-      <Skeleton className="h-4 w-3/4" />
       <Skeleton className="h-4 w-2/3" />
-      <Skeleton className="h-10 w-full" />
+      <Skeleton className="h-8 w-full" />
     </CardContent>
   </Card>
 );
+
+interface CountryGroupProps {
+  country: string;
+  clients: DbClient[];
+  onViewDetails: (client: DbClient) => void;
+  defaultOpen?: boolean;
+}
+
+const CountryGroup = memo(({ country, clients, onViewDetails, defaultOpen = true }: CountryGroupProps) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="space-y-3">
+      <CollapsibleTrigger asChild>
+        <Button
+          variant="ghost"
+          className="w-full justify-between p-4 h-auto bg-muted/50 hover:bg-muted"
+        >
+          <div className="flex items-center gap-3">
+            <Globe className="h-5 w-5 text-primary" />
+            <span className="font-semibold text-lg">{country}</span>
+            <Badge variant="secondary" className="ml-2">
+              {clients.length} {clients.length === 1 ? 'Kunde' : 'Kunden'}
+            </Badge>
+          </div>
+          <ChevronDown className={cn(
+            "h-5 w-5 transition-transform duration-200",
+            isOpen && "rotate-180"
+          )} />
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="space-y-0">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+          {clients.map((client) => (
+            <ClientCard key={client.id} client={client} onViewDetails={onViewDetails} />
+          ))}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+});
+
+CountryGroup.displayName = 'CountryGroup';
 
 const Clients = () => {
   const navigate = useNavigate();
@@ -111,18 +151,48 @@ const Clients = () => {
     const query = searchQuery.toLowerCase();
     return clients.filter(client =>
       client.name.toLowerCase().includes(query) ||
-      client.contact_person.toLowerCase().includes(query)
+      client.contact_person.toLowerCase().includes(query) ||
+      (client.country && client.country.toLowerCase().includes(query))
     );
   }, [searchQuery, clients]);
 
+  // Group clients by country
+  const clientsByCountry = useMemo(() => {
+    const groups: Record<string, DbClient[]> = {};
+    
+    filteredClients.forEach(client => {
+      const country = client.country || 'Nicht zugeordnet';
+      if (!groups[country]) {
+        groups[country] = [];
+      }
+      groups[country].push(client);
+    });
+
+    // Sort countries alphabetically, but put "Deutschland" first
+    const sortedCountries = Object.keys(groups).sort((a, b) => {
+      if (a === 'Deutschland') return -1;
+      if (b === 'Deutschland') return 1;
+      if (a === 'Nicht zugeordnet') return 1;
+      if (b === 'Nicht zugeordnet') return -1;
+      return a.localeCompare(b);
+    });
+
+    return sortedCountries.map(country => ({
+      country,
+      clients: groups[country].sort((a, b) => a.name.localeCompare(b.name)),
+    }));
+  }, [filteredClients]);
+
   return (
     <Layout>
-      <div className="p-8 space-y-8 animate-fade-in">
+      <div className="p-8 space-y-6 animate-fade-in">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-foreground mb-2">Kunden</h1>
-            <p className="text-muted-foreground">Verwaltung aller zertifizierten Unternehmen</p>
+            <p className="text-muted-foreground">
+              Verwaltung aller zertifizierten Unternehmen ({clients.length} Kunden)
+            </p>
           </div>
           <Button className="gap-2" onClick={() => setShowNewClientDialog(true)}>
             <Plus className="h-4 w-4" />
@@ -133,28 +203,31 @@ const Clients = () => {
         <NewClientDialog open={showNewClientDialog} onOpenChange={setShowNewClientDialog} />
 
         {/* Search */}
-        <div className="relative">
+        <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Kunde oder Ansprechpartner suchen..."
+            placeholder="Kunde, Ansprechpartner oder Land suchen..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
           />
         </div>
 
-        {/* Clients Grid */}
+        {/* Clients by Country */}
         {error ? (
           <div className="text-center py-12">
             <p className="text-destructive">Fehler beim Laden der Kunden</p>
           </div>
         ) : isLoading ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {[1, 2, 3, 4].map((i) => (
-              <ClientCardSkeleton key={i} />
-            ))}
+          <div className="space-y-6">
+            <Skeleton className="h-14 w-full" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <ClientCardSkeleton key={i} />
+              ))}
+            </div>
           </div>
-        ) : filteredClients.length === 0 ? (
+        ) : clientsByCountry.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground">
               {searchQuery ? 'Keine Kunden gefunden' : 'Noch keine Kunden vorhanden'}
@@ -166,9 +239,15 @@ const Clients = () => {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {filteredClients.map((client) => (
-              <ClientCard key={client.id} client={client} onViewDetails={handleViewDetails} />
+          <div className="space-y-4">
+            {clientsByCountry.map(({ country, clients }, index) => (
+              <CountryGroup
+                key={country}
+                country={country}
+                clients={clients}
+                onViewDetails={handleViewDetails}
+                defaultOpen={index < 3}
+              />
             ))}
           </div>
         )}

@@ -111,6 +111,66 @@ export type Database = {
           },
         ]
       }
+      certification_bodies: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          short_name: string | null
+          website: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          short_name?: string | null
+          website?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          short_name?: string | null
+          website?: string | null
+        }
+        Relationships: []
+      }
+      client_certification_bodies: {
+        Row: {
+          certification_body_id: string
+          client_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          certification_body_id: string
+          client_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          certification_body_id?: string
+          client_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_certification_bodies_certification_body_id_fkey"
+            columns: ["certification_body_id"]
+            isOneToOne: false
+            referencedRelation: "certification_bodies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_certification_bodies_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           address: string | null
@@ -118,6 +178,7 @@ export type Database = {
             | Database["public"]["Enums"]["certification_standard"][]
             | null
           contact_person: string
+          country: string | null
           created_at: string
           email: string
           id: string
@@ -131,6 +192,7 @@ export type Database = {
             | Database["public"]["Enums"]["certification_standard"][]
             | null
           contact_person: string
+          country?: string | null
           created_at?: string
           email: string
           id?: string
@@ -144,6 +206,7 @@ export type Database = {
             | Database["public"]["Enums"]["certification_standard"][]
             | null
           contact_person?: string
+          country?: string | null
           created_at?: string
           email?: string
           id?: string

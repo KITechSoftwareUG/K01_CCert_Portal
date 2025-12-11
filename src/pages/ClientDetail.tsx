@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { useClient, useUpdateClient, useDeleteClient, CertificationStandard } from '@/hooks/useClients';
+import { useCertificationBodies, useClientCertificationBodies, useUpdateClientCertificationBodies } from '@/hooks/useCertificationBodies';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { 
   Building2, 
   Mail, 
@@ -19,7 +27,9 @@ import {
   Save,
   X,
   Trash2,
-  Calendar
+  Calendar,
+  Globe,
+  Award
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -38,6 +48,21 @@ import {
 } from '@/components/ui/alert-dialog';
 
 const certificationOptions = Constants.public.Enums.certification_standard;
+
+const COUNTRIES = [
+  'Deutschland',
+  'Österreich',
+  'Schweiz',
+  'Niederlande',
+  'Belgien',
+  'Frankreich',
+  'Polen',
+  'Tschechien',
+  'Italien',
+  'Spanien',
+  'Vereinigtes Königreich',
+  'Andere',
+];
 
 const ClientDetailSkeleton = () => (
   <Layout>
@@ -70,7 +95,10 @@ const ClientDetail = () => {
   const navigate = useNavigate();
   
   const { data: client, isLoading } = useClient(id || '');
+  const { data: certificationBodies = [] } = useCertificationBodies();
+  const { data: clientCertBodies = [] } = useClientCertificationBodies(id);
   const updateClient = useUpdateClient();
+  const updateCertBodies = useUpdateClientCertificationBodies();
   const deleteClient = useDeleteClient();
   
   const [isEditing, setIsEditing] = useState(false);
@@ -79,7 +107,9 @@ const ClientDetail = () => {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+  const [country, setCountry] = useState('Deutschland');
   const [selectedCertifications, setSelectedCertifications] = useState<CertificationStandard[]>([]);
+  const [selectedCertBodies, setSelectedCertBodies] = useState<string[]>([]);
 
   // Initialize form when client loads
   useEffect(() => {
@@ -89,15 +119,31 @@ const ClientDetail = () => {
       setEmail(client.email);
       setPhone(client.phone || '');
       setAddress(client.address || '');
+      setCountry(client.country || 'Deutschland');
       setSelectedCertifications((client.certifications || []) as CertificationStandard[]);
     }
   }, [client]);
+
+  // Initialize certification bodies when loaded
+  useEffect(() => {
+    if (clientCertBodies.length > 0) {
+      setSelectedCertBodies(clientCertBodies.map((cb: any) => cb.certification_body_id));
+    }
+  }, [clientCertBodies]);
 
   const toggleCertification = (cert: CertificationStandard) => {
     setSelectedCertifications(prev =>
       prev.includes(cert)
         ? prev.filter(c => c !== cert)
         : [...prev, cert]
+    );
+  };
+
+  const toggleCertBody = (bodyId: string) => {
+    setSelectedCertBodies(prev =>
+      prev.includes(bodyId)
+        ? prev.filter(id => id !== bodyId)
+        : [...prev, bodyId]
     );
   };
 
@@ -115,15 +161,22 @@ const ClientDetail = () => {
         email,
         phone: phone || null,
         address: address || null,
+        country,
         certifications: selectedCertifications,
       });
+
+      await updateCertBodies.mutateAsync({
+        clientId: id,
+        certificationBodyIds: selectedCertBodies,
+      });
+
       toast.success('Kunde erfolgreich aktualisiert');
       setIsEditing(false);
     } catch (error) {
       console.error('Error updating client:', error);
       toast.error('Fehler beim Aktualisieren des Kunden');
     }
-  }, [id, name, contactPerson, email, phone, address, selectedCertifications, updateClient]);
+  }, [id, name, contactPerson, email, phone, address, country, selectedCertifications, selectedCertBodies, updateClient, updateCertBodies]);
 
   const handleCancel = useCallback(() => {
     if (client) {
@@ -132,10 +185,12 @@ const ClientDetail = () => {
       setEmail(client.email);
       setPhone(client.phone || '');
       setAddress(client.address || '');
+      setCountry(client.country || 'Deutschland');
       setSelectedCertifications((client.certifications || []) as CertificationStandard[]);
+      setSelectedCertBodies(clientCertBodies.map((cb: any) => cb.certification_body_id));
     }
     setIsEditing(false);
-  }, [client]);
+  }, [client, clientCertBodies]);
 
   const handleDelete = useCallback(async () => {
     if (!id) return;
@@ -149,6 +204,11 @@ const ClientDetail = () => {
       toast.error('Fehler beim Löschen des Kunden');
     }
   }, [id, deleteClient, navigate]);
+
+  // Get assigned certification body names
+  const assignedCertBodyNames = clientCertBodies
+    .map((cb: any) => cb.certification_bodies?.name || cb.certification_bodies?.short_name)
+    .filter(Boolean);
 
   if (isLoading) {
     return <ClientDetailSkeleton />;
@@ -187,9 +247,12 @@ const ClientDetail = () => {
             </div>
             <div>
               <h1 className="text-3xl font-bold text-foreground">{client.name}</h1>
-              <p className="text-muted-foreground">
-                Kunde seit {format(new Date(client.created_at), 'MMMM yyyy', { locale: de })}
-              </p>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Globe className="h-4 w-4" />
+                <span>{client.country || 'Nicht zugeordnet'}</span>
+                <span className="text-muted-foreground/50">•</span>
+                <span>Kunde seit {format(new Date(client.created_at), 'MMMM yyyy', { locale: de })}</span>
+              </div>
             </div>
           </div>
           {!isEditing ? (
@@ -222,14 +285,31 @@ const ClientDetail = () => {
               <CardContent className="space-y-4">
                 {isEditing ? (
                   <>
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Firmenname *</Label>
-                      <Input
-                        id="name"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="Firmenname"
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="name">Firmenname *</Label>
+                        <Input
+                          id="name"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          placeholder="Firmenname"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="country">Land *</Label>
+                        <Select value={country} onValueChange={setCountry}>
+                          <SelectTrigger id="country">
+                            <SelectValue placeholder="Land auswählen" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border shadow-lg z-50">
+                            {COUNTRIES.map((c) => (
+                              <SelectItem key={c} value={c}>
+                                {c}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="contact-person">Ansprechpartner *</Label>
@@ -352,6 +432,49 @@ const ClientDetail = () => {
                 )}
               </CardContent>
             </Card>
+
+            {/* Certification Bodies Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Award className="h-5 w-5" />
+                  Zertifizierungsgesellschaften
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isEditing ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {certificationBodies.map((body) => (
+                      <div key={body.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`body-edit-${body.id}`}
+                          checked={selectedCertBodies.includes(body.id)}
+                          onCheckedChange={() => toggleCertBody(body.id)}
+                        />
+                        <label
+                          htmlFor={`body-edit-${body.id}`}
+                          className="text-sm font-medium leading-none cursor-pointer"
+                        >
+                          {body.short_name || body.name}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {assignedCertBodyNames.length > 0 ? (
+                      assignedCertBodyNames.map((name: string) => (
+                        <Badge key={name} variant="outline" className="text-sm px-3 py-1">
+                          {name}
+                        </Badge>
+                      ))
+                    ) : (
+                      <p className="text-muted-foreground">Keine Zertifizierungsgesellschaften zugeordnet</p>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
           {/* Sidebar */}
@@ -362,6 +485,11 @@ const ClientDetail = () => {
                 <CardTitle>Informationen</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="flex items-center gap-2 text-sm">
+                  <Globe className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Land:</span>
+                  <span className="font-medium">{client.country || 'Nicht zugeordnet'}</span>
+                </div>
                 <div className="flex items-center gap-2 text-sm">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <span className="text-muted-foreground">Erstellt:</span>
