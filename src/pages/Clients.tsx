@@ -1,18 +1,18 @@
 import { useState, useMemo, memo } from 'react';
 import { Layout } from '@/components/Layout';
 import { NewClientDialog } from '@/components/NewClientDialog';
-import { mockClients } from '@/lib/mockData';
+import { useClients, DbClient } from '@/hooks/useClients';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Building2, Mail, Phone, MapPin, Plus, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { Client } from '@/types/audit';
 
 interface ClientCardProps {
-  client: Client;
+  client: DbClient;
 }
 
 const ClientCard = memo(({ client }: ClientCardProps) => (
@@ -26,7 +26,7 @@ const ClientCard = memo(({ client }: ClientCardProps) => (
           <div>
             <CardTitle className="text-xl">{client.name}</CardTitle>
             <p className="text-sm text-muted-foreground mt-1">
-              Kunde seit {format(client.createdAt, 'MMMM yyyy', { locale: de })}
+              Kunde seit {format(new Date(client.created_at), 'MMMM yyyy', { locale: de })}
             </p>
           </div>
         </div>
@@ -38,26 +38,32 @@ const ClientCard = memo(({ client }: ClientCardProps) => (
           <Mail className="h-4 w-4 text-muted-foreground" />
           <span className="text-foreground">{client.email}</span>
         </div>
-        <div className="flex items-center gap-2 text-sm">
-          <Phone className="h-4 w-4 text-muted-foreground" />
-          <span className="text-foreground">{client.phone}</span>
-        </div>
-        <div className="flex items-center gap-2 text-sm">
-          <MapPin className="h-4 w-4 text-muted-foreground" />
-          <span className="text-foreground">{client.address}</span>
-        </div>
+        {client.phone && (
+          <div className="flex items-center gap-2 text-sm">
+            <Phone className="h-4 w-4 text-muted-foreground" />
+            <span className="text-foreground">{client.phone}</span>
+          </div>
+        )}
+        {client.address && (
+          <div className="flex items-center gap-2 text-sm">
+            <MapPin className="h-4 w-4 text-muted-foreground" />
+            <span className="text-foreground">{client.address}</span>
+          </div>
+        )}
       </div>
 
-      <div className="pt-4 border-t">
-        <p className="text-sm font-medium text-muted-foreground mb-2">Zertifizierungen</p>
-        <div className="flex flex-wrap gap-2">
-          {client.certifications.map((cert) => (
-            <Badge key={cert} variant="secondary">
-              {cert}
-            </Badge>
-          ))}
+      {client.certifications && client.certifications.length > 0 && (
+        <div className="pt-4 border-t">
+          <p className="text-sm font-medium text-muted-foreground mb-2">Zertifizierungen</p>
+          <div className="flex flex-wrap gap-2">
+            {client.certifications.map((cert) => (
+              <Badge key={cert} variant="secondary">
+                {cert}
+              </Badge>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <Button variant="outline" className="w-full">
         Details anzeigen
@@ -68,17 +74,39 @@ const ClientCard = memo(({ client }: ClientCardProps) => (
 
 ClientCard.displayName = 'ClientCard';
 
+const ClientCardSkeleton = () => (
+  <Card>
+    <CardHeader>
+      <div className="flex items-center gap-3">
+        <Skeleton className="h-10 w-10 rounded-lg" />
+        <div>
+          <Skeleton className="h-6 w-32 mb-2" />
+          <Skeleton className="h-4 w-24" />
+        </div>
+      </div>
+    </CardHeader>
+    <CardContent className="space-y-4">
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-4 w-3/4" />
+      <Skeleton className="h-4 w-2/3" />
+      <Skeleton className="h-10 w-full" />
+    </CardContent>
+  </Card>
+);
+
 const Clients = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewClientDialog, setShowNewClientDialog] = useState(false);
+  
+  const { data: clients = [], isLoading, error } = useClients();
 
   const filteredClients = useMemo(() => {
     const query = searchQuery.toLowerCase();
-    return mockClients.filter(client =>
+    return clients.filter(client =>
       client.name.toLowerCase().includes(query) ||
-      client.contactPerson.toLowerCase().includes(query)
+      client.contact_person.toLowerCase().includes(query)
     );
-  }, [searchQuery]);
+  }, [searchQuery, clients]);
 
   return (
     <Layout>
@@ -109,11 +137,34 @@ const Clients = () => {
         </div>
 
         {/* Clients Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {filteredClients.map((client) => (
-            <ClientCard key={client.id} client={client} />
-          ))}
-        </div>
+        {error ? (
+          <div className="text-center py-12">
+            <p className="text-destructive">Fehler beim Laden der Kunden</p>
+          </div>
+        ) : isLoading ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <ClientCardSkeleton key={i} />
+            ))}
+          </div>
+        ) : filteredClients.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">
+              {searchQuery ? 'Keine Kunden gefunden' : 'Noch keine Kunden vorhanden'}
+            </p>
+            {!searchQuery && (
+              <Button className="mt-4" onClick={() => setShowNewClientDialog(true)}>
+                Ersten Kunden erstellen
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {filteredClients.map((client) => (
+              <ClientCard key={client.id} client={client} />
+            ))}
+          </div>
+        )}
       </div>
     </Layout>
   );

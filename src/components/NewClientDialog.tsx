@@ -10,22 +10,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { CertificationStandard } from '@/types/audit';
 import { toast } from 'sonner';
+import { useCreateClient, CertificationStandard } from '@/hooks/useClients';
+import { Constants } from '@/integrations/supabase/types';
 
 interface NewClientDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-const certificationOptions: CertificationStandard[] = [
-  'SURE',
-  'FSC',
-  'PEFC',
-  'ISCC',
-  'ISO 9001',
-  'ISO 14001',
-];
+const certificationOptions = Constants.public.Enums.certification_standard;
 
 export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) => {
   const [name, setName] = useState('');
@@ -34,6 +28,8 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [selectedCertifications, setSelectedCertifications] = useState<CertificationStandard[]>([]);
+  
+  const createClient = useCreateClient();
 
   const toggleCertification = (cert: CertificationStandard) => {
     setSelectedCertifications(prev =>
@@ -43,25 +39,40 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!name || !contactPerson || !email || !phone || !address) {
-      toast.error('Bitte füllen Sie alle Pflichtfelder aus');
-      return;
-    }
-
-    // Here you would normally save to backend
-    toast.success('Kunde erfolgreich erstellt');
-    onOpenChange(false);
-    
-    // Reset form
+  const resetForm = () => {
     setName('');
     setContactPerson('');
     setEmail('');
     setPhone('');
     setAddress('');
     setSelectedCertifications([]);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!name || !contactPerson || !email) {
+      toast.error('Bitte füllen Sie alle Pflichtfelder aus');
+      return;
+    }
+
+    try {
+      await createClient.mutateAsync({
+        name,
+        contact_person: contactPerson,
+        email,
+        phone: phone || null,
+        address: address || null,
+        certifications: selectedCertifications,
+      });
+      
+      toast.success('Kunde erfolgreich erstellt');
+      onOpenChange(false);
+      resetForm();
+    } catch (error) {
+      console.error('Error creating client:', error);
+      toast.error('Fehler beim Erstellen des Kunden');
+    }
   };
 
   return (
@@ -111,7 +122,7 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
 
           {/* Phone */}
           <div className="space-y-2">
-            <Label htmlFor="phone">Telefon *</Label>
+            <Label htmlFor="phone">Telefon</Label>
             <Input
               id="phone"
               type="tel"
@@ -123,7 +134,7 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
 
           {/* Address */}
           <div className="space-y-2">
-            <Label htmlFor="address">Adresse *</Label>
+            <Label htmlFor="address">Adresse</Label>
             <Input
               id="address"
               value={address}
@@ -159,8 +170,8 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Abbrechen
             </Button>
-            <Button type="submit">
-              Kunde erstellen
+            <Button type="submit" disabled={createClient.isPending}>
+              {createClient.isPending ? 'Erstelle...' : 'Kunde erstellen'}
             </Button>
           </div>
         </form>
