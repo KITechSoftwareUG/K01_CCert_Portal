@@ -5,7 +5,8 @@ import {
   LayoutDashboard, 
   Users, 
   ClipboardCheck, 
-  Calendar
+  Calendar,
+  Building2
 } from 'lucide-react';
 import logo from '@/assets/logo.png';
 import ChatBot from './ChatBot';
@@ -19,6 +20,7 @@ const navigation = [
   { name: 'Kunden', href: '/clients', icon: Users },
   { name: 'Audits', href: '/audits', icon: ClipboardCheck },
   { name: 'Kalender', href: '/calendar', icon: Calendar },
+  { name: 'Zertifizierer', href: '/certification-bodies', icon: Building2 },
 ];
 
 export const Layout = ({ children }: LayoutProps) => {

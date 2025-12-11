@@ -113,23 +113,38 @@ export type Database = {
       }
       certification_bodies: {
         Row: {
+          address: string | null
+          contact_person: string | null
           created_at: string
+          email: string | null
           id: string
           name: string
+          notes: string | null
+          phone: string | null
           short_name: string | null
           website: string | null
         }
         Insert: {
+          address?: string | null
+          contact_person?: string | null
           created_at?: string
+          email?: string | null
           id?: string
           name: string
+          notes?: string | null
+          phone?: string | null
           short_name?: string | null
           website?: string | null
         }
         Update: {
+          address?: string | null
+          contact_person?: string | null
           created_at?: string
+          email?: string | null
           id?: string
           name?: string
+          notes?: string | null
+          phone?: string | null
           short_name?: string | null
           website?: string | null
         }
