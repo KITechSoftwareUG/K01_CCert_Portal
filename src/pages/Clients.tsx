@@ -1,4 +1,5 @@
-import { useState, useMemo, memo } from 'react';
+import { useState, useMemo, memo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { NewClientDialog } from '@/components/NewClientDialog';
 import { useClients, DbClient } from '@/hooks/useClients';
@@ -13,9 +14,10 @@ import { de } from 'date-fns/locale';
 
 interface ClientCardProps {
   client: DbClient;
+  onViewDetails: (client: DbClient) => void;
 }
 
-const ClientCard = memo(({ client }: ClientCardProps) => (
+const ClientCard = memo(({ client, onViewDetails }: ClientCardProps) => (
   <Card className="card-hover">
     <CardHeader>
       <div className="flex items-start justify-between">
@@ -65,7 +67,7 @@ const ClientCard = memo(({ client }: ClientCardProps) => (
         </div>
       )}
 
-      <Button variant="outline" className="w-full">
+      <Button variant="outline" className="w-full" onClick={() => onViewDetails(client)}>
         Details anzeigen
       </Button>
     </CardContent>
@@ -95,10 +97,15 @@ const ClientCardSkeleton = () => (
 );
 
 const Clients = () => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewClientDialog, setShowNewClientDialog] = useState(false);
   
   const { data: clients = [], isLoading, error } = useClients();
+
+  const handleViewDetails = useCallback((client: DbClient) => {
+    navigate(`/clients/${client.id}`);
+  }, [navigate]);
 
   const filteredClients = useMemo(() => {
     const query = searchQuery.toLowerCase();
@@ -161,7 +168,7 @@ const Clients = () => {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {filteredClients.map((client) => (
-              <ClientCard key={client.id} client={client} />
+              <ClientCard key={client.id} client={client} onViewDetails={handleViewDetails} />
             ))}
           </div>
         )}
