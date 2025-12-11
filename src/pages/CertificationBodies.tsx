@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Plus, Building2, Pencil, Trash2, X, Check, Globe, User, Mail, Phone, MapPin, FileText } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Building2, Pencil, Trash2, X, Check, Globe, User, Mail, Phone, MapPin, FileText, ChevronDown, ChevronRight, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Layout } from '@/components/Layout';
-import { useCertificationBodies, useCreateCertificationBody, useUpdateCertificationBody, useDeleteCertificationBody, CertificationBody } from '@/hooks/useCertificationBodies';
+import { useCertificationBodies, useCreateCertificationBody, useUpdateCertificationBody, useDeleteCertificationBody, useClientsByCertificationBody, CertificationBody } from '@/hooks/useCertificationBodies';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -17,6 +19,37 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+
+const LinkedClients = ({ certificationBodyId }: { certificationBodyId: string }) => {
+  const navigate = useNavigate();
+  const { data: linkedClients = [] } = useClientsByCertificationBody(certificationBodyId);
+  
+  if (linkedClients.length === 0) return null;
+  
+  return (
+    <div className="flex flex-wrap gap-1.5 mt-2">
+      <span className="text-xs text-muted-foreground flex items-center gap-1">
+        <Users className="h-3 w-3" />
+        Kunden:
+      </span>
+      {linkedClients.map((item: any) => (
+        <Badge 
+          key={item.id} 
+          variant="secondary" 
+          className="text-xs cursor-pointer hover:bg-primary/20 transition-colors"
+          onClick={() => navigate(`/clients/${item.client_id}`)}
+        >
+          {item.clients?.name}
+        </Badge>
+      ))}
+    </div>
+  );
+};
 
 const CertificationBodies = () => {
   const { data: bodies = [], isLoading } = useCertificationBodies();
@@ -26,6 +59,7 @@ const CertificationBodies = () => {
 
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
@@ -58,7 +92,8 @@ const CertificationBodies = () => {
     resetForm();
   };
 
-  const handleEdit = (body: CertificationBody) => {
+  const handleEdit = (body: CertificationBody, e: React.MouseEvent) => {
+    e.stopPropagation();
     setEditingId(body.id);
     setIsAdding(false);
     setFormData({
@@ -111,85 +146,93 @@ const CertificationBodies = () => {
   };
 
   const FormFields = () => (
-    <div className="grid gap-4 md:grid-cols-2">
-      <div className="space-y-2">
-        <label className="text-sm font-medium flex items-center gap-2">
-          <Building2 className="h-4 w-4" /> Name *
+    <div className="grid gap-3 md:grid-cols-2">
+      <div className="space-y-1">
+        <label className="text-xs font-medium flex items-center gap-1.5">
+          <Building2 className="h-3 w-3" /> Name *
         </label>
         <Input
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           placeholder="z.B. TÜV SÜD"
+          className="h-8 text-sm"
         />
       </div>
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Kurzname</label>
+      <div className="space-y-1">
+        <label className="text-xs font-medium">Kurzname</label>
         <Input
           value={formData.short_name}
           onChange={(e) => setFormData({ ...formData, short_name: e.target.value })}
           placeholder="z.B. TÜV"
+          className="h-8 text-sm"
         />
       </div>
-      <div className="space-y-2">
-        <label className="text-sm font-medium flex items-center gap-2">
-          <User className="h-4 w-4" /> Ansprechpartner
+      <div className="space-y-1">
+        <label className="text-xs font-medium flex items-center gap-1.5">
+          <User className="h-3 w-3" /> Ansprechpartner
         </label>
         <Input
           value={formData.contact_person}
           onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
           placeholder="Max Mustermann"
+          className="h-8 text-sm"
         />
       </div>
-      <div className="space-y-2">
-        <label className="text-sm font-medium flex items-center gap-2">
-          <Mail className="h-4 w-4" /> E-Mail
+      <div className="space-y-1">
+        <label className="text-xs font-medium flex items-center gap-1.5">
+          <Mail className="h-3 w-3" /> E-Mail
         </label>
         <Input
           type="email"
           value={formData.email}
           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
           placeholder="kontakt@beispiel.de"
+          className="h-8 text-sm"
         />
       </div>
-      <div className="space-y-2">
-        <label className="text-sm font-medium flex items-center gap-2">
-          <Phone className="h-4 w-4" /> Telefon
+      <div className="space-y-1">
+        <label className="text-xs font-medium flex items-center gap-1.5">
+          <Phone className="h-3 w-3" /> Telefon
         </label>
         <Input
           value={formData.phone}
           onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
           placeholder="+49 123 456789"
+          className="h-8 text-sm"
         />
       </div>
-      <div className="space-y-2">
-        <label className="text-sm font-medium flex items-center gap-2">
-          <Globe className="h-4 w-4" /> Website
+      <div className="space-y-1">
+        <label className="text-xs font-medium flex items-center gap-1.5">
+          <Globe className="h-3 w-3" /> Website
         </label>
         <Input
           value={formData.website}
           onChange={(e) => setFormData({ ...formData, website: e.target.value })}
           placeholder="https://www.beispiel.de"
+          className="h-8 text-sm"
         />
       </div>
-      <div className="space-y-2 md:col-span-2">
-        <label className="text-sm font-medium flex items-center gap-2">
-          <MapPin className="h-4 w-4" /> Adresse
+      <div className="space-y-1 md:col-span-2">
+        <label className="text-xs font-medium flex items-center gap-1.5">
+          <MapPin className="h-3 w-3" /> Adresse
         </label>
         <Input
           value={formData.address}
           onChange={(e) => setFormData({ ...formData, address: e.target.value })}
           placeholder="Musterstraße 1, 12345 Musterstadt"
+          className="h-8 text-sm"
         />
       </div>
-      <div className="space-y-2 md:col-span-2">
-        <label className="text-sm font-medium flex items-center gap-2">
-          <FileText className="h-4 w-4" /> Notizen
+      <div className="space-y-1 md:col-span-2">
+        <label className="text-xs font-medium flex items-center gap-1.5">
+          <FileText className="h-3 w-3" /> Notizen
         </label>
         <Textarea
           value={formData.notes}
           onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
           placeholder="Weitere Informationen..."
           rows={2}
+          className="text-sm"
         />
       </div>
     </div>
@@ -207,15 +250,15 @@ const CertificationBodies = () => {
 
   return (
     <Layout>
-      <div className="p-8 space-y-6">
+      <div className="p-8 space-y-4">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Zertifizierungsgesellschaften</h1>
-          <p className="text-muted-foreground">Verwalten Sie Ihre Zertifizierungspartner</p>
+          <h1 className="text-2xl font-bold tracking-tight">Zertifizierungsgesellschaften</h1>
+          <p className="text-sm text-muted-foreground">Verwalten Sie Ihre Zertifizierungspartner</p>
         </div>
         {!isAdding && !editingId && (
-          <Button onClick={handleAdd}>
-            <Plus className="h-4 w-4 mr-2" />
+          <Button onClick={handleAdd} size="sm">
+            <Plus className="h-4 w-4 mr-1" />
             Hinzufügen
           </Button>
         )}
@@ -223,19 +266,19 @@ const CertificationBodies = () => {
 
       {/* Add Form */}
       {isAdding && (
-        <Card className="border-primary/50 shadow-lg">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg">Neue Zertifizierungsgesellschaft</CardTitle>
+        <Card className="border-primary/50">
+          <CardHeader className="pb-3 pt-4">
+            <CardTitle className="text-base">Neue Zertifizierungsgesellschaft</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3 pb-4">
             <FormFields />
-            <div className="flex gap-2 pt-2">
-              <Button onClick={handleSave} disabled={createBody.isPending}>
-                <Check className="h-4 w-4 mr-2" />
+            <div className="flex gap-2 pt-1">
+              <Button size="sm" onClick={handleSave} disabled={createBody.isPending}>
+                <Check className="h-3 w-3 mr-1" />
                 Speichern
               </Button>
-              <Button variant="outline" onClick={handleCancel}>
-                <X className="h-4 w-4 mr-2" />
+              <Button size="sm" variant="outline" onClick={handleCancel}>
+                <X className="h-3 w-3 mr-1" />
                 Abbrechen
               </Button>
             </div>
@@ -244,104 +287,120 @@ const CertificationBodies = () => {
       )}
 
       {/* List */}
-      <div className="grid gap-4">
+      <div className="space-y-2">
         {bodies.map((body) => (
-          <Card key={body.id} className={editingId === body.id ? 'border-primary/50 shadow-lg' : ''}>
+          <Card key={body.id} className={editingId === body.id ? 'border-primary/50' : ''}>
             {editingId === body.id ? (
-              <CardContent className="pt-6 space-y-4">
+              <CardContent className="pt-4 pb-4 space-y-3">
                 <FormFields />
-                <div className="flex gap-2 pt-2">
-                  <Button onClick={handleSave} disabled={updateBody.isPending}>
-                    <Check className="h-4 w-4 mr-2" />
+                <div className="flex gap-2 pt-1">
+                  <Button size="sm" onClick={handleSave} disabled={updateBody.isPending}>
+                    <Check className="h-3 w-3 mr-1" />
                     Speichern
                   </Button>
-                  <Button variant="outline" onClick={handleCancel}>
-                    <X className="h-4 w-4 mr-2" />
+                  <Button size="sm" variant="outline" onClick={handleCancel}>
+                    <X className="h-3 w-3 mr-1" />
                     Abbrechen
                   </Button>
                 </div>
               </CardContent>
             ) : (
-              <CardContent className="pt-6">
-                <div className="flex justify-between items-start">
-                  <div className="space-y-3 flex-1">
-                    <div className="flex items-center gap-3">
-                      <Building2 className="h-5 w-5 text-primary" />
-                      <div>
-                        <h3 className="font-semibold text-lg">{body.name}</h3>
-                        {body.short_name && (
-                          <span className="text-sm text-muted-foreground">({body.short_name})</span>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3 text-sm">
+              <Collapsible open={expandedId === body.id} onOpenChange={() => setExpandedId(expandedId === body.id ? null : body.id)}>
+                <CardContent className="py-3 px-4">
+                  <div className="flex items-center justify-between">
+                    <CollapsibleTrigger className="flex items-center gap-3 flex-1 text-left hover:text-primary transition-colors">
+                      {expandedId === body.id ? (
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      )}
+                      <Building2 className="h-4 w-4 text-primary" />
+                      <span className="font-medium">{body.name}</span>
+                      {body.short_name && (
+                        <span className="text-xs text-muted-foreground">({body.short_name})</span>
+                      )}
+                      {/* Compact inline info */}
                       {body.contact_person && (
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <User className="h-4 w-4" />
-                          <span>{body.contact_person}</span>
-                        </div>
+                        <span className="text-xs text-muted-foreground hidden sm:inline">• {body.contact_person}</span>
                       )}
                       {body.email && (
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <Mail className="h-4 w-4" />
-                          <a href={`mailto:${body.email}`} className="hover:text-primary hover:underline">
-                            {body.email}
-                          </a>
-                        </div>
+                        <span className="text-xs text-muted-foreground hidden md:inline">• {body.email}</span>
                       )}
-                      {body.phone && (
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <Phone className="h-4 w-4" />
-                          <a href={`tel:${body.phone}`} className="hover:text-primary">
-                            {body.phone}
-                          </a>
-                        </div>
-                      )}
-                      {body.website && (
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <Globe className="h-4 w-4" />
-                          <a href={body.website} target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline">
-                            {body.website}
-                          </a>
-                        </div>
-                      )}
-                      {body.address && (
-                        <div className="flex items-center gap-2 text-muted-foreground md:col-span-2">
-                          <MapPin className="h-4 w-4" />
-                          <span>{body.address}</span>
-                        </div>
-                      )}
-                    </div>
+                    </CollapsibleTrigger>
                     
-                    {body.notes && (
-                      <p className="text-sm text-muted-foreground bg-muted/50 p-2 rounded">
-                        {body.notes}
-                      </p>
-                    )}
+                    <div className="flex gap-1 ml-2">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => handleEdit(body, e)}>
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); setDeleteId(body.id); }}>
+                        <Trash2 className="h-3 w-3 text-destructive" />
+                      </Button>
+                    </div>
                   </div>
-                  
-                  <div className="flex gap-1 ml-4">
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(body)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => setDeleteId(body.id)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
+
+                  <CollapsibleContent>
+                    <div className="mt-3 pt-3 border-t space-y-2">
+                      <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3 text-sm">
+                        {body.contact_person && (
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <User className="h-3.5 w-3.5" />
+                            <span>{body.contact_person}</span>
+                          </div>
+                        )}
+                        {body.email && (
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <Mail className="h-3.5 w-3.5" />
+                            <a href={`mailto:${body.email}`} className="hover:text-primary hover:underline">
+                              {body.email}
+                            </a>
+                          </div>
+                        )}
+                        {body.phone && (
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <Phone className="h-3.5 w-3.5" />
+                            <a href={`tel:${body.phone}`} className="hover:text-primary">
+                              {body.phone}
+                            </a>
+                          </div>
+                        )}
+                        {body.website && (
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <Globe className="h-3.5 w-3.5" />
+                            <a href={body.website} target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline truncate">
+                              {body.website}
+                            </a>
+                          </div>
+                        )}
+                        {body.address && (
+                          <div className="flex items-center gap-2 text-muted-foreground md:col-span-2">
+                            <MapPin className="h-3.5 w-3.5" />
+                            <span>{body.address}</span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {body.notes && (
+                        <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+                          {body.notes}
+                        </p>
+                      )}
+                      
+                      <LinkedClients certificationBodyId={body.id} />
+                    </div>
+                  </CollapsibleContent>
+                </CardContent>
+              </Collapsible>
             )}
           </Card>
         ))}
 
         {bodies.length === 0 && !isAdding && (
           <Card>
-            <CardContent className="py-12 text-center">
-              <Building2 className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-              <p className="text-muted-foreground">Keine Zertifizierungsgesellschaften vorhanden</p>
-              <Button variant="outline" className="mt-4" onClick={handleAdd}>
-                <Plus className="h-4 w-4 mr-2" />
+            <CardContent className="py-8 text-center">
+              <Building2 className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
+              <p className="text-muted-foreground text-sm">Keine Zertifizierungsgesellschaften vorhanden</p>
+              <Button variant="outline" size="sm" className="mt-3" onClick={handleAdd}>
+                <Plus className="h-3 w-3 mr-1" />
                 Erste hinzufügen
               </Button>
             </CardContent>

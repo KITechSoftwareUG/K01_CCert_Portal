@@ -462,10 +462,15 @@ const ClientDetail = () => {
                   </div>
                 ) : (
                   <div className="flex flex-wrap gap-2">
-                    {assignedCertBodyNames.length > 0 ? (
-                      assignedCertBodyNames.map((name: string) => (
-                        <Badge key={name} variant="outline" className="text-sm px-3 py-1">
-                          {name}
+                    {clientCertBodies.length > 0 ? (
+                      clientCertBodies.map((cb: any) => (
+                        <Badge 
+                          key={cb.id} 
+                          variant="outline" 
+                          className="text-sm px-3 py-1 cursor-pointer hover:bg-primary/10 transition-colors"
+                          onClick={() => navigate('/certification-bodies')}
+                        >
+                          {cb.certification_bodies?.short_name || cb.certification_bodies?.name}
                         </Badge>
                       ))
                     ) : (
