@@ -128,6 +128,26 @@ export const useClientCertificationBodies = (clientId?: string) => {
   });
 };
 
+export const useClientsByCertificationBody = (certificationBodyId?: string) => {
+  return useQuery({
+    queryKey: ['clients_by_certification_body', certificationBodyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('client_certification_bodies')
+        .select(`
+          id,
+          client_id,
+          clients (*)
+        `)
+        .eq('certification_body_id', certificationBodyId);
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!certificationBodyId,
+  });
+};
+
 export const useUpdateClientCertificationBodies = () => {
   const queryClient = useQueryClient();
   
@@ -163,6 +183,7 @@ export const useUpdateClientCertificationBodies = () => {
     },
     onSuccess: (_, { clientId }) => {
       queryClient.invalidateQueries({ queryKey: ['client_certification_bodies', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['clients_by_certification_body'] });
       queryClient.invalidateQueries({ queryKey: ['clients'] });
     },
   });
