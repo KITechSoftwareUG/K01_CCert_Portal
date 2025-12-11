@@ -10,8 +10,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from 'sonner';
 import { useCreateClient, CertificationStandard } from '@/hooks/useClients';
+import { useCertificationBodies, useUpdateClientCertificationBodies } from '@/hooks/useCertificationBodies';
 import { Constants } from '@/integrations/supabase/types';
 
 interface NewClientDialogProps {
@@ -21,15 +29,34 @@ interface NewClientDialogProps {
 
 const certificationOptions = Constants.public.Enums.certification_standard;
 
+const COUNTRIES = [
+  'Deutschland',
+  'Österreich',
+  'Schweiz',
+  'Niederlande',
+  'Belgien',
+  'Frankreich',
+  'Polen',
+  'Tschechien',
+  'Italien',
+  'Spanien',
+  'Vereinigtes Königreich',
+  'Andere',
+];
+
 export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) => {
   const [name, setName] = useState('');
   const [contactPerson, setContactPerson] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+  const [country, setCountry] = useState('Deutschland');
   const [selectedCertifications, setSelectedCertifications] = useState<CertificationStandard[]>([]);
+  const [selectedCertBodies, setSelectedCertBodies] = useState<string[]>([]);
   
   const createClient = useCreateClient();
+  const updateCertBodies = useUpdateClientCertificationBodies();
+  const { data: certificationBodies = [] } = useCertificationBodies();
 
   const toggleCertification = (cert: CertificationStandard) => {
     setSelectedCertifications(prev =>
@@ -39,13 +66,23 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
     );
   };
 
+  const toggleCertBody = (bodyId: string) => {
+    setSelectedCertBodies(prev =>
+      prev.includes(bodyId)
+        ? prev.filter(id => id !== bodyId)
+        : [...prev, bodyId]
+    );
+  };
+
   const resetForm = () => {
     setName('');
     setContactPerson('');
     setEmail('');
     setPhone('');
     setAddress('');
+    setCountry('Deutschland');
     setSelectedCertifications([]);
+    setSelectedCertBodies([]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -57,14 +94,23 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
     }
 
     try {
-      await createClient.mutateAsync({
+      const client = await createClient.mutateAsync({
         name,
         contact_person: contactPerson,
         email,
         phone: phone || null,
         address: address || null,
+        country,
         certifications: selectedCertifications,
       });
+      
+      // Add certification bodies
+      if (selectedCertBodies.length > 0) {
+        await updateCertBodies.mutateAsync({
+          clientId: client.id,
+          certificationBodyIds: selectedCertBodies,
+        });
+      }
       
       toast.success('Kunde erfolgreich erstellt');
       onOpenChange(false);
@@ -86,15 +132,34 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Company Name */}
-          <div className="space-y-2">
-            <Label htmlFor="name">Firmenname *</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="z.B. Holz GmbH"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Company Name */}
+            <div className="space-y-2">
+              <Label htmlFor="name">Firmenname *</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="z.B. Holz GmbH"
+              />
+            </div>
+
+            {/* Country */}
+            <div className="space-y-2">
+              <Label htmlFor="country">Land *</Label>
+              <Select value={country} onValueChange={setCountry}>
+                <SelectTrigger id="country">
+                  <SelectValue placeholder="Land auswählen" />
+                </SelectTrigger>
+                <SelectContent className="bg-background border shadow-lg z-50">
+                  {COUNTRIES.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Contact Person */}
@@ -146,7 +211,7 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
           {/* Certifications */}
           <div className="space-y-2">
             <Label>Zertifizierungen</Label>
-            <div className="grid grid-cols-2 gap-3 p-4 border rounded-lg">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-4 border rounded-lg">
               {certificationOptions.map((cert) => (
                 <div key={cert} className="flex items-center space-x-2">
                   <Checkbox
@@ -159,6 +224,28 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                   >
                     {cert}
+                  </label>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Certification Bodies */}
+          <div className="space-y-2">
+            <Label>Zertifizierungsgesellschaften</Label>
+            <div className="grid grid-cols-2 gap-3 p-4 border rounded-lg max-h-48 overflow-y-auto">
+              {certificationBodies.map((body) => (
+                <div key={body.id} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`body-${body.id}`}
+                    checked={selectedCertBodies.includes(body.id)}
+                    onCheckedChange={() => toggleCertBody(body.id)}
+                  />
+                  <label
+                    htmlFor={`body-${body.id}`}
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    {body.short_name || body.name}
                   </label>
                 </div>
               ))}
