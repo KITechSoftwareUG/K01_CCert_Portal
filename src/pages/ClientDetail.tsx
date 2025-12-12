@@ -29,7 +29,9 @@ import {
   Trash2,
   Calendar,
   Globe,
-  Award
+  Award,
+  Hash,
+  UserCheck
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -103,6 +105,8 @@ const ClientDetail = () => {
   
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState('');
+  const [clientNumber, setClientNumber] = useState('');
+  const [consultant, setConsultant] = useState('');
   const [contactPerson, setContactPerson] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -115,6 +119,8 @@ const ClientDetail = () => {
   useEffect(() => {
     if (client) {
       setName(client.name);
+      setClientNumber(client.client_number || '');
+      setConsultant(client.consultant || '');
       setContactPerson(client.contact_person);
       setEmail(client.email);
       setPhone(client.phone || '');
@@ -157,6 +163,8 @@ const ClientDetail = () => {
       await updateClient.mutateAsync({
         id,
         name,
+        client_number: clientNumber || null,
+        consultant: consultant || null,
         contact_person: contactPerson,
         email,
         phone: phone || null,
@@ -181,6 +189,8 @@ const ClientDetail = () => {
   const handleCancel = useCallback(() => {
     if (client) {
       setName(client.name);
+      setClientNumber(client.client_number || '');
+      setConsultant(client.consultant || '');
       setContactPerson(client.contact_person);
       setEmail(client.email);
       setPhone(client.phone || '');
@@ -246,10 +256,24 @@ const ClientDetail = () => {
               <Building2 className="h-8 w-8 text-primary" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-foreground">{client.name}</h1>
-              <div className="flex items-center gap-2 text-muted-foreground">
+              <div className="flex items-center gap-2">
+                {client.client_number && (
+                  <Badge variant="outline" className="font-mono text-sm">
+                    KD-Nr. {client.client_number}
+                  </Badge>
+                )}
+                <h1 className="text-3xl font-bold text-foreground">{client.name}</h1>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground mt-1">
                 <Globe className="h-4 w-4" />
                 <span>{client.country || 'Nicht zugeordnet'}</span>
+                {client.consultant && (
+                  <>
+                    <span className="text-muted-foreground/50">•</span>
+                    <UserCheck className="h-4 w-4" />
+                    <span>Berater: {client.consultant}</span>
+                  </>
+                )}
                 <span className="text-muted-foreground/50">•</span>
                 <span>Kunde seit {format(new Date(client.created_at), 'MMMM yyyy', { locale: de })}</span>
               </div>
@@ -285,8 +309,8 @@ const ClientDetail = () => {
               <CardContent className="space-y-4">
                 {isEditing ? (
                   <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2 md:col-span-2">
                         <Label htmlFor="name">Firmenname *</Label>
                         <Input
                           id="name"
@@ -295,6 +319,17 @@ const ClientDetail = () => {
                           placeholder="Firmenname"
                         />
                       </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="client-number">KD-Nr.</Label>
+                        <Input
+                          id="client-number"
+                          value={clientNumber}
+                          onChange={(e) => setClientNumber(e.target.value)}
+                          placeholder="z.B. 0001"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="country">Land *</Label>
                         <Select value={country} onValueChange={setCountry}>
@@ -309,6 +344,15 @@ const ClientDetail = () => {
                             ))}
                           </SelectContent>
                         </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="consultant">Berater</Label>
+                        <Input
+                          id="consultant"
+                          value={consultant}
+                          onChange={(e) => setConsultant(e.target.value)}
+                          placeholder="z.B. JP"
+                        />
                       </div>
                     </div>
                     <div className="space-y-2">

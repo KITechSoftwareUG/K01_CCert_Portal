@@ -46,6 +46,8 @@ const COUNTRIES = [
 
 export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) => {
   const [name, setName] = useState('');
+  const [clientNumber, setClientNumber] = useState('');
+  const [consultant, setConsultant] = useState('');
   const [contactPerson, setContactPerson] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -76,6 +78,8 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
 
   const resetForm = () => {
     setName('');
+    setClientNumber('');
+    setConsultant('');
     setContactPerson('');
     setEmail('');
     setPhone('');
@@ -96,6 +100,8 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
     try {
       const client = await createClient.mutateAsync({
         name,
+        client_number: clientNumber || null,
+        consultant: consultant || null,
         contact_person: contactPerson,
         email,
         phone: phone || null,
@@ -132,9 +138,9 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Company Name */}
-            <div className="space-y-2">
+            <div className="space-y-2 md:col-span-2">
               <Label htmlFor="name">Firmenname *</Label>
               <Input
                 id="name"
@@ -144,6 +150,19 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
               />
             </div>
 
+            {/* Client Number */}
+            <div className="space-y-2">
+              <Label htmlFor="client-number">KD-Nr.</Label>
+              <Input
+                id="client-number"
+                value={clientNumber}
+                onChange={(e) => setClientNumber(e.target.value)}
+                placeholder="z.B. 0001"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Country */}
             <div className="space-y-2">
               <Label htmlFor="country">Land *</Label>
@@ -159,6 +178,17 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Consultant */}
+            <div className="space-y-2">
+              <Label htmlFor="consultant">Berater</Label>
+              <Input
+                id="consultant"
+                value={consultant}
+                onChange={(e) => setConsultant(e.target.value)}
+                placeholder="z.B. JP"
+              />
             </div>
           </div>
 

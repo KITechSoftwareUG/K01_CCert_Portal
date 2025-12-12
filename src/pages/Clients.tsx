@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Building2, Mail, Phone, MapPin, Plus, Search, ChevronDown, Globe } from 'lucide-react';
+import { Building2, Mail, Plus, Search, ChevronDown, Globe } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -21,52 +21,53 @@ interface ClientCardProps {
 
 const ClientCard = memo(({ client, onViewDetails }: ClientCardProps) => (
   <Card className="card-hover">
-    <CardHeader className="pb-3">
+    <CardHeader className="pb-2">
       <div className="flex items-start justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary/10 rounded-lg">
-            <Building2 className="h-5 w-5 text-primary" />
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 bg-primary/10 rounded">
+            <Building2 className="h-4 w-4 text-primary" />
           </div>
-          <div>
-            <CardTitle className="text-lg">{client.name}</CardTitle>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {format(new Date(client.created_at), 'MMM yyyy', { locale: de })}
-            </p>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              {client.client_number && (
+                <Badge variant="outline" className="text-xs font-mono shrink-0">
+                  {client.client_number}
+                </Badge>
+              )}
+              <CardTitle className="text-base truncate">{client.name}</CardTitle>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+              {client.consultant && <span className="font-medium">{client.consultant}</span>}
+              {client.consultant && <span>•</span>}
+              <span>{format(new Date(client.created_at), 'MMM yyyy', { locale: de })}</span>
+            </div>
           </div>
         </div>
       </div>
     </CardHeader>
-    <CardContent className="space-y-3 pt-0">
-      <div className="space-y-2 text-sm">
-        <div className="flex items-center gap-2">
-          <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="text-foreground truncate">{client.email}</span>
-        </div>
-        {client.phone && (
-          <div className="flex items-center gap-2">
-            <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-foreground">{client.phone}</span>
-          </div>
-        )}
+    <CardContent className="space-y-2 pt-0">
+      <div className="flex items-center gap-2 text-sm">
+        <Mail className="h-3 w-3 text-muted-foreground shrink-0" />
+        <span className="text-foreground truncate">{client.email}</span>
       </div>
 
       {client.certifications && client.certifications.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {client.certifications.slice(0, 3).map((cert) => (
-            <Badge key={cert} variant="secondary" className="text-xs">
+        <div className="flex flex-wrap gap-1">
+          {client.certifications.slice(0, 4).map((cert) => (
+            <Badge key={cert} variant="secondary" className="text-xs py-0 px-1.5">
               {cert}
             </Badge>
           ))}
-          {client.certifications.length > 3 && (
-            <Badge variant="outline" className="text-xs">
-              +{client.certifications.length - 3}
+          {client.certifications.length > 4 && (
+            <Badge variant="outline" className="text-xs py-0 px-1.5">
+              +{client.certifications.length - 4}
             </Badge>
           )}
         </div>
       )}
 
-      <Button variant="outline" size="sm" className="w-full" onClick={() => onViewDetails(client)}>
-        Details anzeigen
+      <Button variant="outline" size="sm" className="w-full h-7 text-xs" onClick={() => onViewDetails(client)}>
+        Details
       </Button>
     </CardContent>
   </Card>
@@ -152,7 +153,9 @@ const Clients = () => {
     return clients.filter(client =>
       client.name.toLowerCase().includes(query) ||
       client.contact_person.toLowerCase().includes(query) ||
-      (client.country && client.country.toLowerCase().includes(query))
+      (client.country && client.country.toLowerCase().includes(query)) ||
+      (client.client_number && client.client_number.toLowerCase().includes(query)) ||
+      (client.consultant && client.consultant.toLowerCase().includes(query))
     );
   }, [searchQuery, clients]);
 

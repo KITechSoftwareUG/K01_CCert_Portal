@@ -192,6 +192,8 @@ export type Database = {
           certifications:
             | Database["public"]["Enums"]["certification_standard"][]
             | null
+          client_number: string | null
+          consultant: string | null
           contact_person: string
           country: string | null
           created_at: string
@@ -206,6 +208,8 @@ export type Database = {
           certifications?:
             | Database["public"]["Enums"]["certification_standard"][]
             | null
+          client_number?: string | null
+          consultant?: string | null
           contact_person: string
           country?: string | null
           created_at?: string
@@ -220,6 +224,8 @@ export type Database = {
           certifications?:
             | Database["public"]["Enums"]["certification_standard"][]
             | null
+          client_number?: string | null
+          consultant?: string | null
           contact_person?: string
           country?: string | null
           created_at?: string
