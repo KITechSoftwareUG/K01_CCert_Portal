@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, Mail, Lock, User, Smartphone } from 'lucide-react';
+import { Shield, Mail, Lock, User, Smartphone, Loader2 } from 'lucide-react';
 import { z } from 'zod';
 
 const emailSchema = z.string().email('Ungültige E-Mail-Adresse');
@@ -16,8 +15,8 @@ const passwordSchema = z.string().min(6, 'Passwort muss mindestens 6 Zeichen hab
 
 export default function Auth() {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { toast } = useToast();
+  const [checkingSession, setCheckingSession] = useState(true);
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -30,10 +29,31 @@ export default function Auth() {
   const [mfaRequired, setMfaRequired] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      navigate('/');
-    }
-  }, [user, navigate]);
+    // Check for existing session directly without context
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        navigate('/');
+      }
+      setCheckingSession(false);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        navigate('/');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  if (checkingSession) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   const validateInputs = (isSignUp: boolean) => {
     try {
