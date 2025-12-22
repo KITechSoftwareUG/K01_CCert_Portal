@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, Mail, Lock, User, Smartphone, Loader2 } from 'lucide-react';
+import { Mail, Lock, User, Smartphone, Loader2 } from 'lucide-react';
+import certConsultingLogo from '@/assets/cert-consulting-logo.png';
 import { z } from 'zod';
 const emailSchema = z.string().email('Ungültige E-Mail-Adresse');
 const passwordSchema = z.string().min(6, 'Passwort muss mindestens 6 Zeichen haben');
@@ -238,8 +239,8 @@ export default function Auth() {
     return <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-              <Shield className="h-6 w-6 text-primary" />
+            <div className="mx-auto mb-4">
+              <img src={certConsultingLogo} alt="Cert Consulting Pane Spark" className="h-12 w-auto" />
             </div>
             <CardTitle>MFA einrichten</CardTitle>
             <CardDescription>
@@ -273,10 +274,10 @@ export default function Auth() {
   return <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-            <Shield className="h-6 w-6 text-primary" />
+          <div className="mx-auto mb-4">
+            <img src={certConsultingLogo} alt="Cert Consulting Pane Spark" className="h-16 w-auto" />
           </div>
-          <CardTitle>CertConsulting Pane Login </CardTitle>
+          <CardTitle>Login</CardTitle>
           <CardDescription>
             Melden Sie sich an oder erstellen Sie ein Konto
           </CardDescription>
