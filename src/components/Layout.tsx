@@ -103,7 +103,7 @@ export const Layout = ({ children }: LayoutProps) => {
           <Button
             variant="ghost"
             size="sm"
-            className="w-full justify-start gap-2"
+            className="w-full justify-start gap-2 text-sidebar-foreground"
             onClick={handleSetupMfa}
             disabled={settingUpMfa}
           >
