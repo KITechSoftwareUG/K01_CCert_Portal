@@ -161,6 +161,27 @@
       transform: scale(1);
     }
   }
+
+  @keyframes floatPaper {
+    0% {
+      transform: translateY(100vh) rotate(0deg);
+      opacity: 0;
+    }
+    10% {
+      opacity: 0.06;
+    }
+    90% {
+      opacity: 0.06;
+    }
+    100% {
+      transform: translateY(-100vh) rotate(360deg);
+      opacity: 0;
+    }
+  }
+
+  .animate-float-paper {
+    animation: floatPaper linear infinite;
+  }
 }
 
 /* Custom component styles */

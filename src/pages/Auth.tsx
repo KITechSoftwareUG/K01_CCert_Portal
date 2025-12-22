@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Mail, Lock, User, Smartphone, Loader2 } from 'lucide-react';
 import certConsultingLogo from '@/assets/cert-consulting-logo.png';
+import AuthBackground from '@/components/AuthBackground';
 import { z } from 'zod';
 const emailSchema = z.string().email('Ungültige E-Mail-Adresse');
 const passwordSchema = z.string().min(6, 'Passwort muss mindestens 6 Zeichen haben');
@@ -53,9 +54,12 @@ export default function Auth() {
     return () => subscription.unsubscribe();
   }, [navigate]);
   if (checkingSession) {
-    return <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center relative">
+        <AuthBackground />
+        <Loader2 className="h-8 w-8 animate-spin text-primary relative z-10" />
+      </div>
+    );
   }
   const validateInputs = (isSignUp: boolean) => {
     try {
@@ -210,8 +214,10 @@ export default function Auth() {
     setLoading(false);
   };
   if (mfaRequired) {
-    return <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <Card className="w-full max-w-md">
+    return (
+      <div className="min-h-screen flex items-center justify-center relative p-4">
+        <AuthBackground />
+        <Card className="w-full max-w-md relative z-10">
           <CardHeader className="text-center">
             <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
               <Smartphone className="h-6 w-6 text-primary" />
@@ -233,11 +239,14 @@ export default function Auth() {
             </form>
           </CardContent>
         </Card>
-      </div>;
+      </div>
+    );
   }
   if (mfaSetup) {
-    return <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <Card className="w-full max-w-md">
+    return (
+      <div className="min-h-screen flex items-center justify-center relative p-4">
+        <AuthBackground />
+        <Card className="w-full max-w-md relative z-10">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4">
               <img src={certConsultingLogo} alt="Cert Consulting Pane Spark" className="h-12 w-auto" />
@@ -269,10 +278,13 @@ export default function Auth() {
             </form>
           </CardContent>
         </Card>
-      </div>;
+      </div>
+    );
   }
-  return <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
+  return (
+    <div className="min-h-screen flex items-center justify-center relative p-4">
+      <AuthBackground />
+      <Card className="w-full max-w-md relative z-10">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4">
             <img src={certConsultingLogo} alt="Cert Consulting Pane Spark" className="h-16 w-auto" />
@@ -342,5 +354,6 @@ export default function Auth() {
           </Tabs>
         </CardContent>
       </Card>
-    </div>;
+    </div>
+  );
 }
