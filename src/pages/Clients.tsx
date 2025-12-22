@@ -75,7 +75,7 @@ const CompanyGroupRow = memo(({ group, onViewDetails }: {
   group: CompanyGroup; 
   onViewDetails: (client: DbClient) => void;
 }) => {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
   const hasSubClients = group.clients.length > 1;
   const mainClient = group.clients[0];
 
