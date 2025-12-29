@@ -85,22 +85,28 @@ const CompanyGroupRow = memo(({ group, onViewDetails }: {
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <TableRow className="cursor-pointer hover:bg-muted/50 transition-colors bg-muted/30">
+      <TableRow className="hover:bg-muted/50 transition-colors bg-muted/30">
         <TableCell className="font-medium">
-          <CollapsibleTrigger asChild>
-            <div className="flex items-center gap-2">
-              {isOpen ? (
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              ) : (
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              )}
-              <Building2 className="h-4 w-4 text-primary" />
-              <span className="font-semibold">{group.name}</span>
-              <Badge variant="outline" className="ml-2">
-                {group.clients.length} Standorte
-              </Badge>
-            </div>
-          </CollapsibleTrigger>
+          <div className="flex items-center gap-2 whitespace-nowrap">
+            <CollapsibleTrigger asChild>
+              <button 
+                type="button" 
+                className="p-1 hover:bg-muted rounded transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {isOpen ? (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                )}
+              </button>
+            </CollapsibleTrigger>
+            <Building2 className="h-4 w-4 text-primary flex-shrink-0" />
+            <span className="font-semibold">{group.name}</span>
+            <Badge variant="outline" className="ml-2 whitespace-nowrap flex-shrink-0">
+              {group.clients.length} Standorte
+            </Badge>
+          </div>
         </TableCell>
         <TableCell>
           <Badge variant="outline" className="font-mono text-xs">
