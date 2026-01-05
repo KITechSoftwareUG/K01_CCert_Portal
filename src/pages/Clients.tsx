@@ -86,8 +86,8 @@ const CompanyGroupRow = memo(({ group, onViewDetails }: {
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <TableRow className="hover:bg-muted/50 transition-colors bg-muted/30">
-        <TableCell className="font-medium">
-          <div className="flex items-center gap-2 whitespace-nowrap">
+        <TableCell colSpan={6} className="font-medium py-3">
+          <div className="flex items-center gap-2">
             <CollapsibleTrigger asChild>
               <button 
                 type="button" 
@@ -103,46 +103,30 @@ const CompanyGroupRow = memo(({ group, onViewDetails }: {
             </CollapsibleTrigger>
             <Building2 className="h-4 w-4 text-primary flex-shrink-0" />
             <span className="font-semibold">{group.name}</span>
-            <Badge variant="outline" className="ml-2 whitespace-nowrap flex-shrink-0">
-              {group.clients.length} Standorte
-            </Badge>
+            <span className="text-muted-foreground">({group.clients.length} Standorte)</span>
           </div>
         </TableCell>
-        <TableCell>
-          <Badge variant="outline" className="font-mono text-xs">
-            {group.clientNumber}
-          </Badge>
-        </TableCell>
-        <TableCell>{mainClient.country || '-'}</TableCell>
-        <TableCell>
-          <span className="text-muted-foreground text-sm">Mehrere Berater</span>
-        </TableCell>
-        <TableCell>
-          <div className="flex flex-wrap gap-1">
-            {getAllCertifications(group.clients).map((cert) => (
-              <Badge key={cert} variant="secondary" className="text-xs py-0 px-1.5">
-                {cert}
-              </Badge>
-            ))}
-          </div>
-        </TableCell>
-        <TableCell></TableCell>
       </TableRow>
       <CollapsibleContent asChild>
         <>
-          {group.clients.map((client, index) => (
+          {group.clients.map((client) => (
             <TableRow 
               key={client.id}
               className="cursor-pointer hover:bg-muted/50 transition-colors bg-muted/10"
               onClick={() => onViewDetails(client)}
             >
-              <TableCell className="pl-12">
-                <span className="text-muted-foreground">
-                  {index === group.clients.length - 1 ? '└' : '├'} Zertifizierung {index + 1}
-                </span>
+              <TableCell className="pl-12 font-medium">
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">└</span>
+                  <span>{client.name}</span>
+                </div>
               </TableCell>
-              <TableCell></TableCell>
-              <TableCell></TableCell>
+              <TableCell>
+                <Badge variant="outline" className="font-mono text-xs">
+                  {client.client_number || '-'}
+                </Badge>
+              </TableCell>
+              <TableCell>{client.country || '-'}</TableCell>
               <TableCell>{client.consultant || '-'}</TableCell>
               <TableCell>
                 <div className="flex flex-wrap gap-1">
@@ -153,7 +137,7 @@ const CompanyGroupRow = memo(({ group, onViewDetails }: {
                       </Badge>
                     ))
                   ) : (
-                    <span className="text-muted-foreground text-sm">GMP</span>
+                    <span className="text-muted-foreground text-sm">-</span>
                   )}
                 </div>
               </TableCell>
