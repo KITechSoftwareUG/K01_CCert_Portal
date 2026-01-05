@@ -85,6 +85,20 @@ const Calendar = () => {
     [activeAudits]
   );
 
+  // Prepare audits for Outlook sync
+  const outlookAudits = useMemo(() => 
+    activeAudits.map(audit => ({
+      id: audit.id,
+      clientName: audit.clientName,
+      type: audit.type,
+      status: audit.status,
+      scheduledDate: audit.scheduledDate.toISOString(),
+      certifications: audit.certifications,
+      notes: audit.notes,
+    })),
+    [activeAudits]
+  );
+
   return (
     <Layout>
       <div className="p-8 space-y-8 animate-fade-in">
@@ -169,7 +183,7 @@ const Calendar = () => {
             {/* Sidebar */}
             <div className="space-y-6">
               {/* Outlook Integration */}
-              <OutlookIntegration auditCount={activeAudits.length} />
+              <OutlookIntegration auditCount={activeAudits.length} audits={outlookAudits} />
 
               {/* Upcoming Events */}
               <Card>
