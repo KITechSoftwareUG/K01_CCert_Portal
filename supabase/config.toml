@@ -3,5 +3,8 @@ project_id = "hgrnidbducyghefgabel"
 [functions.outlook-auth]
 verify_jwt = false
 
+[functions.outlook-callback]
+verify_jwt = false
+
 [functions.outlook-sync]
 verify_jwt = true
