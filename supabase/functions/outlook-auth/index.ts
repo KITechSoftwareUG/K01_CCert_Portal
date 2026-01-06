@@ -47,8 +47,8 @@ serve(async (req) => {
     }
 
     if (action === 'get-auth-url') {
-      // Generate OAuth URL for Microsoft
-      const redirectUri = `${SUPABASE_URL}/functions/v1/outlook-auth?action=callback`;
+      // Generate OAuth URL for Microsoft - use separate callback function
+      const redirectUri = `${SUPABASE_URL}/functions/v1/outlook-callback`;
       const scope = 'offline_access Calendars.ReadWrite';
       const state = userId; // Pass user ID in state for callback
       
@@ -63,119 +63,6 @@ serve(async (req) => {
       console.log('Generated auth URL for user:', userId);
       return new Response(JSON.stringify({ authUrl }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    if (action === 'callback') {
-      // Handle OAuth callback from Microsoft
-      const code = url.searchParams.get('code');
-      const state = url.searchParams.get('state'); // This is the user ID
-      const error = url.searchParams.get('error');
-      const errorDescription = url.searchParams.get('error_description');
-
-      if (error) {
-        console.error('OAuth error:', error, errorDescription);
-        return new Response(`
-          <html>
-            <body>
-              <script>
-                window.opener.postMessage({ type: 'outlook-auth-error', error: '${error}' }, '*');
-                window.close();
-              </script>
-              <p>Fehler bei der Authentifizierung. Dieses Fenster schließt sich automatisch.</p>
-            </body>
-          </html>
-        `, {
-          headers: { 'Content-Type': 'text/html' },
-        });
-      }
-
-      if (!code || !state) {
-        console.error('Missing code or state');
-        return new Response('Missing code or state', { status: 400 });
-      }
-
-      // Exchange code for tokens
-      const redirectUri = `${SUPABASE_URL}/functions/v1/outlook-auth?action=callback`;
-      const tokenResponse = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          client_id: AZURE_CLIENT_ID,
-          client_secret: AZURE_CLIENT_SECRET,
-          code,
-          redirect_uri: redirectUri,
-          grant_type: 'authorization_code',
-        }),
-      });
-
-      const tokenData = await tokenResponse.json();
-      console.log('Token exchange response status:', tokenResponse.status);
-
-      if (!tokenResponse.ok) {
-        console.error('Token exchange failed:', tokenData);
-        return new Response(`
-          <html>
-            <body>
-              <script>
-                window.opener.postMessage({ type: 'outlook-auth-error', error: 'Token exchange failed' }, '*');
-                window.close();
-              </script>
-              <p>Fehler beim Token-Austausch. Dieses Fenster schließt sich automatisch.</p>
-            </body>
-          </html>
-        `, {
-          headers: { 'Content-Type': 'text/html' },
-        });
-      }
-
-      // Calculate expiration time
-      const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
-
-      // Store tokens in database
-      const { error: upsertError } = await supabase
-        .from('outlook_tokens')
-        .upsert({
-          user_id: state,
-          access_token: tokenData.access_token,
-          refresh_token: tokenData.refresh_token,
-          expires_at: expiresAt,
-        }, {
-          onConflict: 'user_id',
-        });
-
-      if (upsertError) {
-        console.error('Error storing tokens:', upsertError);
-        return new Response(`
-          <html>
-            <body>
-              <script>
-                window.opener.postMessage({ type: 'outlook-auth-error', error: 'Failed to store tokens' }, '*');
-                window.close();
-              </script>
-              <p>Fehler beim Speichern der Tokens. Dieses Fenster schließt sich automatisch.</p>
-            </body>
-          </html>
-        `, {
-          headers: { 'Content-Type': 'text/html' },
-        });
-      }
-
-      console.log('Successfully stored tokens for user:', state);
-      return new Response(`
-        <html>
-          <body>
-            <script>
-              window.opener.postMessage({ type: 'outlook-auth-success' }, '*');
-              window.close();
-            </script>
-            <p>Erfolgreich verbunden! Dieses Fenster schließt sich automatisch.</p>
-          </body>
-        </html>
-      `, {
-        headers: { 'Content-Type': 'text/html' },
       });
     }
 
