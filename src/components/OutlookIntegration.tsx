@@ -71,14 +71,6 @@ export const OutlookIntegration = ({ auditCount = 0, audits = [] }: OutlookInteg
         return;
       }
 
-      const response = await supabase.functions.invoke('outlook-auth', {
-        body: {},
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      // The function expects query params, so we need to call it differently
       const baseUrl = import.meta.env.VITE_SUPABASE_URL;
       const statusResponse = await fetch(`${baseUrl}/functions/v1/outlook-auth?action=status`, {
         headers: {
