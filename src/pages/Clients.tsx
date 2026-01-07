@@ -228,29 +228,33 @@ const Clients = () => {
     });
   }, [filteredClients]);
 
-  // Group clients by company (client_number) for grouped view
+  // Extract parent company name from full name (e.g., "REUSS Energie" -> "REUSS")
+  const getParentCompanyName = useCallback((name: string): string => {
+    // Take the first word as the parent company name
+    const firstWord = name.split(' ')[0].toUpperCase();
+    return firstWord;
+  }, []);
+
+  // Group clients by parent company name for grouped view
   const companyGroups = useMemo(() => {
     const groups: Record<string, CompanyGroup> = {};
     
     filteredClients.forEach(client => {
-      const key = client.client_number || client.id;
-      if (!groups[key]) {
-        groups[key] = {
-          name: client.name,
+      const parentName = getParentCompanyName(client.name);
+      
+      if (!groups[parentName]) {
+        groups[parentName] = {
+          name: parentName,
           clientNumber: client.client_number || '-',
           clients: [],
         };
       }
-      groups[key].clients.push(client);
+      groups[parentName].clients.push(client);
     });
 
-    // Sort groups by client number
-    return Object.values(groups).sort((a, b) => {
-      const numA = parseInt(a.clientNumber) || 9999;
-      const numB = parseInt(b.clientNumber) || 9999;
-      return numA - numB;
-    });
-  }, [filteredClients]);
+    // Sort groups alphabetically by parent company name
+    return Object.values(groups).sort((a, b) => a.name.localeCompare(b.name));
+  }, [filteredClients, getParentCompanyName]);
 
   const totalUniqueCompanies = companyGroups.length;
 
