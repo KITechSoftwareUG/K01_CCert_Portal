@@ -1,4 +1,4 @@
-import { useState, useMemo, memo, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { NewClientDialog } from '@/components/NewClientDialog';
@@ -7,282 +7,88 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Building2, Plus, Search, ChevronDown, ChevronRight, List, FolderTree } from 'lucide-react';
-import { cn } from '@/lib/utils';
-
-interface CompanyGroup {
-  name: string;
-  clientNumber: string;
-  clients: DbClient[];
-}
 
 type ViewMode = 'list' | 'grouped';
 
-// Simple flat list row
-const FlatClientRow = memo(({ client, onViewDetails }: { 
-  client: DbClient; 
-  onViewDetails: (client: DbClient) => void;
-}) => (
-  <TableRow 
-    className="cursor-pointer hover:bg-muted/50 transition-colors"
-    onClick={() => onViewDetails(client)}
-  >
-    <TableCell className="font-medium">
-      <div className="flex items-center gap-2">
-        <Building2 className="h-4 w-4 text-primary shrink-0" />
-        <span>{client.name}</span>
-      </div>
-    </TableCell>
-    <TableCell>
-      <Badge variant="outline" className="font-mono text-xs">
-        {client.client_number || '-'}
-      </Badge>
-    </TableCell>
-    <TableCell>{client.country || '-'}</TableCell>
-    <TableCell>{client.consultant || '-'}</TableCell>
-    <TableCell>
-      <div className="flex flex-wrap gap-1">
-        {client.certifications && client.certifications.length > 0 ? (
-          client.certifications.map((cert) => (
-            <Badge key={cert} variant="secondary" className="text-xs py-0 px-1.5">
-              {cert}
-            </Badge>
-          ))
-        ) : (
-          <span className="text-muted-foreground text-sm">-</span>
-        )}
-      </div>
-    </TableCell>
-    <TableCell>{client.contact_person || '-'}</TableCell>
-  </TableRow>
-));
-
-FlatClientRow.displayName = 'FlatClientRow';
-
-// Grouped view - Parent company row with collapsible children
-const GroupedCompanyRow = memo(({ group, onViewDetails }: { 
-  group: CompanyGroup; 
-  onViewDetails: (client: DbClient) => void;
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const hasMultipleLocations = group.clients.length > 1;
-
-  // If only one location, show it directly
-  if (!hasMultipleLocations) {
-    const client = group.clients[0];
-    return (
-      <TableRow 
-        className="cursor-pointer hover:bg-muted/50 transition-colors"
-        onClick={() => onViewDetails(client)}
-      >
-        <TableCell className="font-medium">
-          <div className="flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-primary shrink-0" />
-            <span>{client.name}</span>
-          </div>
-        </TableCell>
-        <TableCell>
-          <Badge variant="outline" className="font-mono text-xs">
-            {client.client_number || '-'}
-          </Badge>
-        </TableCell>
-        <TableCell>{client.country || '-'}</TableCell>
-        <TableCell>{client.consultant || '-'}</TableCell>
-        <TableCell>
-          <div className="flex flex-wrap gap-1">
-            {client.certifications && client.certifications.length > 0 ? (
-              client.certifications.map((cert) => (
-                <Badge key={cert} variant="secondary" className="text-xs py-0 px-1.5">
-                  {cert}
-                </Badge>
-              ))
-            ) : (
-              <span className="text-muted-foreground text-sm">-</span>
-            )}
-          </div>
-        </TableCell>
-        <TableCell>{client.contact_person || '-'}</TableCell>
-      </TableRow>
-    );
-  }
-
-  return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <TableRow className="hover:bg-primary/5 transition-colors bg-primary/10 border-l-4 border-l-primary">
-        <TableCell colSpan={6} className="font-medium py-3">
-          <div className="flex items-center gap-2">
-            <CollapsibleTrigger asChild>
-              <button 
-                type="button" 
-                className="p-1 hover:bg-muted rounded transition-colors"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {isOpen ? (
-                  <ChevronDown className="h-4 w-4 text-primary" />
-                ) : (
-                  <ChevronRight className="h-4 w-4 text-primary" />
-                )}
-              </button>
-            </CollapsibleTrigger>
-            <Building2 className="h-5 w-5 text-primary flex-shrink-0" />
-            <span className="font-bold text-foreground">{group.name}</span>
-            <Badge variant="secondary" className="ml-2">
-              {group.clients.length} Standorte
-            </Badge>
-            <Badge variant="outline" className="font-mono text-xs ml-auto">
-              {group.clientNumber}
-            </Badge>
-          </div>
-        </TableCell>
-      </TableRow>
-      <CollapsibleContent asChild>
-        <>
-          {group.clients.map((client, index) => (
-            <TableRow 
-              key={client.id}
-              className={cn(
-                "cursor-pointer hover:bg-muted/50 transition-colors",
-                "bg-muted/20 border-l-4 border-l-muted"
-              )}
-              onClick={() => onViewDetails(client)}
-            >
-              <TableCell className="pl-12 font-medium">
-                <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground text-sm">
-                    {index === group.clients.length - 1 ? '└' : '├'}
-                  </span>
-                  <span>{client.name}</span>
-                </div>
-              </TableCell>
-              <TableCell>
-                <Badge variant="outline" className="font-mono text-xs">
-                  {client.client_number || '-'}
-                </Badge>
-              </TableCell>
-              <TableCell>{client.country || '-'}</TableCell>
-              <TableCell>{client.consultant || '-'}</TableCell>
-              <TableCell>
-                <div className="flex flex-wrap gap-1">
-                  {client.certifications && client.certifications.length > 0 ? (
-                    client.certifications.map((cert) => (
-                      <Badge key={cert} variant="secondary" className="text-xs py-0 px-1.5">
-                        {cert}
-                      </Badge>
-                    ))
-                  ) : (
-                    <span className="text-muted-foreground text-sm">-</span>
-                  )}
-                </div>
-              </TableCell>
-              <TableCell>{client.contact_person || '-'}</TableCell>
-            </TableRow>
-          ))}
-        </>
-      </CollapsibleContent>
-    </Collapsible>
-  );
-});
-
-GroupedCompanyRow.displayName = 'GroupedCompanyRow';
-
-const TableSkeleton = () => (
-  <div className="space-y-2">
-    {[1, 2, 3, 4, 5].map((i) => (
-      <Skeleton key={i} className="h-12 w-full" />
-    ))}
-  </div>
-);
+interface ParentCompany {
+  name: string;
+  clients: DbClient[];
+}
 
 const Clients = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewClientDialog, setShowNewClientDialog] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('grouped');
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   
   const { data: clients = [], isLoading, error } = useClients();
 
-  const handleViewDetails = useCallback((client: DbClient) => {
-    navigate(`/clients/${client.id}`);
-  }, [navigate]);
-
+  // Filter clients by search
   const filteredClients = useMemo(() => {
+    if (!searchQuery) return clients;
     const query = searchQuery.toLowerCase();
     return clients.filter(client =>
       client.name.toLowerCase().includes(query) ||
-      client.contact_person.toLowerCase().includes(query) ||
-      (client.country && client.country.toLowerCase().includes(query)) ||
-      (client.client_number && client.client_number.toLowerCase().includes(query)) ||
-      (client.consultant && client.consultant.toLowerCase().includes(query))
+      client.contact_person?.toLowerCase().includes(query) ||
+      client.client_number?.toLowerCase().includes(query) ||
+      client.consultant?.toLowerCase().includes(query)
     );
   }, [searchQuery, clients]);
 
-  // Sort clients by client number for list view
-  const sortedClients = useMemo(() => {
-    return [...filteredClients].sort((a, b) => {
-      const numA = parseInt(a.client_number || '') || 9999;
-      const numB = parseInt(b.client_number || '') || 9999;
-      return numA - numB;
-    });
-  }, [filteredClients]);
-
-  // Extract parent company name from full name (e.g., "REUSS Energie" -> "REUSS")
-  const getParentCompanyName = useCallback((name: string): string => {
-    // Take the first word as the parent company name
-    const firstWord = name.split(' ')[0].toUpperCase();
-    return firstWord;
-  }, []);
-
-  // Group clients by parent company name for grouped view
-  const companyGroups = useMemo(() => {
-    const groups: Record<string, CompanyGroup> = {};
+  // Group by first word of company name (parent company)
+  const parentCompanies = useMemo(() => {
+    const groups: Record<string, ParentCompany> = {};
     
     filteredClients.forEach(client => {
-      const parentName = getParentCompanyName(client.name);
-      
+      const parentName = client.name.split(' ')[0];
       if (!groups[parentName]) {
-        groups[parentName] = {
-          name: parentName,
-          clientNumber: client.client_number || '-',
-          clients: [],
-        };
+        groups[parentName] = { name: parentName, clients: [] };
       }
       groups[parentName].clients.push(client);
     });
 
-    // Sort groups alphabetically by parent company name
     return Object.values(groups).sort((a, b) => a.name.localeCompare(b.name));
-  }, [filteredClients, getParentCompanyName]);
+  }, [filteredClients]);
 
-  const totalUniqueCompanies = companyGroups.length;
+  const toggleGroup = (name: string) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) {
+        next.delete(name);
+      } else {
+        next.add(name);
+      }
+      return next;
+    });
+  };
 
   return (
     <Layout>
-      <div className="p-8 space-y-6 animate-fade-in">
+      <div className="p-8 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Kunden</h1>
-            <p className="text-muted-foreground">
-              {totalUniqueCompanies} Unternehmen, {clients.length} Einträge
-            </p>
+            <h1 className="text-3xl font-bold">Kunden</h1>
+            <p className="text-muted-foreground">{clients.length} Einträge</p>
           </div>
-          <Button className="gap-2" onClick={() => setShowNewClientDialog(true)}>
-            <Plus className="h-4 w-4" />
+          <Button onClick={() => setShowNewClientDialog(true)}>
+            <Plus className="h-4 w-4 mr-2" />
             Neuer Kunde
           </Button>
         </div>
 
         <NewClientDialog open={showNewClientDialog} onOpenChange={setShowNewClientDialog} />
 
-        {/* Search and View Toggle */}
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-          <div className="relative w-full max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        {/* Search + View Toggle */}
+        <div className="flex gap-4 items-center justify-between">
+          <div className="relative max-w-md flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Kunde, Berater oder Kundennummer suchen..."
+              placeholder="Suchen..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -291,85 +97,120 @@ const Clients = () => {
           
           <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
             <TabsList>
-              <TabsTrigger value="list" className="gap-2">
-                <List className="h-4 w-4" />
-                Liste
-              </TabsTrigger>
-              <TabsTrigger value="grouped" className="gap-2">
-                <FolderTree className="h-4 w-4" />
-                Gruppiert
-              </TabsTrigger>
+              <TabsTrigger value="list"><List className="h-4 w-4" /></TabsTrigger>
+              <TabsTrigger value="grouped"><FolderTree className="h-4 w-4" /></TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
 
-        {/* Clients Table */}
+        {/* Content */}
         {error ? (
-          <div className="text-center py-12">
-            <p className="text-destructive">Fehler beim Laden der Kunden</p>
-          </div>
+          <p className="text-destructive text-center py-12">Fehler beim Laden</p>
         ) : isLoading ? (
-          <TableSkeleton />
-        ) : (viewMode === 'list' ? sortedClients : companyGroups).length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">
-              {searchQuery ? 'Keine Kunden gefunden' : 'Noch keine Kunden vorhanden'}
-            </p>
-            {!searchQuery && (
-              <Button className="mt-4" onClick={() => setShowNewClientDialog(true)}>
-                Ersten Kunden erstellen
-              </Button>
-            )}
+          <div className="space-y-2">
+            {[1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full" />)}
           </div>
+        ) : filteredClients.length === 0 ? (
+          <p className="text-muted-foreground text-center py-12">Keine Kunden gefunden</p>
         ) : viewMode === 'list' ? (
-          // FLAT LIST VIEW
-          <div className="border rounded-lg overflow-hidden">
+          /* FLAT LIST */
+          <div className="border rounded-lg">
             <Table>
               <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead className="w-[280px]">Unternehmen</TableHead>
-                  <TableHead className="w-[100px]">Kd-Nr.</TableHead>
-                  <TableHead className="w-[100px]">Land</TableHead>
-                  <TableHead className="w-[160px]">Berater</TableHead>
-                  <TableHead className="w-[180px]">Zertifizierungen</TableHead>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Kd-Nr.</TableHead>
+                  <TableHead>Berater</TableHead>
+                  <TableHead>Zertifizierungen</TableHead>
                   <TableHead>Ansprechpartner</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortedClients.map((client) => (
-                  <FlatClientRow 
+                {filteredClients.map(client => (
+                  <TableRow 
                     key={client.id} 
-                    client={client} 
-                    onViewDetails={handleViewDetails} 
-                  />
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => navigate(`/clients/${client.id}`)}
+                  >
+                    <TableCell className="font-medium">{client.name}</TableCell>
+                    <TableCell>{client.client_number || '-'}</TableCell>
+                    <TableCell>{client.consultant || '-'}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-1 flex-wrap">
+                        {client.certifications?.map(c => (
+                          <Badge key={c} variant="secondary" className="text-xs">{c}</Badge>
+                        ))}
+                      </div>
+                    </TableCell>
+                    <TableCell>{client.contact_person}</TableCell>
+                  </TableRow>
                 ))}
               </TableBody>
             </Table>
           </div>
         ) : (
-          // GROUPED VIEW
-          <div className="border rounded-lg overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead className="w-[280px]">Unternehmen / Standort</TableHead>
-                  <TableHead className="w-[100px]">Kd-Nr.</TableHead>
-                  <TableHead className="w-[100px]">Land</TableHead>
-                  <TableHead className="w-[160px]">Berater</TableHead>
-                  <TableHead className="w-[180px]">Zertifizierungen</TableHead>
-                  <TableHead>Ansprechpartner</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {companyGroups.map((group) => (
-                  <GroupedCompanyRow 
-                    key={group.clientNumber} 
-                    group={group} 
-                    onViewDetails={handleViewDetails} 
-                  />
-                ))}
-              </TableBody>
-            </Table>
+          /* GROUPED VIEW */
+          <div className="border rounded-lg divide-y">
+            {parentCompanies.map(group => {
+              const isExpanded = expandedGroups.has(group.name);
+              const hasMultiple = group.clients.length > 1;
+
+              return (
+                <div key={group.name}>
+                  {/* Parent Row */}
+                  <div
+                    className={`flex items-center gap-3 px-4 py-3 ${hasMultiple ? 'cursor-pointer hover:bg-muted/50' : ''}`}
+                    onClick={() => hasMultiple && toggleGroup(group.name)}
+                  >
+                    {hasMultiple ? (
+                      isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />
+                    ) : (
+                      <Building2 className="h-4 w-4 text-muted-foreground" />
+                    )}
+                    
+                    <span className="font-semibold">{group.name}</span>
+                    
+                    {hasMultiple && (
+                      <Badge variant="outline">{group.clients.length} Standorte</Badge>
+                    )}
+
+                    {!hasMultiple && (
+                      <span 
+                        className="text-primary hover:underline cursor-pointer ml-auto"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/clients/${group.clients[0].id}`);
+                        }}
+                      >
+                        Details →
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Children */}
+                  {hasMultiple && isExpanded && (
+                    <div className="bg-muted/30">
+                      {group.clients.map(client => (
+                        <div
+                          key={client.id}
+                          className="flex items-center gap-3 px-4 py-2 pl-12 hover:bg-muted/50 cursor-pointer border-t border-border/50"
+                          onClick={() => navigate(`/clients/${client.id}`)}
+                        >
+                          <span className="flex-1">{client.name}</span>
+                          <span className="text-muted-foreground text-sm">{client.client_number}</span>
+                          <div className="flex gap-1">
+                            {client.certifications?.map(c => (
+                              <Badge key={c} variant="secondary" className="text-xs">{c}</Badge>
+                            ))}
+                          </div>
+                          <span className="text-muted-foreground text-sm">{client.consultant || '-'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
