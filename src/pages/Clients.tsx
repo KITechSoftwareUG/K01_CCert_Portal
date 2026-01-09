@@ -7,9 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2, Plus, Search, ChevronDown, ChevronRight, List, FolderTree } from 'lucide-react';
+import { ContactPopover } from '@/components/ContactPopover';
+import { Plus, Search, ChevronDown, ChevronRight, List, FolderTree, Building2 } from 'lucide-react';
 
 type ViewMode = 'list' | 'grouped';
 
@@ -27,19 +27,16 @@ const Clients = () => {
   
   const { data: clients = [], isLoading, error } = useClients();
 
-  // Filter clients by search
   const filteredClients = useMemo(() => {
     if (!searchQuery) return clients;
     const query = searchQuery.toLowerCase();
     return clients.filter(client =>
       client.name.toLowerCase().includes(query) ||
       client.contact_person?.toLowerCase().includes(query) ||
-      client.client_number?.toLowerCase().includes(query) ||
-      client.consultant?.toLowerCase().includes(query)
+      client.client_number?.toLowerCase().includes(query)
     );
   }, [searchQuery, clients]);
 
-  // Group by first word of company name (parent company)
   const parentCompanies = useMemo(() => {
     const groups: Record<string, ParentCompany> = {};
     
@@ -114,39 +111,22 @@ const Clients = () => {
           <p className="text-muted-foreground text-center py-12">Keine Kunden gefunden</p>
         ) : viewMode === 'list' ? (
           /* FLAT LIST */
-          <div className="border rounded-lg">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Kd-Nr.</TableHead>
-                  <TableHead>Berater</TableHead>
-                  <TableHead>Zertifizierungen</TableHead>
-                  <TableHead>Ansprechpartner</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredClients.map(client => (
-                  <TableRow 
-                    key={client.id} 
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => navigate(`/clients/${client.id}`)}
-                  >
-                    <TableCell className="font-medium">{client.name}</TableCell>
-                    <TableCell>{client.client_number || '-'}</TableCell>
-                    <TableCell>{client.consultant || '-'}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1 flex-wrap">
-                        {client.certifications?.map(c => (
-                          <Badge key={c} variant="secondary" className="text-xs">{c}</Badge>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell>{client.contact_person}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          <div className="border rounded-lg divide-y">
+            {filteredClients.map(client => (
+              <div
+                key={client.id}
+                className="flex items-center justify-between px-4 py-3 hover:bg-muted/50 cursor-pointer"
+                onClick={() => navigate(`/clients/${client.id}`)}
+              >
+                <span className="font-medium">{client.name}</span>
+                <ContactPopover
+                  name={client.contact_person}
+                  phone={client.phone}
+                  email={client.email}
+                  onEdit={() => navigate(`/clients/${client.id}`)}
+                />
+              </div>
+            ))}
           </div>
         ) : (
           /* GROUPED VIEW */
@@ -159,31 +139,28 @@ const Clients = () => {
                 <div key={group.name}>
                   {/* Parent Row */}
                   <div
-                    className={`flex items-center gap-3 px-4 py-3 ${hasMultiple ? 'cursor-pointer hover:bg-muted/50' : ''}`}
-                    onClick={() => hasMultiple && toggleGroup(group.name)}
+                    className={`flex items-center justify-between px-4 py-3 ${hasMultiple ? 'cursor-pointer hover:bg-muted/50' : ''}`}
+                    onClick={() => hasMultiple ? toggleGroup(group.name) : navigate(`/clients/${group.clients[0].id}`)}
                   >
-                    {hasMultiple ? (
-                      isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />
-                    ) : (
-                      <Building2 className="h-4 w-4 text-muted-foreground" />
-                    )}
-                    
-                    <span className="font-semibold">{group.name}</span>
-                    
-                    {hasMultiple && (
-                      <Badge variant="outline">{group.clients.length} Standorte</Badge>
-                    )}
+                    <div className="flex items-center gap-3">
+                      {hasMultiple ? (
+                        isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />
+                      ) : (
+                        <Building2 className="h-4 w-4 text-muted-foreground" />
+                      )}
+                      <span className="font-semibold">{group.name}</span>
+                      {hasMultiple && (
+                        <Badge variant="outline">{group.clients.length} Standorte</Badge>
+                      )}
+                    </div>
 
                     {!hasMultiple && (
-                      <span 
-                        className="text-primary hover:underline cursor-pointer ml-auto"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/clients/${group.clients[0].id}`);
-                        }}
-                      >
-                        Details →
-                      </span>
+                      <ContactPopover
+                        name={group.clients[0].contact_person}
+                        phone={group.clients[0].phone}
+                        email={group.clients[0].email}
+                        onEdit={() => navigate(`/clients/${group.clients[0].id}`)}
+                      />
                     )}
                   </div>
 
@@ -193,17 +170,16 @@ const Clients = () => {
                       {group.clients.map(client => (
                         <div
                           key={client.id}
-                          className="flex items-center gap-3 px-4 py-2 pl-12 hover:bg-muted/50 cursor-pointer border-t border-border/50"
+                          className="flex items-center justify-between px-4 py-2 pl-12 hover:bg-muted/50 cursor-pointer border-t border-border/50"
                           onClick={() => navigate(`/clients/${client.id}`)}
                         >
-                          <span className="flex-1">{client.name}</span>
-                          <span className="text-muted-foreground text-sm">{client.client_number}</span>
-                          <div className="flex gap-1">
-                            {client.certifications?.map(c => (
-                              <Badge key={c} variant="secondary" className="text-xs">{c}</Badge>
-                            ))}
-                          </div>
-                          <span className="text-muted-foreground text-sm">{client.consultant || '-'}</span>
+                          <span>{client.name}</span>
+                          <ContactPopover
+                            name={client.contact_person}
+                            phone={client.phone}
+                            email={client.email}
+                            onEdit={() => navigate(`/clients/${client.id}`)}
+                          />
                         </div>
                       ))}
                     </div>
