@@ -3,18 +3,24 @@ import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { NewClientDialog } from '@/components/NewClientDialog';
 import { useClients, DbClient } from '@/hooks/useClients';
+import { useContactsByClientIds } from '@/hooks/useContacts';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ContactPopover } from '@/components/ContactPopover';
-import { Plus, Search, ChevronDown, ChevronRight, List, FolderTree, Building2 } from 'lucide-react';
+import { Plus, Search, ChevronDown, ChevronRight, List, FolderTree, Globe, Building2 } from 'lucide-react';
 
-type ViewMode = 'list' | 'grouped';
+type ViewMode = 'list' | 'grouped' | 'country';
 
 interface ParentCompany {
   name: string;
+  clients: DbClient[];
+}
+
+interface CountryGroup {
+  country: string;
   clients: DbClient[];
 }
 
@@ -27,16 +33,22 @@ const Clients = () => {
   
   const { data: clients = [], isLoading, error } = useClients();
 
+  // Get all client IDs for bulk contact fetch
+  const clientIds = useMemo(() => clients.map(c => c.id), [clients]);
+  const { data: contactsMap = {} } = useContactsByClientIds(clientIds);
+
   const filteredClients = useMemo(() => {
     if (!searchQuery) return clients;
     const query = searchQuery.toLowerCase();
     return clients.filter(client =>
       client.name.toLowerCase().includes(query) ||
       client.contact_person?.toLowerCase().includes(query) ||
-      client.client_number?.toLowerCase().includes(query)
+      client.client_number?.toLowerCase().includes(query) ||
+      client.country?.toLowerCase().includes(query)
     );
   }, [searchQuery, clients]);
 
+  // Group by parent company (first word)
   const parentCompanies = useMemo(() => {
     const groups: Record<string, ParentCompany> = {};
     
@@ -51,6 +63,21 @@ const Clients = () => {
     return Object.values(groups).sort((a, b) => a.name.localeCompare(b.name));
   }, [filteredClients]);
 
+  // Group by country
+  const countryGroups = useMemo(() => {
+    const groups: Record<string, CountryGroup> = {};
+    
+    filteredClients.forEach(client => {
+      const country = client.country || 'Unbekannt';
+      if (!groups[country]) {
+        groups[country] = { country, clients: [] };
+      }
+      groups[country].clients.push(client);
+    });
+
+    return Object.values(groups).sort((a, b) => a.country.localeCompare(b.country));
+  }, [filteredClients]);
+
   const toggleGroup = (name: string) => {
     setExpandedGroups(prev => {
       const next = new Set(prev);
@@ -61,6 +88,26 @@ const Clients = () => {
       }
       return next;
     });
+  };
+
+  const renderClientRow = (client: DbClient, indent = false) => {
+    const contacts = contactsMap[client.id] || [];
+    return (
+      <div
+        key={client.id}
+        className={`flex items-center justify-between px-4 py-2 hover:bg-muted/50 cursor-pointer border-t border-border/50 ${indent ? 'pl-12 bg-muted/30' : ''}`}
+        onClick={() => navigate(`/clients/${client.id}`)}
+      >
+        <span className={indent ? '' : 'font-medium'}>{client.name}</span>
+        <ContactPopover
+          legacyName={client.contact_person}
+          legacyPhone={client.phone}
+          legacyEmail={client.email}
+          contacts={contacts}
+          onEdit={() => navigate(`/clients/${client.id}`)}
+        />
+      </div>
+    );
   };
 
   return (
@@ -94,8 +141,9 @@ const Clients = () => {
           
           <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
             <TabsList>
-              <TabsTrigger value="list"><List className="h-4 w-4" /></TabsTrigger>
-              <TabsTrigger value="grouped"><FolderTree className="h-4 w-4" /></TabsTrigger>
+              <TabsTrigger value="list" title="Liste"><List className="h-4 w-4" /></TabsTrigger>
+              <TabsTrigger value="grouped" title="Unternehmen"><FolderTree className="h-4 w-4" /></TabsTrigger>
+              <TabsTrigger value="country" title="Länder"><Globe className="h-4 w-4" /></TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -112,19 +160,54 @@ const Clients = () => {
         ) : viewMode === 'list' ? (
           /* FLAT LIST */
           <div className="border rounded-lg divide-y">
-            {filteredClients.map(client => (
-              <div
-                key={client.id}
-                className="flex items-center justify-between px-4 py-3 hover:bg-muted/50 cursor-pointer"
-                onClick={() => navigate(`/clients/${client.id}`)}
-              >
-                <span className="font-medium">{client.name}</span>
-                <ContactPopover
-                  name={client.contact_person}
-                  phone={client.phone}
-                  email={client.email}
-                  onEdit={() => navigate(`/clients/${client.id}`)}
-                />
+            {filteredClients.map(client => renderClientRow(client))}
+          </div>
+        ) : viewMode === 'country' ? (
+          /* COUNTRY TILES */
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {countryGroups.map(group => (
+              <div key={group.country} className="border rounded-lg overflow-hidden">
+                <div 
+                  className="flex items-center justify-between px-4 py-3 bg-muted/50 cursor-pointer"
+                  onClick={() => toggleGroup(`country-${group.country}`)}
+                >
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-semibold">{group.country}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">{group.clients.length}</Badge>
+                    {expandedGroups.has(`country-${group.country}`) ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                  </div>
+                </div>
+                
+                {expandedGroups.has(`country-${group.country}`) && (
+                  <div className="divide-y">
+                    {group.clients.map(client => {
+                      const contacts = contactsMap[client.id] || [];
+                      return (
+                        <div
+                          key={client.id}
+                          className="flex items-center justify-between px-4 py-2 hover:bg-muted/50 cursor-pointer"
+                          onClick={() => navigate(`/clients/${client.id}`)}
+                        >
+                          <span className="text-sm">{client.name}</span>
+                          <ContactPopover
+                            legacyName={client.contact_person}
+                            legacyPhone={client.phone}
+                            legacyEmail={client.email}
+                            contacts={contacts}
+                            onEdit={() => navigate(`/clients/${client.id}`)}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -134,13 +217,15 @@ const Clients = () => {
             {parentCompanies.map(group => {
               const isExpanded = expandedGroups.has(group.name);
               const hasMultiple = group.clients.length > 1;
+              const firstClient = group.clients[0];
+              const firstContacts = contactsMap[firstClient.id] || [];
 
               return (
                 <div key={group.name}>
                   {/* Parent Row */}
                   <div
-                    className={`flex items-center justify-between px-4 py-3 ${hasMultiple ? 'cursor-pointer hover:bg-muted/50' : ''}`}
-                    onClick={() => hasMultiple ? toggleGroup(group.name) : navigate(`/clients/${group.clients[0].id}`)}
+                    className={`flex items-center justify-between px-4 py-3 ${hasMultiple ? 'cursor-pointer hover:bg-muted/50' : 'cursor-pointer hover:bg-muted/50'}`}
+                    onClick={() => hasMultiple ? toggleGroup(group.name) : navigate(`/clients/${firstClient.id}`)}
                   >
                     <div className="flex items-center gap-3">
                       {hasMultiple ? (
@@ -156,10 +241,11 @@ const Clients = () => {
 
                     {!hasMultiple && (
                       <ContactPopover
-                        name={group.clients[0].contact_person}
-                        phone={group.clients[0].phone}
-                        email={group.clients[0].email}
-                        onEdit={() => navigate(`/clients/${group.clients[0].id}`)}
+                        legacyName={firstClient.contact_person}
+                        legacyPhone={firstClient.phone}
+                        legacyEmail={firstClient.email}
+                        contacts={firstContacts}
+                        onEdit={() => navigate(`/clients/${firstClient.id}`)}
                       />
                     )}
                   </div>
@@ -167,21 +253,25 @@ const Clients = () => {
                   {/* Children */}
                   {hasMultiple && isExpanded && (
                     <div className="bg-muted/30">
-                      {group.clients.map(client => (
-                        <div
-                          key={client.id}
-                          className="flex items-center justify-between px-4 py-2 pl-12 hover:bg-muted/50 cursor-pointer border-t border-border/50"
-                          onClick={() => navigate(`/clients/${client.id}`)}
-                        >
-                          <span>{client.name}</span>
-                          <ContactPopover
-                            name={client.contact_person}
-                            phone={client.phone}
-                            email={client.email}
-                            onEdit={() => navigate(`/clients/${client.id}`)}
-                          />
-                        </div>
-                      ))}
+                      {group.clients.map(client => {
+                        const contacts = contactsMap[client.id] || [];
+                        return (
+                          <div
+                            key={client.id}
+                            className="flex items-center justify-between px-4 py-2 pl-12 hover:bg-muted/50 cursor-pointer border-t border-border/50"
+                            onClick={() => navigate(`/clients/${client.id}`)}
+                          >
+                            <span>{client.name}</span>
+                            <ContactPopover
+                              legacyName={client.contact_person}
+                              legacyPhone={client.phone}
+                              legacyEmail={client.email}
+                              contacts={contacts}
+                              onEdit={() => navigate(`/clients/${client.id}`)}
+                            />
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
