@@ -61,11 +61,55 @@ export type Database = {
           },
         ]
       }
+      auditors: {
+        Row: {
+          certification_body_id: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          certification_body_id?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          certification_body_id?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auditors_certification_body_id_fkey"
+            columns: ["certification_body_id"]
+            isOneToOne: false
+            referencedRelation: "certification_bodies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audits: {
         Row: {
+          auditor_id: string | null
+          certification_body_id: string | null
           certifications:
             | Database["public"]["Enums"]["certification_standard"][]
             | null
+          client_certification_id: string | null
           client_id: string
           created_at: string
           id: string
@@ -76,9 +120,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          auditor_id?: string | null
+          certification_body_id?: string | null
           certifications?:
             | Database["public"]["Enums"]["certification_standard"][]
             | null
+          client_certification_id?: string | null
           client_id: string
           created_at?: string
           id?: string
@@ -89,9 +136,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          auditor_id?: string | null
+          certification_body_id?: string | null
           certifications?:
             | Database["public"]["Enums"]["certification_standard"][]
             | null
+          client_certification_id?: string | null
           client_id?: string
           created_at?: string
           id?: string
@@ -102,6 +152,27 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "audits_auditor_id_fkey"
+            columns: ["auditor_id"]
+            isOneToOne: false
+            referencedRelation: "auditors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audits_certification_body_id_fkey"
+            columns: ["certification_body_id"]
+            isOneToOne: false
+            referencedRelation: "certification_bodies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audits_client_certification_id_fkey"
+            columns: ["client_certification_id"]
+            isOneToOne: false
+            referencedRelation: "client_certifications"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "audits_client_id_fkey"
             columns: ["client_id"]
@@ -150,6 +221,27 @@ export type Database = {
         }
         Relationships: []
       }
+      certifications: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       client_certification_bodies: {
         Row: {
           certification_body_id: string
@@ -179,6 +271,60 @@ export type Database = {
           },
           {
             foreignKeyName: "client_certification_bodies_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_certifications: {
+        Row: {
+          certificate_number: string | null
+          certification_id: string
+          client_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          status: string | null
+          updated_at: string
+          valid_from: string | null
+          valid_until: string | null
+        }
+        Insert: {
+          certificate_number?: string | null
+          certification_id: string
+          client_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          status?: string | null
+          updated_at?: string
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          certificate_number?: string | null
+          certification_id?: string
+          client_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          status?: string | null
+          updated_at?: string
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_certifications_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "certifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_certifications_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
