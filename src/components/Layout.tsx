@@ -7,6 +7,7 @@ import {
   ClipboardCheck, 
   Calendar,
   Building2,
+  UserCheck,
   LogOut,
   Shield
 } from 'lucide-react';
@@ -28,6 +29,7 @@ const navigation = [
   { name: 'Kunden', href: '/clients', icon: Users },
   { name: 'Audits', href: '/audits', icon: ClipboardCheck },
   { name: 'Zertifizierer', href: '/certification-bodies', icon: Building2 },
+  { name: 'Auditoren', href: '/auditors', icon: UserCheck },
   { name: 'Kalender', href: '/calendar', icon: Calendar },
 ];
 
