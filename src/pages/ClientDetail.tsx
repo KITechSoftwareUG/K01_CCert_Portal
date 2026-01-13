@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
-import { useClient, useUpdateClient, useDeleteClient, CertificationStandard } from '@/hooks/useClients';
+import { useClient, useUpdateClient, useDeleteClient, useParentClients, CertificationStandard } from '@/hooks/useClients';
 import { useCertificationBodies, useClientCertificationBodies, useUpdateClientCertificationBodies } from '@/hooks/useCertificationBodies';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -31,7 +31,8 @@ import {
   Globe,
   Award,
   Hash,
-  UserCheck
+  UserCheck,
+  Users
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -103,6 +104,8 @@ const ClientDetail = () => {
   const updateCertBodies = useUpdateClientCertificationBodies();
   const deleteClient = useDeleteClient();
   
+  const { data: parentClients = [] } = useParentClients();
+  
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState('');
   const [clientNumber, setClientNumber] = useState('');
@@ -112,8 +115,21 @@ const ClientDetail = () => {
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [country, setCountry] = useState('Deutschland');
+  const [parentClientId, setParentClientId] = useState<string>('');
   const [selectedCertifications, setSelectedCertifications] = useState<CertificationStandard[]>([]);
   const [selectedCertBodies, setSelectedCertBodies] = useState<string[]>([]);
+
+  // Filter out current client from parent options (can't be its own parent)
+  const sortedParentClients = useMemo(() => 
+    [...parentClients].filter(p => p.id !== id).sort((a, b) => a.name.localeCompare(b.name)),
+    [parentClients, id]
+  );
+
+  // Get parent client info
+  const parentClient = useMemo(() => 
+    parentClients.find(p => p.id === client?.parent_client_id),
+    [parentClients, client?.parent_client_id]
+  );
 
   // Initialize form when client loads
   useEffect(() => {
@@ -126,6 +142,7 @@ const ClientDetail = () => {
       setPhone(client.phone || '');
       setAddress(client.address || '');
       setCountry(client.country || 'Deutschland');
+      setParentClientId(client.parent_client_id || '');
       setSelectedCertifications((client.certifications || []) as CertificationStandard[]);
     }
   }, [client]);
@@ -170,6 +187,7 @@ const ClientDetail = () => {
         phone: phone || null,
         address: address || null,
         country,
+        parent_client_id: parentClientId || null,
         certifications: selectedCertifications,
       });
 
@@ -184,7 +202,7 @@ const ClientDetail = () => {
       console.error('Error updating client:', error);
       toast.error('Fehler beim Aktualisieren des Kunden');
     }
-  }, [id, name, contactPerson, email, phone, address, country, selectedCertifications, selectedCertBodies, updateClient, updateCertBodies]);
+  }, [id, name, clientNumber, consultant, contactPerson, email, phone, address, country, parentClientId, selectedCertifications, selectedCertBodies, updateClient, updateCertBodies]);
 
   const handleCancel = useCallback(() => {
     if (client) {
@@ -196,6 +214,7 @@ const ClientDetail = () => {
       setPhone(client.phone || '');
       setAddress(client.address || '');
       setCountry(client.country || 'Deutschland');
+      setParentClientId(client.parent_client_id || '');
       setSelectedCertifications((client.certifications || []) as CertificationStandard[]);
       setSelectedCertBodies(clientCertBodies.map((cb: any) => cb.certification_body_id));
     }
@@ -309,6 +328,30 @@ const ClientDetail = () => {
               <CardContent className="space-y-4">
                 {isEditing ? (
                   <>
+                    {/* Parent Company Selection */}
+                    <div className="space-y-2 p-4 border rounded-lg bg-muted/30">
+                      <Label htmlFor="parent" className="flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        Unternehmensgruppe
+                      </Label>
+                      <Select value={parentClientId} onValueChange={setParentClientId}>
+                        <SelectTrigger id="parent">
+                          <SelectValue placeholder="Keine Gruppe (eigenständig)" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background border shadow-lg z-50">
+                          <SelectItem value="">Keine Gruppe (eigenständig)</SelectItem>
+                          {sortedParentClients.map((parent) => (
+                            <SelectItem key={parent.id} value={parent.id}>
+                              {parent.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Ordnen Sie diesen Kunden einer Unternehmensgruppe zu
+                      </p>
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-2 md:col-span-2">
                         <Label htmlFor="name">Firmenname *</Label>
@@ -396,6 +439,19 @@ const ClientDetail = () => {
                   </>
                 ) : (
                   <div className="space-y-4">
+                    {/* Parent Company Display */}
+                    {parentClient && (
+                      <div 
+                        className="flex items-center gap-3 p-3 rounded-lg bg-primary/10 border border-primary/20 cursor-pointer hover:bg-primary/20 transition-colors"
+                        onClick={() => navigate(`/clients/${parentClient.id}`)}
+                      >
+                        <Users className="h-5 w-5 text-primary" />
+                        <div>
+                          <p className="text-sm text-muted-foreground">Unternehmensgruppe</p>
+                          <p className="font-medium text-primary">{parentClient.name}</p>
+                        </div>
+                      </div>
+                    )}
                     <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                       <Building2 className="h-5 w-5 text-muted-foreground" />
                       <div>
