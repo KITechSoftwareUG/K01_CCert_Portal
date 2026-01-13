@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -18,16 +18,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { useCreateClient, CertificationStandard } from '@/hooks/useClients';
+import { useCreateClient, useParentClients, CertificationStandard } from '@/hooks/useClients';
 import { useCertificationBodies, useUpdateClientCertificationBodies } from '@/hooks/useCertificationBodies';
+import { useCertifications } from '@/hooks/useCertifications';
+import { useCreateClientCertification } from '@/hooks/useClientCertifications';
 import { Constants } from '@/integrations/supabase/types';
 
 interface NewClientDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
-
-const certificationOptions = Constants.public.Enums.certification_standard;
 
 const COUNTRIES = [
   'Deutschland',
@@ -53,18 +53,27 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [country, setCountry] = useState('Deutschland');
-  const [selectedCertifications, setSelectedCertifications] = useState<CertificationStandard[]>([]);
+  const [parentClientId, setParentClientId] = useState<string>('');
+  const [selectedCertifications, setSelectedCertifications] = useState<string[]>([]);
   const [selectedCertBodies, setSelectedCertBodies] = useState<string[]>([]);
   
   const createClient = useCreateClient();
   const updateCertBodies = useUpdateClientCertificationBodies();
+  const createClientCert = useCreateClientCertification();
   const { data: certificationBodies = [] } = useCertificationBodies();
+  const { data: parentClients = [] } = useParentClients();
+  const { data: certifications = [] } = useCertifications();
 
-  const toggleCertification = (cert: CertificationStandard) => {
+  const sortedParentClients = useMemo(() => 
+    [...parentClients].sort((a, b) => a.name.localeCompare(b.name)),
+    [parentClients]
+  );
+
+  const toggleCertification = (certId: string) => {
     setSelectedCertifications(prev =>
-      prev.includes(cert)
-        ? prev.filter(c => c !== cert)
-        : [...prev, cert]
+      prev.includes(certId)
+        ? prev.filter(c => c !== certId)
+        : [...prev, certId]
     );
   };
 
@@ -85,6 +94,7 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
     setPhone('');
     setAddress('');
     setCountry('Deutschland');
+    setParentClientId('');
     setSelectedCertifications([]);
     setSelectedCertBodies([]);
   };
@@ -107,7 +117,8 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
         phone: phone || null,
         address: address || null,
         country,
-        certifications: selectedCertifications,
+        parent_client_id: parentClientId || null,
+        certifications: [], // Legacy field, no longer used
       });
       
       // Add certification bodies
@@ -115,6 +126,14 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
         await updateCertBodies.mutateAsync({
           clientId: client.id,
           certificationBodyIds: selectedCertBodies,
+        });
+      }
+
+      // Add client certifications (new system)
+      for (const certId of selectedCertifications) {
+        await createClientCert.mutateAsync({
+          client_id: client.id,
+          certification_id: certId,
         });
       }
       
@@ -138,6 +157,27 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Parent Company Selection */}
+          <div className="space-y-2">
+            <Label htmlFor="parent">Unternehmensgruppe (optional)</Label>
+            <Select value={parentClientId} onValueChange={setParentClientId}>
+              <SelectTrigger id="parent">
+                <SelectValue placeholder="Keine Gruppe (eigenständig)" />
+              </SelectTrigger>
+              <SelectContent className="bg-background border shadow-lg z-50">
+                <SelectItem value="">Keine Gruppe (eigenständig)</SelectItem>
+                {sortedParentClients.map((parent) => (
+                  <SelectItem key={parent.id} value={parent.id}>
+                    {parent.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Wählen Sie eine Unternehmensgruppe, wenn dieser Kunde zu einem Konzern gehört
+            </p>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Company Name */}
             <div className="space-y-2 md:col-span-2">
@@ -146,7 +186,7 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="z.B. Holz GmbH"
+                placeholder="z.B. REUSS Energie GmbH"
               />
             </div>
 
@@ -157,7 +197,7 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
                 id="client-number"
                 value={clientNumber}
                 onChange={(e) => setClientNumber(e.target.value)}
-                placeholder="z.B. 0001"
+                placeholder="z.B. 02"
               />
             </div>
           </div>
@@ -238,22 +278,22 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
             />
           </div>
 
-          {/* Certifications */}
+          {/* Certifications (New System) */}
           <div className="space-y-2">
             <Label>Zertifizierungen</Label>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-4 border rounded-lg">
-              {certificationOptions.map((cert) => (
-                <div key={cert} className="flex items-center space-x-2">
+              {certifications.map((cert) => (
+                <div key={cert.id} className="flex items-center space-x-2">
                   <Checkbox
-                    id={`client-${cert}`}
-                    checked={selectedCertifications.includes(cert)}
-                    onCheckedChange={() => toggleCertification(cert)}
+                    id={`cert-${cert.id}`}
+                    checked={selectedCertifications.includes(cert.id)}
+                    onCheckedChange={() => toggleCertification(cert.id)}
                   />
                   <label
-                    htmlFor={`client-${cert}`}
+                    htmlFor={`cert-${cert.id}`}
                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                   >
-                    {cert}
+                    {cert.name}
                   </label>
                 </div>
               ))}
