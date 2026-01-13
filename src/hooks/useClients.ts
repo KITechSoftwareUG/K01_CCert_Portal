@@ -6,6 +6,11 @@ export type DbClient = Tables<'clients'>;
 export type DbClientInsert = TablesInsert<'clients'>;
 export type CertificationStandard = Enums<'certification_standard'>;
 
+export type ClientWithChildren = DbClient & {
+  children?: DbClient[];
+  parent?: DbClient | null;
+};
+
 export const useClients = () => {
   return useQuery({
     queryKey: ['clients'],
@@ -13,11 +18,46 @@ export const useClients = () => {
       const { data, error } = await supabase
         .from('clients')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('name', { ascending: true });
       
       if (error) throw error;
       return data as DbClient[];
     },
+  });
+};
+
+// Get only parent companies (those without a parent_client_id)
+export const useParentClients = () => {
+  return useQuery({
+    queryKey: ['clients', 'parents'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .is('parent_client_id', null)
+        .order('name', { ascending: true });
+      
+      if (error) throw error;
+      return data as DbClient[];
+    },
+  });
+};
+
+// Get children of a specific parent
+export const useChildClients = (parentId: string | undefined) => {
+  return useQuery({
+    queryKey: ['clients', 'children', parentId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('parent_client_id', parentId!)
+        .order('name', { ascending: true });
+      
+      if (error) throw error;
+      return data as DbClient[];
+    },
+    enabled: !!parentId,
   });
 };
 

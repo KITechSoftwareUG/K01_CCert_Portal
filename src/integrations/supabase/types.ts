@@ -346,6 +346,7 @@ export type Database = {
           email: string
           id: string
           name: string
+          parent_client_id: string | null
           phone: string | null
           updated_at: string
         }
@@ -362,6 +363,7 @@ export type Database = {
           email: string
           id?: string
           name: string
+          parent_client_id?: string | null
           phone?: string | null
           updated_at?: string
         }
@@ -378,10 +380,19 @@ export type Database = {
           email?: string
           id?: string
           name?: string
+          parent_client_id?: string | null
           phone?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "clients_parent_client_id_fkey"
+            columns: ["parent_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       contacts: {
         Row: {
