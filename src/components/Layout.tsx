@@ -27,8 +27,8 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Kunden', href: '/clients', icon: Users },
   { name: 'Audits', href: '/audits', icon: ClipboardCheck },
-  { name: 'Kalender', href: '/calendar', icon: Calendar },
   { name: 'Zertifizierer', href: '/certification-bodies', icon: Building2 },
+  { name: 'Kalender', href: '/calendar', icon: Calendar },
 ];
 
 export const Layout = ({ children }: LayoutProps) => {
