@@ -39,15 +39,21 @@ interface ClientWithCerts {
   certifications: CertificationRow[];
 }
 
-interface CertificationRow {
-  clientId: string;
-  clientName: string;
-  clientNumber: string | null;
+interface CertificationInfo {
   certificationId: string;
   certificationName: string;
   certificateNumber: string | null;
   validUntil: string | null;
   status: string | null;
+}
+
+interface CertificationRow {
+  clientId: string;
+  clientName: string;
+  clientNumber: string | null;
+  certifications: CertificationInfo[];
+  // Use earliest validUntil for sorting/display
+  earliestValidUntil: string | null;
 }
 
 const Clients = () => {
@@ -66,17 +72,27 @@ const Clients = () => {
   const clientIds = useMemo(() => clients.map(c => c.id), [clients]);
   const { data: contactsMap = {} } = useContactsByClientIds(clientIds);
 
-  // Create a map of client certifications by client ID
+  // Create a map of client certifications by client ID, grouped by certificate_number
   const certificationsByClient = useMemo(() => {
     const map: Record<string, CertificationRow[]> = {};
+    
+    // First, collect all certifications per client
+    const rawCertsByClient: Record<string, CertificationInfo[]> = {};
+    const clientInfoMap: Record<string, { name: string; number: string | null }> = {};
+    
     allCertifications.forEach((cc: any) => {
       if (!cc.clients || !cc.certifications) return;
       const clientId = cc.client_id;
-      if (!map[clientId]) map[clientId] = [];
-      map[clientId].push({
-        clientId,
-        clientName: cc.clients.name,
-        clientNumber: cc.clients.client_number,
+      
+      if (!rawCertsByClient[clientId]) rawCertsByClient[clientId] = [];
+      if (!clientInfoMap[clientId]) {
+        clientInfoMap[clientId] = {
+          name: cc.clients.name,
+          number: cc.clients.client_number,
+        };
+      }
+      
+      rawCertsByClient[clientId].push({
         certificationId: cc.certification_id,
         certificationName: cc.certifications.name,
         certificateNumber: cc.certificate_number,
@@ -84,6 +100,51 @@ const Clients = () => {
         status: cc.status,
       });
     });
+    
+    // Group certifications by certificate_number (same number = same row)
+    Object.entries(rawCertsByClient).forEach(([clientId, certs]) => {
+      const grouped: Record<string, CertificationInfo[]> = {};
+      const noNumber: CertificationInfo[] = [];
+      
+      certs.forEach(cert => {
+        if (cert.certificateNumber) {
+          if (!grouped[cert.certificateNumber]) grouped[cert.certificateNumber] = [];
+          grouped[cert.certificateNumber].push(cert);
+        } else {
+          noNumber.push(cert);
+        }
+      });
+      
+      map[clientId] = [];
+      
+      // Add grouped certifications (those with same certificate number)
+      Object.entries(grouped).forEach(([certNum, groupedCerts]) => {
+        const earliestDate = groupedCerts
+          .map(c => c.validUntil)
+          .filter(Boolean)
+          .sort()[0] || null;
+          
+        map[clientId].push({
+          clientId,
+          clientName: clientInfoMap[clientId].name,
+          clientNumber: clientInfoMap[clientId].number,
+          certifications: groupedCerts,
+          earliestValidUntil: earliestDate,
+        });
+      });
+      
+      // Add certifications without certificate number as individual rows
+      noNumber.forEach(cert => {
+        map[clientId].push({
+          clientId,
+          clientName: clientInfoMap[clientId].name,
+          clientNumber: clientInfoMap[clientId].number,
+          certifications: [cert],
+          earliestValidUntil: cert.validUntil,
+        });
+      });
+    });
+    
     return map;
   }, [allCertifications]);
 
@@ -181,37 +242,41 @@ const Clients = () => {
   };
 
   const renderCertificationRows = (clientId: string) => {
-    const certs = certificationsByClient[clientId] || [];
-    if (certs.length === 0) {
+    const certRows = certificationsByClient[clientId] || [];
+    if (certRows.length === 0) {
       return (
         <div className="pl-16 py-2 text-sm text-muted-foreground italic">
           Keine Zertifizierungen
         </div>
       );
     }
-    return certs.map((cert, idx) => (
+    return certRows.map((row, idx) => (
       <div
-        key={`${cert.clientId}-${cert.certificationId}-${idx}`}
+        key={`${row.clientId}-${idx}`}
         className="flex items-center gap-4 pl-16 pr-4 py-2 text-sm border-t border-border/30 hover:bg-muted/30 cursor-pointer"
-        onClick={() => navigate(`/clients/${cert.clientId}`)}
+        onClick={() => navigate(`/clients/${row.clientId}`)}
       >
-        <Badge variant="secondary" className="gap-1">
-          <Award className="h-3 w-3" />
-          {cert.certificationName}
-        </Badge>
-        {cert.certificateNumber && (
+        <div className="flex items-center gap-2">
+          {row.certifications.map((cert, certIdx) => (
+            <Badge key={cert.certificationId} variant="secondary" className="gap-1">
+              <Award className="h-3 w-3" />
+              {cert.certificationName}
+            </Badge>
+          ))}
+        </div>
+        {row.certifications[0]?.certificateNumber && (
           <span className="text-muted-foreground">
-            Nr. {cert.certificateNumber}
+            Nr. {row.certifications[0].certificateNumber}
           </span>
         )}
-        {cert.validUntil && (
+        {row.earliestValidUntil && (
           <span className="text-muted-foreground">
-            bis {new Date(cert.validUntil).toLocaleDateString('de-DE')}
+            bis {new Date(row.earliestValidUntil).toLocaleDateString('de-DE')}
           </span>
         )}
-        {cert.status && cert.status !== 'active' && (
-          <Badge variant={cert.status === 'expired' ? 'destructive' : 'outline'}>
-            {cert.status}
+        {row.certifications.some(c => c.status && c.status !== 'active') && (
+          <Badge variant={row.certifications.some(c => c.status === 'expired') ? 'destructive' : 'outline'}>
+            {row.certifications.find(c => c.status !== 'active')?.status}
           </Badge>
         )}
       </div>
@@ -423,29 +488,33 @@ const Clients = () => {
                             
                             {/* Certification Rows */}
                             {certifications.length > 0 ? (
-                              certifications.map((cert, idx) => (
+                              certifications.map((row, idx) => (
                                 <div
-                                  key={`${cert.clientId}-${cert.certificationId}-${idx}`}
+                                  key={`${row.clientId}-${idx}`}
                                   className={`flex items-center gap-4 px-4 py-2 text-sm border-t border-border/30 hover:bg-muted/40 cursor-pointer ${isMultiClient ? 'pl-14' : 'pl-10'}`}
-                                  onClick={() => navigate(`/clients/${cert.clientId}`)}
+                                  onClick={() => navigate(`/clients/${row.clientId}`)}
                                 >
-                                  <Badge variant="secondary" className="gap-1">
-                                    <Award className="h-3 w-3" />
-                                    {cert.certificationName}
-                                  </Badge>
-                                  {cert.certificateNumber && (
+                                  <div className="flex items-center gap-2">
+                                    {row.certifications.map((cert) => (
+                                      <Badge key={cert.certificationId} variant="secondary" className="gap-1">
+                                        <Award className="h-3 w-3" />
+                                        {cert.certificationName}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                  {row.certifications[0]?.certificateNumber && (
                                     <span className="text-muted-foreground">
-                                      Nr. {cert.certificateNumber}
+                                      Nr. {row.certifications[0].certificateNumber}
                                     </span>
                                   )}
-                                  {cert.validUntil && (
+                                  {row.earliestValidUntil && (
                                     <span className="text-muted-foreground">
-                                      bis {new Date(cert.validUntil).toLocaleDateString('de-DE')}
+                                      bis {new Date(row.earliestValidUntil).toLocaleDateString('de-DE')}
                                     </span>
                                   )}
-                                  {cert.status && cert.status !== 'active' && (
-                                    <Badge variant={cert.status === 'expired' ? 'destructive' : 'outline'}>
-                                      {cert.status}
+                                  {row.certifications.some(c => c.status && c.status !== 'active') && (
+                                    <Badge variant={row.certifications.some(c => c.status === 'expired') ? 'destructive' : 'outline'}>
+                                      {row.certifications.find(c => c.status !== 'active')?.status}
                                     </Badge>
                                   )}
                                 </div>
