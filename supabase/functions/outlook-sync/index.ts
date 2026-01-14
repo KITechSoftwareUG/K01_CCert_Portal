@@ -118,40 +118,75 @@ serve(async (req) => {
       });
     }
 
-    console.log('Syncing', audits.length, 'audits to Outlook for user:', user.id);
+    console.log('Syncing', audits.length, 'events to Outlook for user:', user.id);
 
     const results = [];
     const errors = [];
 
     for (const audit of audits) {
       try {
-        // Create calendar event
-        const eventData = {
-          subject: `Audit: ${audit.clientName}`,
-          body: {
-            contentType: 'HTML',
-            content: `
-              <p><strong>Kunde:</strong> ${audit.clientName}</p>
-              <p><strong>Typ:</strong> ${audit.type}</p>
-              <p><strong>Status:</strong> ${audit.status}</p>
-              ${audit.certifications ? `<p><strong>Zertifizierungen:</strong> ${audit.certifications.join(', ')}</p>` : ''}
-              ${audit.notes ? `<p><strong>Notizen:</strong> ${audit.notes}</p>` : ''}
-            `,
-          },
-          start: {
-            dateTime: new Date(audit.scheduledDate).toISOString(),
-            timeZone: 'Europe/Berlin',
-          },
-          end: {
-            // Assume 2 hour duration if not specified
-            dateTime: new Date(new Date(audit.scheduledDate).getTime() + 2 * 60 * 60 * 1000).toISOString(),
-            timeZone: 'Europe/Berlin',
-          },
-          location: {
-            displayName: audit.clientAddress || '',
-          },
-          categories: ['Audit'],
-        };
+        let eventData;
+
+        // Check if this is a certification event (all-day blocker)
+        if (audit.eventType === 'certification' && audit.isAllDay) {
+          // All-day event for certification expiry/reminder
+          const eventDate = new Date(audit.scheduledDate);
+          const startDate = eventDate.toISOString().split('T')[0];
+          const endDate = new Date(eventDate.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+          eventData = {
+            subject: audit.title || `Zertifikat: ${audit.clientName}`,
+            body: {
+              contentType: 'HTML',
+              content: `
+                <p><strong>Zertifikats-Termin</strong></p>
+                <p><strong>Kunde:</strong> ${audit.clientName}</p>
+                <p>${audit.notes || ''}</p>
+              `,
+            },
+            start: {
+              dateTime: startDate,
+              timeZone: 'Europe/Berlin',
+            },
+            end: {
+              dateTime: endDate,
+              timeZone: 'Europe/Berlin',
+            },
+            isAllDay: true,
+            showAs: 'busy', // Blocker - shows as busy
+            categories: ['Zertifikat'],
+            importance: audit.type === 'certification-expiry' ? 'high' : 'normal',
+            reminderMinutesBeforeStart: 1440, // 1 day before
+          };
+        } else {
+          // Regular audit event (not all-day)
+          eventData = {
+            subject: `Audit: ${audit.clientName}`,
+            body: {
+              contentType: 'HTML',
+              content: `
+                <p><strong>Kunde:</strong> ${audit.clientName}</p>
+                <p><strong>Typ:</strong> ${audit.type}</p>
+                <p><strong>Status:</strong> ${audit.status}</p>
+                ${audit.certifications?.length ? `<p><strong>Zertifizierungen:</strong> ${audit.certifications.join(', ')}</p>` : ''}
+                ${audit.notes ? `<p><strong>Notizen:</strong> ${audit.notes}</p>` : ''}
+              `,
+            },
+            start: {
+              dateTime: new Date(audit.scheduledDate).toISOString(),
+              timeZone: 'Europe/Berlin',
+            },
+            end: {
+              // Assume 2 hour duration if not specified
+              dateTime: new Date(new Date(audit.scheduledDate).getTime() + 2 * 60 * 60 * 1000).toISOString(),
+              timeZone: 'Europe/Berlin',
+            },
+            location: {
+              displayName: audit.clientAddress || '',
+            },
+            categories: ['Audit'],
+          };
+        }
 
         const response = await fetch('https://graph.microsoft.com/v1.0/me/events', {
           method: 'POST',
@@ -165,14 +200,14 @@ serve(async (req) => {
         const result = await response.json();
 
         if (!response.ok) {
-          console.error('Error creating event for audit:', audit.id, result);
+          console.error('Error creating event for:', audit.id, result);
           errors.push({ auditId: audit.id, error: result.error?.message || 'Unknown error' });
         } else {
-          console.log('Successfully created event for audit:', audit.id);
+          console.log('Successfully created event for:', audit.id);
           results.push({ auditId: audit.id, eventId: result.id });
         }
       } catch (err: unknown) {
-        console.error('Exception creating event for audit:', audit.id, err);
+        console.error('Exception creating event for:', audit.id, err);
         const errMessage = err instanceof Error ? err.message : 'Unknown error';
         errors.push({ auditId: audit.id, error: errMessage });
       }
