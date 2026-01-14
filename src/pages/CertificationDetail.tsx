@@ -1,0 +1,584 @@
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Layout } from '@/components/Layout';
+import { 
+  useClientCertification, 
+  useUpdateClientCertification 
+} from '@/hooks/useClientCertifications';
+import { useClient } from '@/hooks/useClients';
+import { 
+  useCertificationDocuments, 
+  useUploadCertificationDocument,
+  useDeleteCertificationDocument,
+  getDocumentUrl,
+} from '@/hooks/useCertificationDocuments';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { 
+  ArrowLeft,
+  Pencil,
+  Save,
+  X,
+  Award,
+  Calendar,
+  Building2,
+  FileText,
+  Upload,
+  Trash2,
+  Download,
+  Hash,
+  Clock,
+  AlertCircle,
+  CheckCircle
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { de } from 'date-fns/locale';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+
+const STATUS_OPTIONS = [
+  { value: 'active', label: 'Aktiv', color: 'bg-green-500' },
+  { value: 'pending', label: 'Ausstehend', color: 'bg-yellow-500' },
+  { value: 'expired', label: 'Abgelaufen', color: 'bg-red-500' },
+  { value: 'suspended', label: 'Ausgesetzt', color: 'bg-orange-500' },
+];
+
+const CertificationDetailSkeleton = () => (
+  <Layout>
+    <div className="p-8 space-y-6">
+      <div className="flex items-center gap-4">
+        <Skeleton className="h-10 w-10 rounded" />
+        <div className="flex-1">
+          <Skeleton className="h-8 w-48 mb-2" />
+          <Skeleton className="h-4 w-32" />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader><Skeleton className="h-6 w-32" /></CardHeader>
+            <CardContent className="space-y-4">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  </Layout>
+);
+
+const CertificationDetail = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const { data: certification, isLoading } = useClientCertification(id);
+  const { data: client } = useClient(certification?.client_id || '');
+  const { data: documents = [], isLoading: documentsLoading } = useCertificationDocuments(id);
+  
+  const updateCertification = useUpdateClientCertification();
+  const uploadDocument = useUploadCertificationDocument();
+  const deleteDocument = useDeleteCertificationDocument();
+  
+  const [isEditing, setIsEditing] = useState(false);
+  const [certificateNumber, setCertificateNumber] = useState('');
+  const [validFrom, setValidFrom] = useState('');
+  const [validUntil, setValidUntil] = useState('');
+  const [status, setStatus] = useState('active');
+  const [notes, setNotes] = useState('');
+
+  // Initialize form when certification loads
+  useEffect(() => {
+    if (certification) {
+      setCertificateNumber(certification.certificate_number || '');
+      setValidFrom(certification.valid_from || '');
+      setValidUntil(certification.valid_until || '');
+      setStatus(certification.status || 'active');
+      setNotes(certification.notes || '');
+    }
+  }, [certification]);
+
+  const handleSave = useCallback(async () => {
+    if (!id) return;
+
+    try {
+      await updateCertification.mutateAsync({
+        id,
+        certificate_number: certificateNumber || null,
+        valid_from: validFrom || null,
+        valid_until: validUntil || null,
+        status,
+        notes: notes || null,
+      });
+
+      toast.success('Zertifikat erfolgreich aktualisiert');
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error updating certification:', error);
+      toast.error('Fehler beim Aktualisieren des Zertifikats');
+    }
+  }, [id, certificateNumber, validFrom, validUntil, status, notes, updateCertification]);
+
+  const handleCancel = useCallback(() => {
+    if (certification) {
+      setCertificateNumber(certification.certificate_number || '');
+      setValidFrom(certification.valid_from || '');
+      setValidUntil(certification.valid_until || '');
+      setStatus(certification.status || 'active');
+      setNotes(certification.notes || '');
+    }
+    setIsEditing(false);
+  }, [certification]);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !id) return;
+
+    try {
+      await uploadDocument.mutateAsync({
+        clientCertificationId: id,
+        file,
+      });
+      toast.success('Dokument erfolgreich hochgeladen');
+    } catch (error) {
+      console.error('Error uploading document:', error);
+      toast.error('Fehler beim Hochladen des Dokuments');
+    }
+    
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDownload = async (filePath: string, fileName: string) => {
+    try {
+      const url = await getDocumentUrl(filePath);
+      if (url) {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+    } catch (error) {
+      console.error('Error downloading document:', error);
+      toast.error('Fehler beim Herunterladen');
+    }
+  };
+
+  const handleDeleteDocument = async (docId: string, filePath: string) => {
+    if (!id) return;
+    
+    try {
+      await deleteDocument.mutateAsync({
+        id: docId,
+        filePath,
+        clientCertificationId: id,
+      });
+      toast.success('Dokument gelöscht');
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      toast.error('Fehler beim Löschen des Dokuments');
+    }
+  };
+
+  const getStatusBadge = (statusValue: string) => {
+    const statusOption = STATUS_OPTIONS.find(s => s.value === statusValue);
+    if (!statusOption) return null;
+    
+    return (
+      <Badge 
+        variant={statusValue === 'active' ? 'default' : statusValue === 'expired' ? 'destructive' : 'secondary'}
+        className="gap-1"
+      >
+        {statusValue === 'active' ? <CheckCircle className="h-3 w-3" /> : 
+         statusValue === 'expired' ? <AlertCircle className="h-3 w-3" /> : 
+         <Clock className="h-3 w-3" />}
+        {statusOption.label}
+      </Badge>
+    );
+  };
+
+  const formatFileSize = (bytes: number | null) => {
+    if (!bytes) return '-';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  if (isLoading) {
+    return <CertificationDetailSkeleton />;
+  }
+
+  if (!certification) {
+    return (
+      <Layout>
+        <div className="p-8">
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">Zertifikat nicht gefunden</p>
+            <Button onClick={() => navigate('/clients')} className="mt-4">
+              Zurück zu Kunden
+            </Button>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  const certName = certification.certifications?.name || 'Zertifikat';
+
+  return (
+    <Layout>
+      <div className="p-8 space-y-6 animate-fade-in">
+        {/* Header */}
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="outline" 
+            size="icon"
+            onClick={() => client ? navigate(`/clients/${client.id}`) : navigate('/clients')}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div className="flex items-center gap-3 flex-1">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <Award className="h-8 w-8 text-primary" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-3xl font-bold text-foreground">{certName}</h1>
+                {getStatusBadge(certification.status || 'active')}
+              </div>
+              {client && (
+                <div 
+                  className="flex items-center gap-2 text-muted-foreground mt-1 cursor-pointer hover:text-primary transition-colors"
+                  onClick={() => navigate(`/clients/${client.id}`)}
+                >
+                  <Building2 className="h-4 w-4" />
+                  <span>{client.name}</span>
+                  {client.client_number && (
+                    <>
+                      <span className="text-muted-foreground/50">•</span>
+                      <Hash className="h-4 w-4" />
+                      <span>KD-Nr. {client.client_number}</span>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+          {!isEditing ? (
+            <Button onClick={() => setIsEditing(true)} className="gap-2">
+              <Pencil className="h-4 w-4" />
+              Bearbeiten
+            </Button>
+          ) : (
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleCancel} className="gap-2">
+                <X className="h-4 w-4" />
+                Abbrechen
+              </Button>
+              <Button onClick={handleSave} disabled={updateCertification.isPending} className="gap-2">
+                <Save className="h-4 w-4" />
+                {updateCertification.isPending ? 'Speichert...' : 'Speichern'}
+              </Button>
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Certificate Details Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Zertifikatdaten</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {isEditing ? (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="cert-number">Zertifikatsnummer</Label>
+                      <Input
+                        id="cert-number"
+                        value={certificateNumber}
+                        onChange={(e) => setCertificateNumber(e.target.value)}
+                        placeholder="z.B. CERT-2024-001"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="valid-from">Gültig ab</Label>
+                        <Input
+                          id="valid-from"
+                          type="date"
+                          value={validFrom}
+                          onChange={(e) => setValidFrom(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="valid-until">Gültig bis</Label>
+                        <Input
+                          id="valid-until"
+                          type="date"
+                          value={validUntil}
+                          onChange={(e) => setValidUntil(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="status">Status</Label>
+                      <Select value={status} onValueChange={setStatus}>
+                        <SelectTrigger id="status">
+                          <SelectValue placeholder="Status auswählen" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background border shadow-lg z-50">
+                          {STATUS_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="notes">Notizen</Label>
+                      <Textarea
+                        id="notes"
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="Zusätzliche Informationen zum Zertifikat..."
+                        rows={4}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                      <Hash className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Zertifikatsnummer</p>
+                        <p className="font-medium">
+                          {certification.certificate_number || 'Nicht vergeben'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                        <Calendar className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm text-muted-foreground">Gültig ab</p>
+                          <p className="font-medium">
+                            {certification.valid_from 
+                              ? format(new Date(certification.valid_from), 'dd.MM.yyyy', { locale: de })
+                              : 'Nicht festgelegt'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                        <Calendar className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm text-muted-foreground">Gültig bis</p>
+                          <p className="font-medium">
+                            {certification.valid_until 
+                              ? format(new Date(certification.valid_until), 'dd.MM.yyyy', { locale: de })
+                              : 'Nicht festgelegt'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    {certification.notes && (
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-sm text-muted-foreground mb-1">Notizen</p>
+                        <p className="whitespace-pre-wrap">{certification.notes}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Documents Card */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Dokumente
+                </CardTitle>
+                <div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                  />
+                  <Button 
+                    size="sm" 
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadDocument.isPending}
+                    className="gap-2"
+                  >
+                    <Upload className="h-4 w-4" />
+                    {uploadDocument.isPending ? 'Lädt hoch...' : 'Hochladen'}
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {documentsLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                  </div>
+                ) : documents.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p>Keine Dokumente hochgeladen</p>
+                    <p className="text-sm">Laden Sie PDF, Word, Excel oder Bilder hoch</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {documents.map((doc) => (
+                      <div 
+                        key={doc.id}
+                        className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <FileText className="h-5 w-5 text-muted-foreground" />
+                          <div>
+                            <p className="font-medium">{doc.file_name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {formatFileSize(doc.file_size)} • {format(new Date(doc.created_at), 'dd.MM.yyyy HH:mm', { locale: de })}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDownload(doc.file_path, doc.file_name)}
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Dokument löschen?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  "{doc.file_name}" wird dauerhaft gelöscht.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteDocument(doc.id, doc.file_path)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Löschen
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Info Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Informationen</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-2 text-sm">
+                  <Award className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Standard:</span>
+                  <span className="font-medium">{certName}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Erstellt:</span>
+                  <span className="font-medium">
+                    {format(new Date(certification.created_at), 'dd.MM.yyyy', { locale: de })}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Aktualisiert:</span>
+                  <span className="font-medium">
+                    {format(new Date(certification.updated_at), 'dd.MM.yyyy', { locale: de })}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Quick Actions */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Aktionen</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {client && (
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start gap-2"
+                    onClick={() => navigate(`/clients/${client.id}`)}
+                  >
+                    <Building2 className="h-4 w-4" />
+                    Zum Kunden
+                  </Button>
+                )}
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start gap-2"
+                  onClick={() => navigate('/audits')}
+                >
+                  <Calendar className="h-4 w-4" />
+                  Audits anzeigen
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </Layout>
+  );
+};
+
+export default CertificationDetail;
