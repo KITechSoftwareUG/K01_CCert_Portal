@@ -6,6 +6,7 @@ import { ExcelImportDialog } from '@/components/ExcelImportDialog';
 import { useClients, DbClient } from '@/hooks/useClients';
 import { useAllClientCertifications } from '@/hooks/useClientCertifications';
 import { useContactsByClientIds } from '@/hooks/useContacts';
+import { useAuditorsForCertifications } from '@/hooks/useAuditorsForCertifications';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ContactPopover } from '@/components/ContactPopover';
+import { AuditorPopover } from '@/components/AuditorPopover';
 import { 
   Plus, 
   Search, 
@@ -79,7 +81,9 @@ const Clients = () => {
   // Get all client IDs for bulk contact fetch
   const clientIds = useMemo(() => clients.map(c => c.id), [clients]);
   const { data: contactsMap = {} } = useContactsByClientIds(clientIds);
-
+  
+  // Get auditors for all certifications
+  const { data: auditorsByClientCertification = {} } = useAuditorsForCertifications();
   // Create a map of client certifications by client ID, grouped by certificate_number
   const certificationsByClient = useMemo(() => {
     const map: Record<string, CertificationRow[]> = {};
@@ -272,37 +276,55 @@ const Clients = () => {
         </div>
       );
     }
-    return certRows.map((row, idx) => (
-      <div
-        key={`${row.clientId}-${idx}`}
-        className="flex items-center gap-4 pl-16 pr-4 py-2 text-sm border-t border-border/30 hover:bg-muted/30 cursor-pointer"
-        onClick={() => navigate(`/certifications/${row.primaryCertificationId}`)}
-      >
-        <div className="flex items-center gap-2">
-          {row.certifications.map((cert, certIdx) => (
-            <Badge key={cert.certificationId} variant="secondary" className="gap-1">
-              <Award className="h-3 w-3" />
-              {cert.certificationName}
-            </Badge>
-          ))}
+    return certRows.map((row, idx) => {
+      // Get auditor for the first certification in this row
+      const auditorInfo = auditorsByClientCertification[row.primaryCertificationId];
+      
+      return (
+        <div
+          key={`${row.clientId}-${idx}`}
+          className="flex items-center justify-between gap-4 pl-16 pr-4 py-2 text-sm border-t border-border/30 hover:bg-muted/30 cursor-pointer"
+          onClick={() => navigate(`/certifications/${row.primaryCertificationId}`)}
+        >
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              {row.certifications.map((cert) => (
+                <Badge key={cert.certificationId} variant="secondary" className="gap-1">
+                  <Award className="h-3 w-3" />
+                  {cert.certificationName}
+                </Badge>
+              ))}
+            </div>
+            {row.certifications[0]?.certificateNumber && (
+              <span className="text-muted-foreground">
+                Nr. {row.certifications[0].certificateNumber}
+              </span>
+            )}
+            {row.earliestValidUntil && (
+              <span className="text-muted-foreground">
+                bis {new Date(row.earliestValidUntil).toLocaleDateString('de-DE')}
+              </span>
+            )}
+            {row.certifications.some(c => c.status && c.status !== 'active') && (
+              <Badge variant={row.certifications.some(c => c.status === 'expired') ? 'destructive' : 'outline'}>
+                {row.certifications.find(c => c.status !== 'active')?.status}
+              </Badge>
+            )}
+          </div>
+          {/* Auditor on the right side */}
+          {auditorInfo && (
+            <AuditorPopover 
+              auditor={{
+                id: auditorInfo.auditorId,
+                name: auditorInfo.auditorName,
+                email: auditorInfo.auditorEmail,
+                phone: auditorInfo.auditorPhone,
+              }}
+            />
+          )}
         </div>
-        {row.certifications[0]?.certificateNumber && (
-          <span className="text-muted-foreground">
-            Nr. {row.certifications[0].certificateNumber}
-          </span>
-        )}
-        {row.earliestValidUntil && (
-          <span className="text-muted-foreground">
-            bis {new Date(row.earliestValidUntil).toLocaleDateString('de-DE')}
-          </span>
-        )}
-        {row.certifications.some(c => c.status && c.status !== 'active') && (
-          <Badge variant={row.certifications.some(c => c.status === 'expired') ? 'destructive' : 'outline'}>
-            {row.certifications.find(c => c.status !== 'active')?.status}
-          </Badge>
-        )}
-      </div>
-    ));
+      );
+    });
   };
 
   const renderClientWithCerts = (client: DbClient, indent = false) => {
@@ -557,37 +579,54 @@ const Clients = () => {
                             {(!isMultiClient || isClientExpanded) && (
                               <>
                                 {certifications.length > 0 ? (
-                                  certifications.map((row, idx) => (
-                                    <div
-                                      key={`${row.clientId}-${idx}`}
-                                      className={`flex items-center gap-4 px-4 py-2 text-sm border-t border-border/30 hover:bg-muted/40 cursor-pointer ${isMultiClient ? 'pl-14' : 'pl-10'}`}
-                                      onClick={() => navigate(`/certifications/${row.primaryCertificationId}`)}
-                                    >
-                                      <div className="flex items-center gap-2">
-                                        {row.certifications.map((cert) => (
-                                          <Badge key={cert.certificationId} variant="secondary" className="gap-1">
-                                            <Award className="h-3 w-3" />
-                                            {cert.certificationName}
-                                          </Badge>
-                                        ))}
+                                  certifications.map((row, idx) => {
+                                    const auditorInfo = auditorsByClientCertification[row.primaryCertificationId];
+                                    
+                                    return (
+                                      <div
+                                        key={`${row.clientId}-${idx}`}
+                                        className={`flex items-center justify-between gap-4 px-4 py-2 text-sm border-t border-border/30 hover:bg-muted/40 cursor-pointer ${isMultiClient ? 'pl-14' : 'pl-10'}`}
+                                        onClick={() => navigate(`/certifications/${row.primaryCertificationId}`)}
+                                      >
+                                        <div className="flex items-center gap-4">
+                                          <div className="flex items-center gap-2">
+                                            {row.certifications.map((cert) => (
+                                              <Badge key={cert.certificationId} variant="secondary" className="gap-1">
+                                                <Award className="h-3 w-3" />
+                                                {cert.certificationName}
+                                              </Badge>
+                                            ))}
+                                          </div>
+                                          {row.certifications[0]?.certificateNumber && (
+                                            <span className="text-muted-foreground">
+                                              Nr. {row.certifications[0].certificateNumber}
+                                            </span>
+                                          )}
+                                          {row.earliestValidUntil && (
+                                            <span className="text-muted-foreground">
+                                              bis {new Date(row.earliestValidUntil).toLocaleDateString('de-DE')}
+                                            </span>
+                                          )}
+                                          {row.certifications.some(c => c.status && c.status !== 'active') && (
+                                            <Badge variant={row.certifications.some(c => c.status === 'expired') ? 'destructive' : 'outline'}>
+                                              {row.certifications.find(c => c.status !== 'active')?.status}
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        {/* Auditor on the right side */}
+                                        {auditorInfo && (
+                                          <AuditorPopover 
+                                            auditor={{
+                                              id: auditorInfo.auditorId,
+                                              name: auditorInfo.auditorName,
+                                              email: auditorInfo.auditorEmail,
+                                              phone: auditorInfo.auditorPhone,
+                                            }}
+                                          />
+                                        )}
                                       </div>
-                                      {row.certifications[0]?.certificateNumber && (
-                                        <span className="text-muted-foreground">
-                                          Nr. {row.certifications[0].certificateNumber}
-                                        </span>
-                                      )}
-                                      {row.earliestValidUntil && (
-                                        <span className="text-muted-foreground">
-                                          bis {new Date(row.earliestValidUntil).toLocaleDateString('de-DE')}
-                                        </span>
-                                      )}
-                                      {row.certifications.some(c => c.status && c.status !== 'active') && (
-                                        <Badge variant={row.certifications.some(c => c.status === 'expired') ? 'destructive' : 'outline'}>
-                                          {row.certifications.find(c => c.status !== 'active')?.status}
-                                        </Badge>
-                                      )}
-                                    </div>
-                                  ))
+                                    );
+                                  })
                                 ) : (
                                   <div className={`py-2 text-sm text-muted-foreground italic ${isMultiClient ? 'pl-14' : 'pl-10'} border-t border-border/30`}>
                                     Keine Zertifizierungen
