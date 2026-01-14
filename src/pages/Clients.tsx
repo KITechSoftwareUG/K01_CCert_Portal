@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { NewClientDialog } from '@/components/NewClientDialog';
 import { ExcelImportDialog } from '@/components/ExcelImportDialog';
-import { useClients, DbClient, useUpdateClient } from '@/hooks/useClients';
+import { useClients, DbClient } from '@/hooks/useClients';
 import { useAllClientCertifications } from '@/hooks/useClientCertifications';
 import { useContactsByClientIds } from '@/hooks/useContacts';
 import { Badge } from '@/components/ui/badge';
@@ -305,20 +305,6 @@ const Clients = () => {
     ));
   };
 
-  const updateClient = useUpdateClient();
-
-  const handleToggleActive = async (clientId: string, currentActive: boolean, e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      await updateClient.mutateAsync({
-        id: clientId,
-        is_active: !currentActive,
-      });
-    } catch (error) {
-      console.error('Error toggling client status:', error);
-    }
-  };
-
   const renderClientWithCerts = (client: DbClient, indent = false) => {
     const certs = certificationsByClient[client.id] || [];
     const isExpanded = expandedClients.has(client.id);
@@ -356,12 +342,6 @@ const Clients = () => {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <Switch
-              checked={clientIsActive}
-              onCheckedChange={() => {}}
-              onClick={(e) => handleToggleActive(client.id, clientIsActive, e)}
-              className="data-[state=checked]:bg-green-600"
-            />
             <ContactPopover
               legacyName={client.contact_person}
               legacyPhone={client.phone}
@@ -552,12 +532,6 @@ const Clients = () => {
                                   )}
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <Switch
-                                    checked={clientIsActive}
-                                    onCheckedChange={() => {}}
-                                    onClick={(e) => handleToggleActive(client.id, clientIsActive, e)}
-                                    className="data-[state=checked]:bg-green-600"
-                                  />
                                   <ContactPopover
                                     legacyName={client.contact_person}
                                     legacyPhone={client.phone}
