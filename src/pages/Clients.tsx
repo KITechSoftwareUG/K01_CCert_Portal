@@ -40,6 +40,7 @@ interface ClientWithCerts {
 }
 
 interface CertificationInfo {
+  id: string; // client_certification_id for navigation
   certificationId: string;
   certificationName: string;
   certificateNumber: string | null;
@@ -54,6 +55,8 @@ interface CertificationRow {
   certifications: CertificationInfo[];
   // Use earliest validUntil for sorting/display
   earliestValidUntil: string | null;
+  // Primary certification ID for navigation (first one in group)
+  primaryCertificationId: string;
 }
 
 const Clients = () => {
@@ -93,6 +96,7 @@ const Clients = () => {
       }
       
       rawCertsByClient[clientId].push({
+        id: cc.id, // client_certification_id
         certificationId: cc.certification_id,
         certificationName: cc.certifications.name,
         certificateNumber: cc.certificate_number,
@@ -130,6 +134,7 @@ const Clients = () => {
           clientNumber: clientInfoMap[clientId].number,
           certifications: groupedCerts,
           earliestValidUntil: earliestDate,
+          primaryCertificationId: groupedCerts[0].id,
         });
       });
       
@@ -141,6 +146,7 @@ const Clients = () => {
           clientNumber: clientInfoMap[clientId].number,
           certifications: [cert],
           earliestValidUntil: cert.validUntil,
+          primaryCertificationId: cert.id,
         });
       });
     });
@@ -254,7 +260,7 @@ const Clients = () => {
       <div
         key={`${row.clientId}-${idx}`}
         className="flex items-center gap-4 pl-16 pr-4 py-2 text-sm border-t border-border/30 hover:bg-muted/30 cursor-pointer"
-        onClick={() => navigate(`/clients/${row.clientId}`)}
+        onClick={() => navigate(`/certifications/${row.primaryCertificationId}`)}
       >
         <div className="flex items-center gap-2">
           {row.certifications.map((cert, certIdx) => (
@@ -513,7 +519,7 @@ const Clients = () => {
                                     <div
                                       key={`${row.clientId}-${idx}`}
                                       className={`flex items-center gap-4 px-4 py-2 text-sm border-t border-border/30 hover:bg-muted/40 cursor-pointer ${isMultiClient ? 'pl-14' : 'pl-10'}`}
-                                      onClick={() => navigate(`/clients/${row.clientId}`)}
+                                      onClick={() => navigate(`/certifications/${row.primaryCertificationId}`)}
                                     >
                                       <div className="flex items-center gap-2">
                                         {row.certifications.map((cert) => (
