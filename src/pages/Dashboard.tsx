@@ -5,6 +5,7 @@ import { UpcomingTasksCard } from '@/components/UpcomingTasksCard';
 import { AuditTimeline } from '@/components/AuditTimeline';
 import { AlertsCard } from '@/components/AlertsCard';
 import { PreparationChecklist } from '@/components/PreparationChecklist';
+import { ExpiringCertificationsCard } from '@/components/ExpiringCertificationsCard';
 import { useAudits, AuditWithClient } from '@/hooks/useAudits';
 import { useAuditTasks } from '@/hooks/useAuditTasks';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -157,8 +158,9 @@ const Dashboard = () => {
                 <UpcomingTasksCard audits={audits} />
               </div>
 
-              {/* Right Column - Preparation */}
+              {/* Right Column - Expiring Certs & Preparation */}
               <div className="space-y-6">
+                <ExpiringCertificationsCard />
                 <PreparationChecklist audits={audits} />
               </div>
             </div>
