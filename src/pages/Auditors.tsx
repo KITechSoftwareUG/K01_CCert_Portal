@@ -291,12 +291,15 @@ const Auditors = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="cert-body">Zertifizierungsstelle</Label>
-                <Select value={certBodyId} onValueChange={setCertBodyId}>
+                <Select
+                  value={certBodyId}
+                  onValueChange={(v) => setCertBodyId(v === '__none__' ? '' : v)}
+                >
                   <SelectTrigger id="cert-body">
                     <SelectValue placeholder="Zertifizierungsstelle auswählen" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Keine</SelectItem>
+                    <SelectItem value="__none__">Keine</SelectItem>
                     {certBodies.map((body) => (
                       <SelectItem key={body.id} value={body.id}>
                         {body.short_name || body.name}

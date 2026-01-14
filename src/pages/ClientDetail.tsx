@@ -334,12 +334,15 @@ const ClientDetail = () => {
                         <Users className="h-4 w-4" />
                         Unternehmensgruppe
                       </Label>
-                      <Select value={parentClientId} onValueChange={setParentClientId}>
+                      <Select
+                        value={parentClientId}
+                        onValueChange={(v) => setParentClientId(v === '__none__' ? '' : v)}
+                      >
                         <SelectTrigger id="parent">
                           <SelectValue placeholder="Keine Gruppe (eigenständig)" />
                         </SelectTrigger>
                         <SelectContent className="bg-background border shadow-lg z-50">
-                          <SelectItem value="">Keine Gruppe (eigenständig)</SelectItem>
+                          <SelectItem value="__none__">Keine Gruppe (eigenständig)</SelectItem>
                           {sortedParentClients.map((parent) => (
                             <SelectItem key={parent.id} value={parent.id}>
                               {parent.name}
