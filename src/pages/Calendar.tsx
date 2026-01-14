@@ -6,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Calendar as CalendarIcon, Clock, Download, Award, AlertTriangle } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, addDays, differenceInDays } from 'date-fns';
+import { Calendar as CalendarIcon, Clock, Download, Award, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, addDays, differenceInDays, addMonths, subMonths } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { exportAllAuditsToCalendar } from '@/lib/calendarExport';
@@ -57,7 +57,19 @@ const CalendarSkeleton = () => (
 );
 
 const Calendar = () => {
-  const [currentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(new Date());
+
+  const goToPreviousMonth = useCallback(() => {
+    setCurrentDate(prev => subMonths(prev, 1));
+  }, []);
+
+  const goToNextMonth = useCallback(() => {
+    setCurrentDate(prev => addMonths(prev, 1));
+  }, []);
+
+  const goToToday = useCallback(() => {
+    setCurrentDate(new Date());
+  }, []);
   const { data: dbAudits = [], isLoading: auditsLoading, error: auditsError } = useAudits();
   const { data: clientCertifications = [], isLoading: certsLoading } = useAllClientCertifications();
 
@@ -227,8 +239,19 @@ const Calendar = () => {
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
+              <Button variant="outline" size="icon" onClick={goToPreviousMonth}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" onClick={goToToday} className="px-3">
+                Heute
+              </Button>
+              <Button variant="outline" size="icon" onClick={goToNextMonth}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
               <CalendarIcon className="h-5 w-5 text-muted-foreground" />
-              <span className="text-lg font-medium text-foreground">
+              <span className="text-lg font-medium text-foreground min-w-[140px]">
                 {format(currentDate, 'MMMM yyyy', { locale: de })}
               </span>
             </div>
