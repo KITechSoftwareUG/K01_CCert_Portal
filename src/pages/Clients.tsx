@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { NewClientDialog } from '@/components/NewClientDialog';
+import { ExcelImportDialog } from '@/components/ExcelImportDialog';
 import { useClients, DbClient } from '@/hooks/useClients';
 import { useAllClientCertifications } from '@/hooks/useClientCertifications';
 import { useContactsByClientIds } from '@/hooks/useContacts';
@@ -20,7 +21,8 @@ import {
   FolderTree, 
   Award,
   Building2,
-  Hash
+  Hash,
+  Upload
 } from 'lucide-react';
 
 type ViewMode = 'list' | 'grouped';
@@ -47,6 +49,7 @@ const Clients = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewClientDialog, setShowNewClientDialog] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('grouped');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
@@ -252,13 +255,20 @@ const Clients = () => {
               {companyGroups.length} Unternehmen{companyGroups.length !== 1 ? '' : ''} • {clients.length} Standorte
             </p>
           </div>
-          <Button onClick={() => setShowNewClientDialog(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Neuer Kunde
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowImportDialog(true)}>
+              <Upload className="h-4 w-4 mr-2" />
+              Excel-Import
+            </Button>
+            <Button onClick={() => setShowNewClientDialog(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Neuer Kunde
+            </Button>
+          </div>
         </div>
 
         <NewClientDialog open={showNewClientDialog} onOpenChange={setShowNewClientDialog} />
+        <ExcelImportDialog open={showImportDialog} onOpenChange={setShowImportDialog} />
 
         {/* Search + View Toggle */}
         <div className="flex gap-4 items-center justify-between">

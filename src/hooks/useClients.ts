@@ -78,14 +78,44 @@ export const useClient = (id: string) => {
   });
 };
 
+// Helper function to generate the next client number for a parent group
+export const getNextClientNumber = async (parentId: string): Promise<string> => {
+  const { data: siblings, error } = await supabase
+    .from('clients')
+    .select('client_number')
+    .eq('parent_client_id', parentId);
+  
+  if (error) throw error;
+  
+  // Find the highest number among siblings
+  let maxNum = 0;
+  siblings?.forEach(s => {
+    if (s.client_number) {
+      const num = parseInt(s.client_number, 10);
+      if (!isNaN(num) && num > maxNum) {
+        maxNum = num;
+      }
+    }
+  });
+  
+  // Return next number padded to 2 digits
+  return String(maxNum + 1).padStart(2, '0');
+};
+
 export const useCreateClient = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
     mutationFn: async (client: DbClientInsert) => {
+      // Auto-generate client_number if parent is selected and no number provided
+      let clientNumber = client.client_number;
+      if (client.parent_client_id && !clientNumber) {
+        clientNumber = await getNextClientNumber(client.parent_client_id);
+      }
+      
       const { data, error } = await supabase
         .from('clients')
-        .insert(client)
+        .insert({ ...client, client_number: clientNumber })
         .select()
         .single();
       
@@ -130,6 +160,37 @@ export const useDeleteClient = () => {
         .eq('id', id);
       
       if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+    },
+  });
+};
+
+// Bulk create clients (for Excel import)
+export const useBulkCreateClients = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (clients: DbClientInsert[]) => {
+      const results = [];
+      for (const client of clients) {
+        // Auto-generate client_number if parent is selected
+        let clientNumber = client.client_number;
+        if (client.parent_client_id && !clientNumber) {
+          clientNumber = await getNextClientNumber(client.parent_client_id);
+        }
+        
+        const { data, error } = await supabase
+          .from('clients')
+          .insert({ ...client, client_number: clientNumber })
+          .select()
+          .single();
+        
+        if (error) throw error;
+        results.push(data);
+      }
+      return results;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
