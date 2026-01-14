@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { NewClientDialog } from '@/components/NewClientDialog';
 import { ExcelImportDialog } from '@/components/ExcelImportDialog';
-import { useClients, DbClient } from '@/hooks/useClients';
+import { useClients, DbClient, useUpdateClient } from '@/hooks/useClients';
 import { useAllClientCertifications } from '@/hooks/useClientCertifications';
 import { useContactsByClientIds } from '@/hooks/useContacts';
 import { Badge } from '@/components/ui/badge';
@@ -305,15 +305,30 @@ const Clients = () => {
     ));
   };
 
+  const updateClient = useUpdateClient();
+
+  const handleToggleActive = async (clientId: string, currentActive: boolean, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await updateClient.mutateAsync({
+        id: clientId,
+        is_active: !currentActive,
+      });
+    } catch (error) {
+      console.error('Error toggling client status:', error);
+    }
+  };
+
   const renderClientWithCerts = (client: DbClient, indent = false) => {
     const certs = certificationsByClient[client.id] || [];
     const isExpanded = expandedClients.has(client.id);
     const contacts = contactsMap[client.id] || [];
+    const clientIsActive = (client as any).is_active !== false;
     
     return (
       <div key={client.id}>
         <div
-          className={`flex items-center justify-between px-4 py-3 hover:bg-muted/50 cursor-pointer border-t border-border/50 ${indent ? 'pl-10 bg-muted/20' : ''}`}
+          className={`flex items-center justify-between px-4 py-3 hover:bg-muted/50 cursor-pointer border-t border-border/50 ${indent ? 'pl-10 bg-muted/20' : ''} ${!clientIsActive ? 'opacity-60' : ''}`}
           onClick={() => certs.length > 0 ? toggleClient(client.id) : navigate(`/clients/${client.id}`)}
         >
           <div className="flex items-center gap-3">
@@ -329,6 +344,11 @@ const Clients = () => {
                 {client.client_number}
               </Badge>
             )}
+            {!clientIsActive && (
+              <Badge variant="destructive" className="text-xs">
+                Inaktiv
+              </Badge>
+            )}
             {certs.length > 0 && (
               <Badge variant="secondary" className="text-xs">
                 {certs.length} Zertifikat{certs.length !== 1 ? 'e' : ''}
@@ -336,6 +356,12 @@ const Clients = () => {
             )}
           </div>
           <div className="flex items-center gap-2">
+            <Switch
+              checked={clientIsActive}
+              onCheckedChange={() => {}}
+              onClick={(e) => handleToggleActive(client.id, clientIsActive, e)}
+              className="data-[state=checked]:bg-green-600"
+            />
             <ContactPopover
               legacyName={client.contact_person}
               legacyPhone={client.phone}
@@ -491,13 +517,14 @@ const Clients = () => {
                         const { client, certifications } = childWithCerts;
                         const contacts = contactsMap[client.id] || [];
                         const isClientExpanded = expandedClients.has(client.id);
+                        const clientIsActive = (client as any).is_active !== false;
                         
                         return (
                           <div key={client.id}>
                             {/* Client Row - always show for multi-client groups, clickable to expand certifications */}
                             {isMultiClient ? (
                               <div
-                                className="flex items-center justify-between px-4 py-2 pl-10 bg-muted/30 border-t border-border/50 cursor-pointer hover:bg-muted/50"
+                                className={`flex items-center justify-between px-4 py-2 pl-10 bg-muted/30 border-t border-border/50 cursor-pointer hover:bg-muted/50 ${!clientIsActive ? 'opacity-60' : ''}`}
                                 onClick={() => certifications.length > 0 ? toggleClient(client.id) : navigate(`/clients/${client.id}`)}
                               >
                                 <div className="flex items-center gap-3">
@@ -513,6 +540,11 @@ const Clients = () => {
                                       {client.client_number}
                                     </Badge>
                                   )}
+                                  {!clientIsActive && (
+                                    <Badge variant="destructive" className="text-xs">
+                                      Inaktiv
+                                    </Badge>
+                                  )}
                                   {certifications.length > 0 && (
                                     <Badge variant="secondary" className="text-xs">
                                       {certifications.length} Zertifikat{certifications.length !== 1 ? 'e' : ''}
@@ -520,6 +552,12 @@ const Clients = () => {
                                   )}
                                 </div>
                                 <div className="flex items-center gap-2">
+                                  <Switch
+                                    checked={clientIsActive}
+                                    onCheckedChange={() => {}}
+                                    onClick={(e) => handleToggleActive(client.id, clientIsActive, e)}
+                                    className="data-[state=checked]:bg-green-600"
+                                  />
                                   <ContactPopover
                                     legacyName={client.contact_person}
                                     legacyPhone={client.phone}
