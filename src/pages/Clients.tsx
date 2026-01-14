@@ -9,6 +9,7 @@ import { useContactsByClientIds } from '@/hooks/useContacts';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ContactPopover } from '@/components/ContactPopover';
@@ -22,8 +23,11 @@ import {
   Award,
   Building2,
   Hash,
-  Upload
+  Upload,
+  Eye,
+  EyeOff
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 
 type ViewMode = 'list' | 'grouped';
 
@@ -67,6 +71,7 @@ const Clients = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('grouped');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
+  const [showInactive, setShowInactive] = useState(false);
   
   const { data: clients = [], isLoading, error } = useClients();
   const { data: allCertifications = [] } = useAllClientCertifications();
@@ -154,17 +159,28 @@ const Clients = () => {
     return map;
   }, [allCertifications]);
 
-  // Filter clients
+  // Filter clients by active status and search
   const filteredClients = useMemo(() => {
-    if (!searchQuery) return clients;
-    const query = searchQuery.toLowerCase();
-    return clients.filter(client =>
-      client.name.toLowerCase().includes(query) ||
-      client.contact_person?.toLowerCase().includes(query) ||
-      client.client_number?.toLowerCase().includes(query) ||
-      client.country?.toLowerCase().includes(query)
-    );
-  }, [searchQuery, clients]);
+    let result = clients;
+    
+    // Filter by active status
+    if (!showInactive) {
+      result = result.filter(client => client.is_active !== false);
+    }
+    
+    // Filter by search query
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(client =>
+        client.name.toLowerCase().includes(query) ||
+        client.contact_person?.toLowerCase().includes(query) ||
+        client.client_number?.toLowerCase().includes(query) ||
+        client.country?.toLowerCase().includes(query)
+      );
+    }
+    
+    return result;
+  }, [searchQuery, clients, showInactive]);
 
   // Group clients by parent - show parent as group header, children with their certs
   const companyGroups = useMemo(() => {
@@ -386,12 +402,26 @@ const Clients = () => {
             />
           </div>
           
-          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
-            <TabsList>
-              <TabsTrigger value="list" title="Flache Liste"><List className="h-4 w-4" /></TabsTrigger>
-              <TabsTrigger value="grouped" title="Gruppiert"><FolderTree className="h-4 w-4" /></TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Switch
+                id="show-inactive"
+                checked={showInactive}
+                onCheckedChange={setShowInactive}
+              />
+              <Label htmlFor="show-inactive" className="text-sm text-muted-foreground flex items-center gap-1 cursor-pointer">
+                {showInactive ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                Inaktive anzeigen
+              </Label>
+            </div>
+            
+            <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
+              <TabsList>
+                <TabsTrigger value="list" title="Flache Liste"><List className="h-4 w-4" /></TabsTrigger>
+                <TabsTrigger value="grouped" title="Gruppiert"><FolderTree className="h-4 w-4" /></TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
         </div>
 
         {/* Content */}
