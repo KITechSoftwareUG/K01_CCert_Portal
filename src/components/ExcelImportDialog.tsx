@@ -1,5 +1,4 @@
-import { useState, useCallback } from 'react';
-import * as XLSX from 'xlsx';
+import { useState, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -8,17 +7,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Table,
   TableBody,
@@ -28,424 +19,491 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { useBulkCreateClients, useParentClients, DbClientInsert } from '@/hooks/useClients';
+import { useBulkCreateClients, useParentClients, useCreateClient, DbClientInsert } from '@/hooks/useClients';
 import { useCertifications } from '@/hooks/useCertifications';
+import { useCertificationBodies } from '@/hooks/useCertificationBodies';
+import { useAuditors, useCreateAuditor } from '@/hooks/useAuditors';
 import { useCreateClientCertification } from '@/hooks/useClientCertifications';
-import { Upload, FileSpreadsheet, Check, AlertCircle } from 'lucide-react';
+import { useCreateAudit } from '@/hooks/useAudits';
+import { ClipboardPaste, Check, AlertCircle, Loader2 } from 'lucide-react';
 
 interface ExcelImportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
+// Expected columns from Excel copy-paste (tab-separated)
+// Unternehmensgruppe | Name | KD-Nr. | Land | Berater | Faktor | MT | CB | Zertifikat | Auditor | Zertifikat gültig von | Zertifikat gültig bis | Audit Art
 interface ParsedRow {
-  name: string;
-  contactPerson: string;
-  email: string;
-  phone?: string;
-  address?: string;
-  country?: string;
-  clientNumber?: string;
-  parentName?: string;
-  certifications?: string[];
+  groupName: string;
+  clientName: string;
+  clientNumber: string;
+  country: string;
+  consultant: string;
+  factor: string;
+  manDays: string;
+  certBody: string;
+  certification: string;
+  auditor: string;
+  validFrom: string;
+  validUntil: string;
+  auditType: string;
+  // Computed
+  isValid: boolean;
+  errors: string[];
 }
 
-interface MappedColumn {
-  excelColumn: string;
-  field: keyof ParsedRow | 'skip';
-}
-
-const FIELD_OPTIONS: { value: keyof ParsedRow | 'skip'; label: string }[] = [
-  { value: 'skip', label: '-- Überspringen --' },
-  { value: 'name', label: 'Firmenname *' },
-  { value: 'contactPerson', label: 'Ansprechpartner *' },
-  { value: 'email', label: 'E-Mail *' },
-  { value: 'phone', label: 'Telefon' },
-  { value: 'address', label: 'Adresse' },
-  { value: 'country', label: 'Land' },
-  { value: 'clientNumber', label: 'Kundennummer' },
-  { value: 'parentName', label: 'Unternehmensgruppe' },
-  { value: 'certifications', label: 'Zertifizierungen' },
+const COLUMN_HEADERS = [
+  'Unternehmensgruppe',
+  'Name',
+  'KD-Nr.',
+  'Land',
+  'Berater',
+  'Faktor',
+  'MT',
+  'CB',
+  'Zertifikat',
+  'Auditor',
+  'gültig von',
+  'gültig bis',
+  'Audit Art',
 ];
 
+const AUDIT_TYPE_MAP: Record<string, 'initial' | 'surveillance' | 'recertification' | 'six-month'> = {
+  'erst': 'initial',
+  'initial': 'initial',
+  'erstaudit': 'initial',
+  'überwachung': 'surveillance',
+  'surveillance': 'surveillance',
+  'überw': 'surveillance',
+  'üa': 'surveillance',
+  'rezertifizierung': 'recertification',
+  'recertification': 'recertification',
+  'rezert': 'recertification',
+  're': 'recertification',
+  '6-monat': 'six-month',
+  '6m': 'six-month',
+  'six-month': 'six-month',
+};
+
 export const ExcelImportDialog = ({ open, onOpenChange }: ExcelImportDialogProps) => {
-  const [step, setStep] = useState<'upload' | 'mapping' | 'preview' | 'importing'>('upload');
-  const [excelData, setExcelData] = useState<Record<string, unknown>[]>([]);
-  const [columns, setColumns] = useState<string[]>([]);
-  const [columnMappings, setColumnMappings] = useState<MappedColumn[]>([]);
+  const [step, setStep] = useState<'paste' | 'preview' | 'importing'>('paste');
+  const [pastedData, setPastedData] = useState('');
   const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
   const [importProgress, setImportProgress] = useState(0);
   
-  const bulkCreate = useBulkCreateClients();
+  const createClient = useCreateClient();
   const createClientCert = useCreateClientCertification();
+  const createAudit = useCreateAudit();
+  const createAuditor = useCreateAuditor();
+  
   const { data: parentClients = [] } = useParentClients();
   const { data: certifications = [] } = useCertifications();
+  const { data: certBodies = [] } = useCertificationBodies();
+  const { data: auditors = [] } = useAuditors();
 
-  const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const parseData = () => {
+    if (!pastedData.trim()) {
+      toast.error('Bitte fügen Sie Daten ein');
+      return;
+    }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const data = new Uint8Array(event.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet) as Record<string, unknown>[];
-        
-        if (jsonData.length === 0) {
-          toast.error('Die Excel-Datei enthält keine Daten');
-          return;
-        }
-        
-        // Get column names from first row
-        const cols = Object.keys(jsonData[0]);
-        setColumns(cols);
-        setExcelData(jsonData);
-        
-        // Auto-map columns based on common names
-        const autoMappings: MappedColumn[] = cols.map(col => {
-          const colLower = col.toLowerCase();
-          let field: keyof ParsedRow | 'skip' = 'skip';
-          
-          if (colLower.includes('firma') || colLower.includes('name') || colLower.includes('unternehmen')) {
-            field = 'name';
-          } else if (colLower.includes('ansprech') || colLower.includes('kontakt')) {
-            field = 'contactPerson';
-          } else if (colLower.includes('mail')) {
-            field = 'email';
-          } else if (colLower.includes('telefon') || colLower.includes('phone') || colLower.includes('tel')) {
-            field = 'phone';
-          } else if (colLower.includes('adresse') || colLower.includes('address') || colLower.includes('straße')) {
-            field = 'address';
-          } else if (colLower.includes('land') || colLower.includes('country')) {
-            field = 'country';
-          } else if (colLower.includes('kd-nr') || colLower.includes('kundennr') || colLower.includes('nummer')) {
-            field = 'clientNumber';
-          } else if (colLower.includes('gruppe') || colLower.includes('parent') || colLower.includes('konzern')) {
-            field = 'parentName';
-          } else if (colLower.includes('zertif') || colLower.includes('cert')) {
-            field = 'certifications';
-          }
-          
-          return { excelColumn: col, field };
-        });
-        
-        setColumnMappings(autoMappings);
-        setStep('mapping');
-        toast.success(`${jsonData.length} Zeilen gefunden`);
-      } catch (error) {
-        console.error('Excel parse error:', error);
-        toast.error('Fehler beim Lesen der Excel-Datei');
+    const lines = pastedData.trim().split('\n');
+    const rows: ParsedRow[] = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      // Split by tab (Excel copy uses tabs)
+      const cells = line.split('\t');
+      
+      // Skip header row if detected
+      if (i === 0 && (
+        cells[0]?.toLowerCase().includes('gruppe') ||
+        cells[1]?.toLowerCase() === 'name' ||
+        cells[0]?.toLowerCase() === 'unternehmensgruppe'
+      )) {
+        continue;
       }
-    };
-    reader.readAsArrayBuffer(file);
-  }, []);
 
-  const updateMapping = (excelColumn: string, field: keyof ParsedRow | 'skip') => {
-    setColumnMappings(prev => 
-      prev.map(m => m.excelColumn === excelColumn ? { ...m, field } : m)
-    );
+      const errors: string[] = [];
+      const clientName = cells[1]?.trim() || '';
+      const certification = cells[8]?.trim() || '';
+
+      if (!clientName) errors.push('Name fehlt');
+      
+      rows.push({
+        groupName: cells[0]?.trim() || '',
+        clientName,
+        clientNumber: cells[2]?.trim() || '',
+        country: cells[3]?.trim() || 'Deutschland',
+        consultant: cells[4]?.trim() || '',
+        factor: cells[5]?.trim() || '',
+        manDays: cells[6]?.trim() || '',
+        certBody: cells[7]?.trim() || '',
+        certification,
+        auditor: cells[9]?.trim() || '',
+        validFrom: cells[10]?.trim() || '',
+        validUntil: cells[11]?.trim() || '',
+        auditType: cells[12]?.trim() || '',
+        isValid: errors.length === 0 && !!clientName,
+        errors,
+      });
+    }
+
+    if (rows.length === 0) {
+      toast.error('Keine gültigen Daten gefunden');
+      return;
+    }
+
+    setParsedRows(rows);
+    setStep('preview');
+    toast.success(`${rows.length} Zeilen erkannt`);
   };
 
-  const processData = () => {
-    const rows: ParsedRow[] = excelData.map(row => {
-      const parsed: ParsedRow = {
-        name: '',
-        contactPerson: '',
-        email: '',
-      };
+  // Group rows by client for display
+  const groupedPreview = useMemo(() => {
+    const groups: Record<string, { 
+      groupName: string; 
+      clients: Record<string, { 
+        clientName: string; 
+        clientNumber: string;
+        country: string;
+        consultant: string;
+        certs: ParsedRow[] 
+      }> 
+    }> = {};
+
+    parsedRows.forEach(row => {
+      const gKey = row.groupName || '__standalone__';
+      if (!groups[gKey]) {
+        groups[gKey] = { groupName: row.groupName, clients: {} };
+      }
       
-      columnMappings.forEach(mapping => {
-        if (mapping.field === 'skip') return;
-        const value = row[mapping.excelColumn];
-        if (value !== undefined && value !== null) {
-          const strValue = String(value).trim();
-          switch (mapping.field) {
-            case 'certifications':
-              parsed.certifications = strValue.split(/[,;]/).map(c => c.trim()).filter(Boolean);
-              break;
-            case 'name':
-              parsed.name = strValue;
-              break;
-            case 'contactPerson':
-              parsed.contactPerson = strValue;
-              break;
-            case 'email':
-              parsed.email = strValue;
-              break;
-            case 'phone':
-              parsed.phone = strValue;
-              break;
-            case 'address':
-              parsed.address = strValue;
-              break;
-            case 'country':
-              parsed.country = strValue;
-              break;
-            case 'clientNumber':
-              parsed.clientNumber = strValue;
-              break;
-            case 'parentName':
-              parsed.parentName = strValue;
-              break;
-          }
-        }
-      });
+      const cKey = row.clientName;
+      if (!groups[gKey].clients[cKey]) {
+        groups[gKey].clients[cKey] = {
+          clientName: row.clientName,
+          clientNumber: row.clientNumber,
+          country: row.country,
+          consultant: row.consultant,
+          certs: [],
+        };
+      }
       
-      return parsed;
+      groups[gKey].clients[cKey].certs.push(row);
     });
+
+    return groups;
+  }, [parsedRows]);
+
+  const parseDate = (dateStr: string): string | null => {
+    if (!dateStr) return null;
     
-    // Filter out invalid rows
-    const validRows = rows.filter(r => r.name && r.contactPerson && r.email);
-    setParsedRows(validRows);
-    
-    if (validRows.length < rows.length) {
-      toast.warning(`${rows.length - validRows.length} Zeilen ohne Pflichtfelder werden übersprungen`);
+    // Try DD.MM.YYYY format
+    const parts = dateStr.split('.');
+    if (parts.length === 3) {
+      const [day, month, year] = parts;
+      const fullYear = year.length === 2 ? `20${year}` : year;
+      return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
     }
     
-    setStep('preview');
+    // Try to parse as date
+    const date = new Date(dateStr);
+    if (!isNaN(date.getTime())) {
+      return date.toISOString().split('T')[0];
+    }
+    
+    return null;
   };
 
   const performImport = async () => {
     setStep('importing');
     setImportProgress(0);
-    
+
     try {
-      // First, find or create parent groups
-      const parentNameToId: Record<string, string> = {};
-      parentClients.forEach(p => {
-        parentNameToId[p.name.toLowerCase()] = p.id;
+      // Step 1: Create parent groups that don't exist
+      const existingGroups = new Map(parentClients.map(p => [p.name.toLowerCase(), p.id]));
+      const groupsToCreate = new Set<string>();
+      
+      parsedRows.forEach(row => {
+        if (row.groupName && !existingGroups.has(row.groupName.toLowerCase())) {
+          groupsToCreate.add(row.groupName);
+        }
       });
+
+      const createdGroups = new Map<string, string>();
+      for (const groupName of groupsToCreate) {
+        const result = await createClient.mutateAsync({
+          name: groupName,
+          contact_person: `${groupName} Gruppe`,
+          email: `info@${groupName.toLowerCase().replace(/\s+/g, '')}.de`,
+          country: 'Deutschland',
+        });
+        createdGroups.set(groupName.toLowerCase(), result.id);
+      }
+
+      setImportProgress(10);
+
+      // Merge with existing
+      const allGroups = new Map([...existingGroups, ...createdGroups]);
+
+      // Step 2: Create clients (deduplicated by name within each group)
+      const clientsToCreate: Array<{
+        groupName: string;
+        clientName: string;
+        clientNumber: string;
+        country: string;
+        consultant: string;
+        certRows: ParsedRow[];
+      }> = [];
+
+      Object.values(groupedPreview).forEach(group => {
+        Object.values(group.clients).forEach(client => {
+          clientsToCreate.push({
+            groupName: group.groupName,
+            clientName: client.clientName,
+            clientNumber: client.clientNumber,
+            country: client.country,
+            consultant: client.consultant,
+            certRows: client.certs,
+          });
+        });
+      });
+
+      const createdClientIds = new Map<string, string>();
       
-      const createdClients: Array<{ clientId: string; certNames: string[] }> = [];
+      for (let i = 0; i < clientsToCreate.length; i++) {
+        const c = clientsToCreate[i];
+        const parentId = c.groupName ? allGroups.get(c.groupName.toLowerCase()) || null : null;
+
+        const clientData: DbClientInsert = {
+          name: c.clientName,
+          contact_person: c.consultant || c.clientName,
+          email: `kontakt@${c.clientName.toLowerCase().replace(/\s+/g, '-')}.de`,
+          country: c.country || 'Deutschland',
+          client_number: c.clientNumber || null,
+          consultant: c.consultant || null,
+          parent_client_id: parentId,
+        };
+
+        const result = await createClient.mutateAsync(clientData);
+        createdClientIds.set(c.clientName.toLowerCase(), result.id);
+
+        setImportProgress(10 + Math.round((i / clientsToCreate.length) * 40));
+      }
+
+      // Step 3: Create auditors that don't exist
+      const existingAuditors = new Map(auditors.map(a => [a.name.toLowerCase(), a.id]));
+      const auditorsToCreate = new Set<string>();
       
+      parsedRows.forEach(row => {
+        if (row.auditor && !existingAuditors.has(row.auditor.toLowerCase())) {
+          auditorsToCreate.add(row.auditor);
+        }
+      });
+
+      const createdAuditorIds = new Map<string, string>();
+      for (const auditorName of auditorsToCreate) {
+        const result = await createAuditor.mutateAsync({ name: auditorName });
+        createdAuditorIds.set(auditorName.toLowerCase(), result.id);
+      }
+
+      const allAuditors = new Map([...existingAuditors, ...createdAuditorIds]);
+
+      setImportProgress(55);
+
+      // Step 4: Create certifications for each client
+      const certMap = new Map(certifications.map(c => [c.name.toLowerCase(), c.id]));
+      const cbMap = new Map(certBodies.map(cb => [cb.name?.toLowerCase() || '', cb.id]));
+
       for (let i = 0; i < parsedRows.length; i++) {
         const row = parsedRows[i];
-        
-        // Find parent ID if specified
-        let parentId: string | null = null;
-        if (row.parentName) {
-          const parentLower = row.parentName.toLowerCase();
-          parentId = parentNameToId[parentLower] || null;
-        }
-        
-        const clientData: DbClientInsert = {
-          name: row.name,
-          contact_person: row.contactPerson,
-          email: row.email,
-          phone: row.phone || null,
-          address: row.address || null,
-          country: row.country || 'Deutschland',
-          client_number: row.clientNumber || null,
-          parent_client_id: parentId,
-          certifications: [],
-        };
-        
-        const created = await bulkCreate.mutateAsync([clientData]);
-        
-        if (created[0] && row.certifications && row.certifications.length > 0) {
-          createdClients.push({
-            clientId: created[0].id,
-            certNames: row.certifications,
+        const clientId = createdClientIds.get(row.clientName.toLowerCase());
+        if (!clientId) continue;
+
+        // Find certification
+        const certId = certMap.get(row.certification.toLowerCase()) ||
+          [...certMap.entries()].find(([k]) => k.includes(row.certification.toLowerCase()))?.[1];
+
+        if (certId) {
+          // Create client certification
+          const clientCert = await createClientCert.mutateAsync({
+            client_id: clientId,
+            certification_id: certId,
+            valid_from: parseDate(row.validFrom),
+            valid_until: parseDate(row.validUntil),
           });
-        }
-        
-        setImportProgress(Math.round(((i + 1) / parsedRows.length) * 80));
-      }
-      
-      // Now link certifications
-      for (let i = 0; i < createdClients.length; i++) {
-        const { clientId, certNames } = createdClients[i];
-        for (const certName of certNames) {
-          const cert = certifications.find(c => 
-            c.name.toLowerCase() === certName.toLowerCase() ||
-            c.name.toLowerCase().includes(certName.toLowerCase())
-          );
-          if (cert) {
-            await createClientCert.mutateAsync({
+
+          // Create audit if we have audit type
+          if (row.auditType) {
+            const auditTypeLower = row.auditType.toLowerCase();
+            const mappedType = Object.entries(AUDIT_TYPE_MAP).find(([k]) => 
+              auditTypeLower.includes(k)
+            )?.[1] || 'surveillance';
+
+            const auditorId = row.auditor ? allAuditors.get(row.auditor.toLowerCase()) || null : null;
+            const cbId = row.certBody ? 
+              cbMap.get(row.certBody.toLowerCase()) ||
+              [...cbMap.entries()].find(([k]) => k.includes(row.certBody.toLowerCase()))?.[1] || null
+              : null;
+
+            await createAudit.mutateAsync({
               client_id: clientId,
-              certification_id: cert.id,
+              client_certification_id: clientCert.id,
+              type: mappedType,
+              scheduled_date: parseDate(row.validUntil) || new Date().toISOString(),
+              status: 'scheduled',
+              auditor_id: auditorId,
+              certification_body_id: cbId,
             });
           }
         }
-        setImportProgress(80 + Math.round(((i + 1) / createdClients.length) * 20));
+
+        setImportProgress(55 + Math.round((i / parsedRows.length) * 45));
       }
-      
+
       setImportProgress(100);
-      toast.success(`${parsedRows.length} Kunden erfolgreich importiert`);
-      
+      toast.success(`Import abgeschlossen: ${clientsToCreate.length} Kunden, ${parsedRows.length} Zertifizierungen`);
+
       setTimeout(() => {
         onOpenChange(false);
         resetDialog();
       }, 1500);
-      
+
     } catch (error) {
       console.error('Import error:', error);
-      toast.error('Fehler beim Importieren');
+      toast.error('Fehler beim Import: ' + (error as Error).message);
       setStep('preview');
     }
   };
 
   const resetDialog = () => {
-    setStep('upload');
-    setExcelData([]);
-    setColumns([]);
-    setColumnMappings([]);
+    setStep('paste');
+    setPastedData('');
     setParsedRows([]);
     setImportProgress(0);
   };
 
+  const validRows = parsedRows.filter(r => r.isValid);
+
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) resetDialog(); onOpenChange(v); }}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileSpreadsheet className="h-5 w-5" />
-            Excel-Import
+            <ClipboardPaste className="h-5 w-5" />
+            Excel-Daten importieren
           </DialogTitle>
           <DialogDescription>
-            {step === 'upload' && 'Laden Sie eine Excel-Datei mit Kundendaten hoch'}
-            {step === 'mapping' && 'Ordnen Sie die Spalten den Feldern zu'}
+            {step === 'paste' && 'Kopieren Sie die Daten aus Excel und fügen Sie sie hier ein (Strg+V)'}
             {step === 'preview' && 'Überprüfen Sie die zu importierenden Daten'}
             {step === 'importing' && 'Import läuft...'}
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-hidden">
-          {/* Step 1: Upload */}
-          {step === 'upload' && (
-            <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed rounded-lg">
-              <Upload className="h-12 w-12 text-muted-foreground mb-4" />
-              <Label htmlFor="excel-file" className="cursor-pointer">
-                <span className="text-primary hover:underline">Excel-Datei auswählen</span>
-                <span className="text-muted-foreground"> (.xlsx, .xls)</span>
-              </Label>
-              <Input
-                id="excel-file"
-                type="file"
-                accept=".xlsx,.xls"
-                className="hidden"
-                onChange={handleFileUpload}
-              />
-              <p className="text-xs text-muted-foreground mt-4">
-                Erforderliche Spalten: Firmenname, Ansprechpartner, E-Mail
-              </p>
-            </div>
-          )}
-
-          {/* Step 2: Column Mapping */}
-          {step === 'mapping' && (
+          {/* Step 1: Paste */}
+          {step === 'paste' && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 max-h-[400px] overflow-y-auto pr-2">
-                {columnMappings.map((mapping) => (
-                  <div key={mapping.excelColumn} className="flex items-center gap-2">
-                    <Badge variant="outline" className="min-w-[120px] justify-center truncate">
-                      {mapping.excelColumn}
-                    </Badge>
-                    <span className="text-muted-foreground">→</span>
-                    <Select
-                      value={mapping.field}
-                      onValueChange={(v) => updateMapping(mapping.excelColumn, v as keyof ParsedRow | 'skip')}
-                    >
-                      <SelectTrigger className="flex-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-background border shadow-lg z-50">
-                        {FIELD_OPTIONS.map(opt => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ))}
+              <div className="text-sm text-muted-foreground">
+                <strong>Erwartete Spalten (Tab-getrennt aus Excel):</strong>
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {COLUMN_HEADERS.map((h, i) => (
+                    <Badge key={i} variant="outline" className="text-xs">{h}</Badge>
+                  ))}
+                </div>
               </div>
               
-              <div className="flex justify-end gap-3 pt-4 border-t">
-                <Button variant="outline" onClick={resetDialog}>Abbrechen</Button>
-                <Button onClick={processData}>
-                  Weiter zur Vorschau
+              <Textarea
+                placeholder="Excel-Daten hier einfügen (Strg+V)..."
+                className="min-h-[300px] font-mono text-sm"
+                value={pastedData}
+                onChange={(e) => setPastedData(e.target.value)}
+              />
+
+              <div className="flex justify-end gap-3">
+                <Button variant="outline" onClick={() => onOpenChange(false)}>Abbrechen</Button>
+                <Button onClick={parseData} disabled={!pastedData.trim()}>
+                  Daten analysieren
                 </Button>
               </div>
             </div>
           )}
 
-          {/* Step 3: Preview */}
+          {/* Step 2: Preview */}
           {step === 'preview' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <p className="text-sm">
-                  <Check className="inline h-4 w-4 text-green-500 mr-1" />
-                  {parsedRows.length} gültige Einträge
-                </p>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 text-sm">
+                  <Check className="h-4 w-4 text-green-500" />
+                  <span>{validRows.length} gültige Zeilen</span>
+                </div>
+                {parsedRows.length - validRows.length > 0 && (
+                  <div className="flex items-center gap-2 text-sm text-amber-600">
+                    <AlertCircle className="h-4 w-4" />
+                    <span>{parsedRows.length - validRows.length} mit Problemen</span>
+                  </div>
+                )}
               </div>
-              
-              <ScrollArea className="h-[350px] border rounded-lg">
+
+              <ScrollArea className="h-[400px] border rounded-lg">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Firma</TableHead>
-                      <TableHead>KD-Nr.</TableHead>
-                      <TableHead>Ansprechpartner</TableHead>
-                      <TableHead>E-Mail</TableHead>
                       <TableHead>Gruppe</TableHead>
-                      <TableHead>Zertifizierungen</TableHead>
+                      <TableHead>Kunde</TableHead>
+                      <TableHead>KD-Nr.</TableHead>
+                      <TableHead>Berater</TableHead>
+                      <TableHead>Zertifikat</TableHead>
+                      <TableHead>Auditor</TableHead>
+                      <TableHead>gültig bis</TableHead>
+                      <TableHead>Audit Art</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {parsedRows.slice(0, 50).map((row, idx) => (
-                      <TableRow key={idx}>
-                        <TableCell className="font-medium">{row.name}</TableCell>
-                        <TableCell>{row.clientNumber || <span className="text-muted-foreground italic">Auto</span>}</TableCell>
-                        <TableCell>{row.contactPerson}</TableCell>
-                        <TableCell>{row.email}</TableCell>
+                    {parsedRows.map((row, idx) => (
+                      <TableRow key={idx} className={!row.isValid ? 'bg-destructive/10' : ''}>
                         <TableCell>
-                          {row.parentName ? (
-                            parentClients.find(p => p.name.toLowerCase() === row.parentName?.toLowerCase()) ? (
-                              <Badge variant="secondary">{row.parentName}</Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-amber-600">
-                                <AlertCircle className="h-3 w-3 mr-1" />
-                                {row.parentName}
-                              </Badge>
-                            )
+                          {row.groupName ? (
+                            <Badge variant="secondary">{row.groupName}</Badge>
                           ) : (
                             <span className="text-muted-foreground">-</span>
                           )}
                         </TableCell>
+                        <TableCell className="font-medium">{row.clientName || <span className="text-destructive">Fehlt</span>}</TableCell>
+                        <TableCell>{row.clientNumber || <span className="text-muted-foreground italic">Auto</span>}</TableCell>
+                        <TableCell>{row.consultant || '-'}</TableCell>
                         <TableCell>
-                          {row.certifications?.map(c => (
-                            <Badge key={c} variant="outline" className="mr-1 text-xs">{c}</Badge>
-                          )) || '-'}
+                          {row.certification ? (
+                            <Badge variant="outline">{row.certification}</Badge>
+                          ) : '-'}
                         </TableCell>
+                        <TableCell>{row.auditor || '-'}</TableCell>
+                        <TableCell>{row.validUntil || '-'}</TableCell>
+                        <TableCell>{row.auditType || '-'}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
-                {parsedRows.length > 50 && (
-                  <p className="text-center py-2 text-sm text-muted-foreground">
-                    ... und {parsedRows.length - 50} weitere
-                  </p>
-                )}
               </ScrollArea>
-              
+
               <div className="flex justify-between items-center pt-4 border-t">
-                <Button variant="outline" onClick={() => setStep('mapping')}>
+                <Button variant="outline" onClick={() => setStep('paste')}>
                   Zurück
                 </Button>
-                <Button onClick={performImport} disabled={parsedRows.length === 0}>
-                  {parsedRows.length} Kunden importieren
+                <Button onClick={performImport} disabled={validRows.length === 0}>
+                  {Object.keys(groupedPreview).length} Gruppen / {Object.values(groupedPreview).reduce((s, g) => s + Object.keys(g.clients).length, 0)} Kunden importieren
                 </Button>
               </div>
             </div>
           )}
 
-          {/* Step 4: Importing */}
+          {/* Step 3: Importing */}
           {step === 'importing' && (
             <div className="flex flex-col items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
               <div className="w-64 h-2 bg-muted rounded-full overflow-hidden mb-4">
                 <div
                   className="h-full bg-primary transition-all duration-300"
@@ -453,11 +511,10 @@ export const ExcelImportDialog = ({ open, onOpenChange }: ExcelImportDialogProps
                 />
               </div>
               <p className="text-sm text-muted-foreground">
-                {importProgress < 80 
-                  ? `Erstelle Kunden... (${Math.round(importProgress / 80 * parsedRows.length)}/${parsedRows.length})`
-                  : importProgress < 100
-                    ? 'Verknüpfe Zertifizierungen...'
-                    : 'Fertig!'}
+                {importProgress < 10 && 'Erstelle Unternehmensgruppen...'}
+                {importProgress >= 10 && importProgress < 55 && 'Erstelle Kunden...'}
+                {importProgress >= 55 && importProgress < 100 && 'Erstelle Zertifizierungen & Audits...'}
+                {importProgress >= 100 && 'Fertig!'}
               </p>
             </div>
           )}
