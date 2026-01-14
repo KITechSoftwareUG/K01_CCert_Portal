@@ -160,12 +160,12 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
           {/* Parent Company Selection */}
           <div className="space-y-2">
             <Label htmlFor="parent">Unternehmensgruppe (optional)</Label>
-            <Select value={parentClientId} onValueChange={setParentClientId}>
+            <Select value={parentClientId || "none"} onValueChange={(val) => setParentClientId(val === "none" ? "" : val)}>
               <SelectTrigger id="parent">
                 <SelectValue placeholder="Keine Gruppe (eigenständig)" />
               </SelectTrigger>
               <SelectContent className="bg-background border shadow-lg z-50">
-                <SelectItem value="">Keine Gruppe (eigenständig)</SelectItem>
+                <SelectItem value="none">Keine Gruppe (eigenständig)</SelectItem>
                 {sortedParentClients.map((parent) => (
                   <SelectItem key={parent.id} value={parent.id}>
                     {parent.name}
