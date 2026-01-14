@@ -448,28 +448,38 @@ const Clients = () => {
                     </div>
                   </div>
 
-                  {/* Expanded Content - Shows clients and their certifications as rows */}
+                  {/* Expanded Content - Shows clients in group */}
                   {isExpanded && (
                     <div className="bg-muted/20">
                       {group.children.map((childWithCerts) => {
                         const { client, certifications } = childWithCerts;
                         const contacts = contactsMap[client.id] || [];
+                        const isClientExpanded = expandedClients.has(client.id);
                         
                         return (
                           <div key={client.id}>
-                            {/* Client Row (only show if multiple clients in group) */}
-                            {isMultiClient && (
+                            {/* Client Row - always show for multi-client groups, clickable to expand certifications */}
+                            {isMultiClient ? (
                               <div
                                 className="flex items-center justify-between px-4 py-2 pl-10 bg-muted/30 border-t border-border/50 cursor-pointer hover:bg-muted/50"
-                                onClick={() => navigate(`/clients/${client.id}`)}
+                                onClick={() => certifications.length > 0 ? toggleClient(client.id) : navigate(`/clients/${client.id}`)}
                               >
                                 <div className="flex items-center gap-3">
-                                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                                  {certifications.length > 0 ? (
+                                    isClientExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />
+                                  ) : (
+                                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                                  )}
                                   <span className="font-medium">{client.name}</span>
                                   {client.client_number && (
                                     <Badge variant="outline" className="gap-1 text-xs">
                                       <Hash className="h-3 w-3" />
                                       {client.client_number}
+                                    </Badge>
+                                  )}
+                                  {certifications.length > 0 && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      {certifications.length} Zertifikat{certifications.length !== 1 ? 'e' : ''}
                                     </Badge>
                                   )}
                                 </div>
@@ -481,48 +491,61 @@ const Clients = () => {
                                     contacts={contacts}
                                     onEdit={() => navigate(`/clients/${client.id}`)}
                                   />
-                                  <Button variant="ghost" size="sm">Details</Button>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(`/clients/${client.id}`);
+                                    }}
+                                  >
+                                    Details
+                                  </Button>
                                 </div>
                               </div>
-                            )}
+                            ) : null}
                             
-                            {/* Certification Rows */}
-                            {certifications.length > 0 ? (
-                              certifications.map((row, idx) => (
-                                <div
-                                  key={`${row.clientId}-${idx}`}
-                                  className={`flex items-center gap-4 px-4 py-2 text-sm border-t border-border/30 hover:bg-muted/40 cursor-pointer ${isMultiClient ? 'pl-14' : 'pl-10'}`}
-                                  onClick={() => navigate(`/clients/${row.clientId}`)}
-                                >
-                                  <div className="flex items-center gap-2">
-                                    {row.certifications.map((cert) => (
-                                      <Badge key={cert.certificationId} variant="secondary" className="gap-1">
-                                        <Award className="h-3 w-3" />
-                                        {cert.certificationName}
-                                      </Badge>
-                                    ))}
+                            {/* Certification Rows - only show when client is expanded (for multi) or always (for single) */}
+                            {(!isMultiClient || isClientExpanded) && (
+                              <>
+                                {certifications.length > 0 ? (
+                                  certifications.map((row, idx) => (
+                                    <div
+                                      key={`${row.clientId}-${idx}`}
+                                      className={`flex items-center gap-4 px-4 py-2 text-sm border-t border-border/30 hover:bg-muted/40 cursor-pointer ${isMultiClient ? 'pl-14' : 'pl-10'}`}
+                                      onClick={() => navigate(`/clients/${row.clientId}`)}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        {row.certifications.map((cert) => (
+                                          <Badge key={cert.certificationId} variant="secondary" className="gap-1">
+                                            <Award className="h-3 w-3" />
+                                            {cert.certificationName}
+                                          </Badge>
+                                        ))}
+                                      </div>
+                                      {row.certifications[0]?.certificateNumber && (
+                                        <span className="text-muted-foreground">
+                                          Nr. {row.certifications[0].certificateNumber}
+                                        </span>
+                                      )}
+                                      {row.earliestValidUntil && (
+                                        <span className="text-muted-foreground">
+                                          bis {new Date(row.earliestValidUntil).toLocaleDateString('de-DE')}
+                                        </span>
+                                      )}
+                                      {row.certifications.some(c => c.status && c.status !== 'active') && (
+                                        <Badge variant={row.certifications.some(c => c.status === 'expired') ? 'destructive' : 'outline'}>
+                                          {row.certifications.find(c => c.status !== 'active')?.status}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className={`py-2 text-sm text-muted-foreground italic ${isMultiClient ? 'pl-14' : 'pl-10'} border-t border-border/30`}>
+                                    Keine Zertifizierungen
                                   </div>
-                                  {row.certifications[0]?.certificateNumber && (
-                                    <span className="text-muted-foreground">
-                                      Nr. {row.certifications[0].certificateNumber}
-                                    </span>
-                                  )}
-                                  {row.earliestValidUntil && (
-                                    <span className="text-muted-foreground">
-                                      bis {new Date(row.earliestValidUntil).toLocaleDateString('de-DE')}
-                                    </span>
-                                  )}
-                                  {row.certifications.some(c => c.status && c.status !== 'active') && (
-                                    <Badge variant={row.certifications.some(c => c.status === 'expired') ? 'destructive' : 'outline'}>
-                                      {row.certifications.find(c => c.status !== 'active')?.status}
-                                    </Badge>
-                                  )}
-                                </div>
-                              ))
-                            ) : (
-                              <div className={`py-2 text-sm text-muted-foreground italic ${isMultiClient ? 'pl-14' : 'pl-10'} border-t border-border/30`}>
-                                Keine Zertifizierungen
-                              </div>
+                                )}
+                              </>
                             )}
                           </div>
                         );
