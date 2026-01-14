@@ -19,6 +19,9 @@ interface OutlookIntegrationProps {
     certifications?: string[];
     notes?: string;
     clientAddress?: string;
+    eventType?: 'audit' | 'certification';
+    isAllDay?: boolean;
+    title?: string;
   }>;
 }
 
