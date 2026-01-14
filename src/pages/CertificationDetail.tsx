@@ -110,6 +110,7 @@ const CertificationDetail = () => {
   const [validUntil, setValidUntil] = useState('');
   const [status, setStatus] = useState('active');
   const [notes, setNotes] = useState('');
+  const [scope, setScope] = useState('');
 
   // Initialize form when certification loads
   useEffect(() => {
@@ -119,6 +120,7 @@ const CertificationDetail = () => {
       setValidUntil(certification.valid_until || '');
       setStatus(certification.status || 'active');
       setNotes(certification.notes || '');
+      setScope((certification as any).scope || '');
     }
   }, [certification]);
 
@@ -133,6 +135,7 @@ const CertificationDetail = () => {
         valid_until: validUntil || null,
         status,
         notes: notes || null,
+        scope: scope || null,
       });
 
       toast.success('Zertifikat erfolgreich aktualisiert');
@@ -141,7 +144,7 @@ const CertificationDetail = () => {
       console.error('Error updating certification:', error);
       toast.error('Fehler beim Aktualisieren des Zertifikats');
     }
-  }, [id, certificateNumber, validFrom, validUntil, status, notes, updateCertification]);
+  }, [id, certificateNumber, validFrom, validUntil, status, notes, scope, updateCertification]);
 
   const handleCancel = useCallback(() => {
     if (certification) {
@@ -150,6 +153,7 @@ const CertificationDetail = () => {
       setValidUntil(certification.valid_until || '');
       setStatus(certification.status || 'active');
       setNotes(certification.notes || '');
+      setScope((certification as any).scope || '');
     }
     setIsEditing(false);
   }, [certification]);
@@ -367,6 +371,16 @@ const CertificationDetail = () => {
                       </Select>
                     </div>
                     <div className="space-y-2">
+                      <Label htmlFor="scope">Scope</Label>
+                      <Textarea
+                        id="scope"
+                        value={scope}
+                        onChange={(e) => setScope(e.target.value)}
+                        placeholder="Beschreibung des Zertifizierungsumfangs..."
+                        rows={3}
+                      />
+                    </div>
+                    <div className="space-y-2">
                       <Label htmlFor="notes">Notizen</Label>
                       <Textarea
                         id="notes"
@@ -412,6 +426,12 @@ const CertificationDetail = () => {
                         </div>
                       </div>
                     </div>
+                    {(certification as any).scope && (
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-sm text-muted-foreground mb-1">Scope</p>
+                        <p className="whitespace-pre-wrap">{(certification as any).scope}</p>
+                      </div>
+                    )}
                     {certification.notes && (
                       <div className="p-3 rounded-lg bg-muted/50">
                         <p className="text-sm text-muted-foreground mb-1">Notizen</p>

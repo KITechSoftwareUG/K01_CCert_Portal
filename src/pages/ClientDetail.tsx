@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
@@ -118,6 +119,7 @@ const ClientDetail = () => {
   const [parentClientId, setParentClientId] = useState<string>('');
   const [selectedCertifications, setSelectedCertifications] = useState<CertificationStandard[]>([]);
   const [selectedCertBodies, setSelectedCertBodies] = useState<string[]>([]);
+  const [isActive, setIsActive] = useState(true);
 
   // Filter out current client from parent options (can't be its own parent)
   const sortedParentClients = useMemo(() => 
@@ -144,6 +146,7 @@ const ClientDetail = () => {
       setCountry(client.country || 'Deutschland');
       setParentClientId(client.parent_client_id || '');
       setSelectedCertifications((client.certifications || []) as CertificationStandard[]);
+      setIsActive((client as any).is_active !== false);
     }
   }, [client]);
 
@@ -189,6 +192,7 @@ const ClientDetail = () => {
         country,
         parent_client_id: parentClientId || null,
         certifications: selectedCertifications,
+        is_active: isActive,
       });
 
       await updateCertBodies.mutateAsync({
@@ -202,7 +206,7 @@ const ClientDetail = () => {
       console.error('Error updating client:', error);
       toast.error('Fehler beim Aktualisieren des Kunden');
     }
-  }, [id, name, clientNumber, consultant, contactPerson, email, phone, address, country, parentClientId, selectedCertifications, selectedCertBodies, updateClient, updateCertBodies]);
+  }, [id, name, clientNumber, consultant, contactPerson, email, phone, address, country, parentClientId, selectedCertifications, selectedCertBodies, isActive, updateClient, updateCertBodies]);
 
   const handleCancel = useCallback(() => {
     if (client) {
@@ -217,6 +221,7 @@ const ClientDetail = () => {
       setParentClientId(client.parent_client_id || '');
       setSelectedCertifications((client.certifications || []) as CertificationStandard[]);
       setSelectedCertBodies(clientCertBodies.map((cb: any) => cb.certification_body_id));
+      setIsActive((client as any).is_active !== false);
     }
     setIsEditing(false);
   }, [client, clientCertBodies]);
@@ -282,6 +287,11 @@ const ClientDetail = () => {
                   </Badge>
                 )}
                 <h1 className="text-3xl font-bold text-foreground">{client.name}</h1>
+                {(client as any).is_active === false && (
+                  <Badge variant="destructive" className="text-sm">
+                    Inaktiv
+                  </Badge>
+                )}
               </div>
               <div className="flex items-center gap-2 text-muted-foreground mt-1">
                 <Globe className="h-4 w-4" />
@@ -328,6 +338,31 @@ const ClientDetail = () => {
               <CardContent className="space-y-4">
                 {isEditing ? (
                   <>
+                    {/* Active Status Toggle */}
+                    <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="is-active" className="font-medium">
+                          Status
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Inaktive Kunden werden standardmäßig nicht angezeigt
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-sm ${isActive ? 'text-muted-foreground' : 'font-medium text-destructive'}`}>
+                          Inaktiv
+                        </span>
+                        <Switch
+                          id="is-active"
+                          checked={isActive}
+                          onCheckedChange={setIsActive}
+                        />
+                        <span className={`text-sm ${isActive ? 'font-medium text-green-600' : 'text-muted-foreground'}`}>
+                          Aktiv
+                        </span>
+                      </div>
+                    </div>
+
                     {/* Parent Company Selection */}
                     <div className="space-y-2 p-4 border rounded-lg bg-muted/30">
                       <Label htmlFor="parent" className="flex items-center gap-2">

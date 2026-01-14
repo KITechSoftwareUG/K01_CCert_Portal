@@ -327,6 +327,7 @@ export type Database = {
           created_at: string
           id: string
           notes: string | null
+          scope: string | null
           status: string | null
           updated_at: string
           valid_from: string | null
@@ -339,6 +340,7 @@ export type Database = {
           created_at?: string
           id?: string
           notes?: string | null
+          scope?: string | null
           status?: string | null
           updated_at?: string
           valid_from?: string | null
@@ -351,6 +353,7 @@ export type Database = {
           created_at?: string
           id?: string
           notes?: string | null
+          scope?: string | null
           status?: string | null
           updated_at?: string
           valid_from?: string | null
@@ -386,6 +389,7 @@ export type Database = {
           created_at: string
           email: string
           id: string
+          is_active: boolean
           name: string
           parent_client_id: string | null
           phone: string | null
@@ -403,6 +407,7 @@ export type Database = {
           created_at?: string
           email: string
           id?: string
+          is_active?: boolean
           name: string
           parent_client_id?: string | null
           phone?: string | null
@@ -420,6 +425,7 @@ export type Database = {
           created_at?: string
           email?: string
           id?: string
+          is_active?: boolean
           name?: string
           parent_client_id?: string | null
           phone?: string | null
