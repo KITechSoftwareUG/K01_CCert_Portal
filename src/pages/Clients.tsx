@@ -28,10 +28,15 @@ import {
 type ViewMode = 'list' | 'grouped';
 
 interface CompanyGroup {
-  id: string | null; // null for groups without a parent record
+  id: string;
   name: string;
-  client?: DbClient; // The parent client record if it exists
-  children: DbClient[];
+  isGroupOnly: boolean; // True if this is just a group header (no own certifications)
+  children: ClientWithCerts[];
+}
+
+interface ClientWithCerts {
+  client: DbClient;
+  certifications: CertificationRow[];
 }
 
 interface CertificationRow {
@@ -94,40 +99,68 @@ const Clients = () => {
     );
   }, [searchQuery, clients]);
 
-  // Group clients by parent
+  // Group clients by parent - show parent as group header, children with their certs
   const companyGroups = useMemo(() => {
-    const groups: Record<string, CompanyGroup> = {};
+    const groups: CompanyGroup[] = [];
     const parentClients = filteredClients.filter(c => !c.parent_client_id);
     const childClients = filteredClients.filter(c => c.parent_client_id);
     
-    // Create groups for parent clients
-    parentClients.forEach(client => {
-      groups[client.id] = {
-        id: client.id,
-        name: client.name,
-        client,
-        children: [],
-      };
-    });
-    
-    // Add children to their parents
+    // Build map of children by parent
+    const childrenByParent: Record<string, DbClient[]> = {};
     childClients.forEach(child => {
       const parentId = child.parent_client_id!;
-      if (groups[parentId]) {
-        groups[parentId].children.push(child);
+      if (!childrenByParent[parentId]) childrenByParent[parentId] = [];
+      childrenByParent[parentId].push(child);
+    });
+    
+    parentClients.forEach(parent => {
+      const children = childrenByParent[parent.id] || [];
+      const parentCerts = certificationsByClient[parent.id] || [];
+      
+      if (children.length > 0) {
+        // This is a group with children
+        groups.push({
+          id: parent.id,
+          name: parent.name,
+          isGroupOnly: parentCerts.length === 0,
+          children: children.map(child => ({
+            client: child,
+            certifications: certificationsByClient[child.id] || [],
+          })),
+        });
       } else {
-        // Parent not in filtered results, show child as standalone
-        groups[child.id] = {
-          id: child.id,
-          name: child.name,
-          client: child,
-          children: [],
-        };
+        // Standalone client (no children) - treat as single-client group
+        groups.push({
+          id: parent.id,
+          name: parent.name,
+          isGroupOnly: false,
+          children: [{
+            client: parent,
+            certifications: parentCerts,
+          }],
+        });
       }
     });
     
-    return Object.values(groups).sort((a, b) => a.name.localeCompare(b.name));
-  }, [filteredClients]);
+    // Handle orphaned children (parent not in filtered results)
+    childClients.forEach(child => {
+      const parentId = child.parent_client_id!;
+      const parentExists = parentClients.some(p => p.id === parentId);
+      if (!parentExists) {
+        groups.push({
+          id: child.id,
+          name: child.name,
+          isGroupOnly: false,
+          children: [{
+            client: child,
+            certifications: certificationsByClient[child.id] || [],
+          }],
+        });
+      }
+    });
+    
+    return groups.sort((a, b) => a.name.localeCompare(b.name));
+  }, [filteredClients, certificationsByClient]);
 
   const toggleGroup = (id: string) => {
     setExpandedGroups(prev => {
@@ -305,90 +338,126 @@ const Clients = () => {
             {filteredClients.map(client => renderClientWithCerts(client))}
           </div>
         ) : (
-          /* GROUPED VIEW - Groups by parent company */
-          <div className="border rounded-lg divide-y">
+          /* GROUPED VIEW - Groups by parent company, with certifications as rows */
+          <div className="border rounded-lg overflow-hidden">
             {companyGroups.map(group => {
-              const isExpanded = expandedGroups.has(group.id || group.name);
-              const hasChildren = group.children.length > 0;
-              const groupClient = group.client;
-              const groupCerts = groupClient ? certificationsByClient[groupClient.id] || [] : [];
-              const contacts = groupClient ? contactsMap[groupClient.id] || [] : [];
+              const isExpanded = expandedGroups.has(group.id);
+              const totalCerts = group.children.reduce((sum, c) => sum + c.certifications.length, 0);
+              const isMultiClient = group.children.length > 1 || group.isGroupOnly;
 
               return (
-                <div key={group.id || group.name}>
+                <div key={group.id} className="border-b last:border-b-0">
                   {/* Group Header */}
                   <div
-                    className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-muted/50"
-                    onClick={() => hasChildren || groupCerts.length > 0 
-                      ? toggleGroup(group.id || group.name) 
-                      : groupClient && navigate(`/clients/${groupClient.id}`)
-                    }
+                    className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-muted/50 bg-card"
+                    onClick={() => toggleGroup(group.id)}
                   >
                     <div className="flex items-center gap-3">
-                      {(hasChildren || groupCerts.length > 0) ? (
-                        isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />
+                      {isExpanded ? (
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      )}
+                      {isMultiClient ? (
+                        <FolderTree className="h-4 w-4 text-primary" />
                       ) : (
                         <Building2 className="h-4 w-4 text-muted-foreground" />
                       )}
                       <span className="font-semibold">{group.name}</span>
-                      {groupClient?.client_number && (
+                      {isMultiClient && (
+                        <Badge variant="outline" className="text-xs">
+                          Gruppe
+                        </Badge>
+                      )}
+                      {!isMultiClient && group.children[0]?.client.client_number && (
                         <Badge variant="outline" className="gap-1 text-xs">
                           <Hash className="h-3 w-3" />
-                          {groupClient.client_number}
+                          {group.children[0].client.client_number}
                         </Badge>
                       )}
-                      {hasChildren && (
-                        <Badge variant="secondary">
-                          {group.children.length + 1} Standorte
-                        </Badge>
-                      )}
-                      {!hasChildren && groupCerts.length > 0 && (
+                      {totalCerts > 0 && (
                         <Badge variant="secondary" className="text-xs">
-                          {groupCerts.length} Zertifikat{groupCerts.length !== 1 ? 'e' : ''}
+                          {totalCerts} Zertifikat{totalCerts !== 1 ? 'e' : ''}
                         </Badge>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {groupClient && (
-                        <>
-                          <ContactPopover
-                            legacyName={groupClient.contact_person}
-                            legacyPhone={groupClient.phone}
-                            legacyEmail={groupClient.email}
-                            contacts={contacts}
-                            onEdit={() => navigate(`/clients/${groupClient.id}`)}
-                          />
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/clients/${groupClient.id}`);
-                            }}
-                          >
-                            Details
-                          </Button>
-                        </>
                       )}
                     </div>
                   </div>
 
-                  {/* Expanded Content */}
+                  {/* Expanded Content - Shows clients and their certifications as rows */}
                   {isExpanded && (
-                    <div className="bg-muted/10">
-                      {/* Parent's certifications */}
-                      {groupClient && groupCerts.length > 0 && (
-                        <div className="border-t border-border/30">
-                          <div className="pl-10 py-2 text-xs text-muted-foreground font-medium uppercase">
-                            Zertifikate von {group.name}
+                    <div className="bg-muted/20">
+                      {group.children.map((childWithCerts) => {
+                        const { client, certifications } = childWithCerts;
+                        const contacts = contactsMap[client.id] || [];
+                        
+                        return (
+                          <div key={client.id}>
+                            {/* Client Row (only show if multiple clients in group) */}
+                            {isMultiClient && (
+                              <div
+                                className="flex items-center justify-between px-4 py-2 pl-10 bg-muted/30 border-t border-border/50 cursor-pointer hover:bg-muted/50"
+                                onClick={() => navigate(`/clients/${client.id}`)}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                                  <span className="font-medium">{client.name}</span>
+                                  {client.client_number && (
+                                    <Badge variant="outline" className="gap-1 text-xs">
+                                      <Hash className="h-3 w-3" />
+                                      {client.client_number}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <ContactPopover
+                                    legacyName={client.contact_person}
+                                    legacyPhone={client.phone}
+                                    legacyEmail={client.email}
+                                    contacts={contacts}
+                                    onEdit={() => navigate(`/clients/${client.id}`)}
+                                  />
+                                  <Button variant="ghost" size="sm">Details</Button>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Certification Rows */}
+                            {certifications.length > 0 ? (
+                              certifications.map((cert, idx) => (
+                                <div
+                                  key={`${cert.clientId}-${cert.certificationId}-${idx}`}
+                                  className={`flex items-center gap-4 px-4 py-2 text-sm border-t border-border/30 hover:bg-muted/40 cursor-pointer ${isMultiClient ? 'pl-14' : 'pl-10'}`}
+                                  onClick={() => navigate(`/clients/${cert.clientId}`)}
+                                >
+                                  <Badge variant="secondary" className="gap-1">
+                                    <Award className="h-3 w-3" />
+                                    {cert.certificationName}
+                                  </Badge>
+                                  {cert.certificateNumber && (
+                                    <span className="text-muted-foreground">
+                                      Nr. {cert.certificateNumber}
+                                    </span>
+                                  )}
+                                  {cert.validUntil && (
+                                    <span className="text-muted-foreground">
+                                      bis {new Date(cert.validUntil).toLocaleDateString('de-DE')}
+                                    </span>
+                                  )}
+                                  {cert.status && cert.status !== 'active' && (
+                                    <Badge variant={cert.status === 'expired' ? 'destructive' : 'outline'}>
+                                      {cert.status}
+                                    </Badge>
+                                  )}
+                                </div>
+                              ))
+                            ) : (
+                              <div className={`py-2 text-sm text-muted-foreground italic ${isMultiClient ? 'pl-14' : 'pl-10'} border-t border-border/30`}>
+                                Keine Zertifizierungen
+                              </div>
+                            )}
                           </div>
-                          {renderCertificationRows(groupClient.id)}
-                        </div>
-                      )}
-                      
-                      {/* Children */}
-                      {group.children.map(child => renderClientWithCerts(child, true))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
