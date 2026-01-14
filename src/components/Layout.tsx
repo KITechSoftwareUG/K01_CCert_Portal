@@ -8,17 +8,13 @@ import {
   Calendar,
   Building2,
   UserCheck,
-  LogOut,
-  Shield
+  LogOut
 } from 'lucide-react';
 import logo from '@/assets/logo.png';
 import ChatBot from './ChatBot';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from './ui/button';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
 
 interface LayoutProps {
   children: ReactNode;
@@ -37,36 +33,10 @@ export const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const [settingUpMfa, setSettingUpMfa] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
-  };
-
-  const handleSetupMfa = async () => {
-    setSettingUpMfa(true);
-    const { data, error } = await supabase.auth.mfa.enroll({
-      factorType: 'totp',
-      friendlyName: 'Authenticator App',
-    });
-
-    if (error) {
-      toast({
-        title: 'MFA-Setup fehlgeschlagen',
-        description: error.message,
-        variant: 'destructive',
-      });
-      setSettingUpMfa(false);
-    } else if (data) {
-      // Open MFA setup in a new flow - simplified for now
-      toast({
-        title: 'MFA wird eingerichtet',
-        description: 'Bitte folgen Sie den Anweisungen in Ihrer Authenticator-App.',
-      });
-      setSettingUpMfa(false);
-    }
   };
 
   return (
@@ -102,16 +72,6 @@ export const Layout = ({ children }: LayoutProps) => {
           <div className="text-sm text-muted-foreground truncate px-2">
             {user?.email}
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start gap-2 text-sidebar-foreground"
-            onClick={handleSetupMfa}
-            disabled={settingUpMfa}
-          >
-            <Shield className="h-4 w-4" />
-            MFA einrichten
-          </Button>
           <Button
             variant="ghost"
             size="sm"
