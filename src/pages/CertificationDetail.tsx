@@ -505,6 +505,15 @@ const CertificationDetail = () => {
               </CardContent>
             </Card>
 
+            {/* Audits Card */}
+            {id && client && (
+              <CertificationAuditsList
+                clientCertificationId={id}
+                clientId={client.id}
+                certificationName={certName}
+              />
+            )}
+
             {/* Documents Card */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
@@ -598,15 +607,6 @@ const CertificationDetail = () => {
                 )}
               </CardContent>
             </Card>
-
-            {/* Audits Card */}
-            {id && client && (
-              <CertificationAuditsList
-                clientCertificationId={id}
-                clientId={client.id}
-                certificationName={certName}
-              />
-            )}
           </div>
 
           {/* Sidebar */}
