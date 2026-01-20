@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { useCreateClient, useParentClients, CertificationStandard } from '@/hooks/useClients';
-import { useCertificationBodies, useUpdateClientCertificationBodies } from '@/hooks/useCertificationBodies';
+
 import { useCertifications } from '@/hooks/useCertifications';
 import { useCreateClientCertification } from '@/hooks/useClientCertifications';
 import { useAuditors } from '@/hooks/useAuditors';
@@ -62,12 +62,10 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
   const [country, setCountry] = useState('Deutschland');
   const [parentClientId, setParentClientId] = useState<string>('');
   const [selectedCertifications, setSelectedCertifications] = useState<CertificationSelection[]>([]);
-  const [selectedCertBodies, setSelectedCertBodies] = useState<string[]>([]);
+  
   
   const createClient = useCreateClient();
-  const updateCertBodies = useUpdateClientCertificationBodies();
   const createClientCert = useCreateClientCertification();
-  const { data: certificationBodies = [] } = useCertificationBodies();
   const { data: parentClients = [] } = useParentClients();
   const { data: certifications = [] } = useCertifications();
   const { data: auditors = [] } = useAuditors();
@@ -105,13 +103,6 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
     return selectedCertifications.find(c => c.certificationId === certId)?.auditorId || null;
   };
 
-  const toggleCertBody = (bodyId: string) => {
-    setSelectedCertBodies(prev =>
-      prev.includes(bodyId)
-        ? prev.filter(id => id !== bodyId)
-        : [...prev, bodyId]
-    );
-  };
 
   const resetForm = () => {
     setName('');
@@ -124,7 +115,6 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
     setCountry('Deutschland');
     setParentClientId('');
     setSelectedCertifications([]);
-    setSelectedCertBodies([]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -149,13 +139,6 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
         certifications: [], // Legacy field, no longer used
       });
       
-      // Add certification bodies
-      if (selectedCertBodies.length > 0) {
-        await updateCertBodies.mutateAsync({
-          clientId: client.id,
-          certificationBodyIds: selectedCertBodies,
-        });
-      }
 
       // Add client certifications (new system) with auditor if assigned
       for (const certSelection of selectedCertifications) {
@@ -358,27 +341,6 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
             </div>
           </div>
 
-          {/* Certification Bodies */}
-          <div className="space-y-2">
-            <Label>Zertifizierungsgesellschaften</Label>
-            <div className="grid grid-cols-2 gap-3 p-4 border rounded-lg max-h-48 overflow-y-auto">
-              {certificationBodies.map((body) => (
-                <div key={body.id} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`body-${body.id}`}
-                    checked={selectedCertBodies.includes(body.id)}
-                    onCheckedChange={() => toggleCertBody(body.id)}
-                  />
-                  <label
-                    htmlFor={`body-${body.id}`}
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                  >
-                    {body.short_name || body.name}
-                  </label>
-                </div>
-              ))}
-            </div>
-          </div>
 
           {/* Actions */}
           <div className="flex justify-end gap-3">
