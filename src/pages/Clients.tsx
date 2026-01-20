@@ -474,6 +474,10 @@ const Clients = () => {
               const totalCerts = group.children.reduce((sum, c) => sum + c.certifications.length, 0);
               const isMultiClient = group.children.length > 1 || group.isGroupOnly;
 
+              // Get primary contact for the group (from first client)
+              const primaryClient = group.children[0]?.client;
+              const groupContacts = primaryClient ? contactsMap[primaryClient.id] || [] : [];
+              
               return (
                 <div key={group.id} className="border-b last:border-b-0">
                   {/* Group Header */}
@@ -508,6 +512,30 @@ const Clients = () => {
                         <Badge variant="secondary" className="text-xs">
                           {totalCerts} Zertifikat{totalCerts !== 1 ? 'e' : ''}
                         </Badge>
+                      )}
+                    </div>
+                    {/* Company Contact Person on the right */}
+                    <div className="flex items-center gap-2">
+                      {primaryClient && (
+                        <ContactPopover
+                          legacyName={primaryClient.contact_person}
+                          legacyPhone={primaryClient.phone}
+                          legacyEmail={primaryClient.email}
+                          contacts={groupContacts}
+                          onEdit={() => navigate(`/clients/${primaryClient.id}`)}
+                        />
+                      )}
+                      {!isMultiClient && primaryClient && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/clients/${primaryClient.id}`);
+                          }}
+                        >
+                          Details
+                        </Button>
                       )}
                     </div>
                   </div>
