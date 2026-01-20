@@ -19,7 +19,8 @@ import {
   Users,
   User,
   FileText,
-  CalendarPlus
+  CalendarPlus,
+  ChevronRight
 } from 'lucide-react';
 import { exportAuditToCalendar } from '@/lib/calendarExport';
 import { toast } from '@/hooks/use-toast';
@@ -213,27 +214,33 @@ const AuditDetail = () => {
       <div className="p-8 space-y-6 animate-fade-in">
         {/* Header */}
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1">
+          <div className="flex items-center">
             <Button 
-              variant="outline" 
-              size="icon"
+              variant="ghost" 
+              size="sm"
               onClick={() => navigate('/clients')}
-              title="Zur Kundenliste"
+              className="text-muted-foreground hover:text-foreground"
             >
-              <Users className="h-4 w-4" />
+              <Users className="h-4 w-4 mr-1" />
+              Kunden
             </Button>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
             <Button 
-              variant="outline" 
-              size="icon"
+              variant="ghost" 
+              size="sm"
               onClick={() => navigate(`/clients/${audit.client_id}`)}
-              title="Zum Kunden"
+              className="text-muted-foreground hover:text-foreground"
             >
-              <ArrowLeft className="h-4 w-4" />
+              <Building2 className="h-4 w-4 mr-1" />
+              {audit.clients?.name || 'Unbekannt'}
             </Button>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
           </div>
           <div className="flex-1">
-            <h1 className="text-3xl font-bold text-foreground">{audit.clients?.name || 'Unbekannt'}</h1>
-            <p className="text-muted-foreground">{AUDIT_TYPE_LABELS[audit.type]}</p>
+            <h1 className="text-2xl font-bold text-foreground">{AUDIT_TYPE_LABELS[audit.type]}</h1>
+            <p className="text-muted-foreground text-sm">
+              {format(new Date(audit.scheduled_date), 'dd. MMMM yyyy', { locale: de })}
+            </p>
           </div>
           <Badge 
             variant={statusInfo.variant}
