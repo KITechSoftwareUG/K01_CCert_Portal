@@ -4,6 +4,7 @@ import { Layout } from '@/components/Layout';
 import { useClient, useUpdateClient, useDeleteClient, useParentClients, CertificationStandard } from '@/hooks/useClients';
 
 import { ContactManagement } from '@/components/ContactManagement';
+import { useClientCertifications } from '@/hooks/useClientCertifications';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -31,10 +32,11 @@ import {
   Trash2,
   Calendar,
   Globe,
-  
   Hash,
   UserCheck,
-  Users
+  Users,
+  ChevronRight,
+  Award
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -100,6 +102,7 @@ const ClientDetail = () => {
   const navigate = useNavigate();
   
   const { data: client, isLoading } = useClient(id || '');
+  const { data: clientCertifications = [], isLoading: certificationsLoading } = useClientCertifications(id);
   const updateClient = useUpdateClient();
   const deleteClient = useDeleteClient();
   
@@ -495,7 +498,10 @@ const ClientDetail = () => {
             {/* Certifications Card */}
             <Card>
               <CardHeader>
-                <CardTitle>Zertifizierungen</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Award className="h-5 w-5" />
+                  Zertifizierungen
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 {isEditing ? (
@@ -516,18 +522,43 @@ const ClientDetail = () => {
                       </div>
                     ))}
                   </div>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {client.certifications && client.certifications.length > 0 ? (
-                      client.certifications.map((cert) => (
-                        <Badge key={cert} variant="secondary" className="text-sm px-3 py-1">
-                          {cert}
-                        </Badge>
-                      ))
-                    ) : (
-                      <p className="text-muted-foreground">Keine Zertifizierungen hinterlegt</p>
-                    )}
+                ) : certificationsLoading ? (
+                  <div className="flex gap-2">
+                    <Skeleton className="h-8 w-20" />
+                    <Skeleton className="h-8 w-20" />
                   </div>
+                ) : clientCertifications.length > 0 ? (
+                  <div className="space-y-2">
+                    {clientCertifications.map((cc) => (
+                      <div 
+                        key={cc.id}
+                        onClick={() => navigate(`/certifications/${cc.id}`)}
+                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-primary/10 cursor-pointer transition-colors group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Badge variant="secondary" className="text-sm px-3 py-1">
+                            {cc.certifications?.name || 'Unbekannt'}
+                          </Badge>
+                          {cc.valid_until && (
+                            <span className="text-xs text-muted-foreground">
+                              gültig bis {format(new Date(cc.valid_until), 'dd.MM.yyyy', { locale: de })}
+                            </span>
+                          )}
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                      </div>
+                    ))}
+                  </div>
+                ) : client?.certifications && client.certifications.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {client.certifications.map((cert) => (
+                      <Badge key={cert} variant="secondary" className="text-sm px-3 py-1">
+                        {cert}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">Keine Zertifizierungen hinterlegt</p>
                 )}
               </CardContent>
             </Card>
