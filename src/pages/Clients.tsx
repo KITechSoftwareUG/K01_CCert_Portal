@@ -579,30 +579,28 @@ const Clients = () => {
                         </Badge>
                       )}
                     </div>
-                    {/* Company Contact Person on the right - only for single clients, not groups */}
-                    <div className="flex items-center gap-2">
-                      {!isMultiClient && primaryClient && (
-                        <>
-                          <ContactPopover
-                            legacyName={primaryClient.contact_person}
-                            legacyPhone={primaryClient.phone}
-                            legacyEmail={primaryClient.email}
-                            contacts={groupContacts}
-                            onEdit={() => navigate(`/clients/${primaryClient.id}`)}
-                          />
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/clients/${primaryClient.id}`);
-                            }}
-                          >
-                            Details
-                          </Button>
-                        </>
-                      )}
-                    </div>
+                    {/* Actions on the right - only for single clients, not for parent groups */}
+                    {!isMultiClient && primaryClient && (
+                      <div className="flex items-center gap-2">
+                        <ContactPopover
+                          legacyName={primaryClient.contact_person}
+                          legacyPhone={primaryClient.phone}
+                          legacyEmail={primaryClient.email}
+                          contacts={groupContacts}
+                          onEdit={() => navigate(`/clients/${primaryClient.id}`)}
+                        />
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/clients/${primaryClient.id}`);
+                          }}
+                        >
+                          Details
+                        </Button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Expanded Content - Shows clients in group */}
