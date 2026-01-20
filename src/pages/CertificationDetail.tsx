@@ -39,6 +39,7 @@ import {
   FileText,
   Upload,
   User,
+  Users,
   Trash2,
   Download,
   Hash,
@@ -270,13 +271,24 @@ const CertificationDetail = () => {
       <div className="p-8 space-y-6 animate-fade-in">
         {/* Header */}
         <div className="flex items-center gap-4">
-          <Button 
-            variant="outline" 
-            size="icon"
-            onClick={() => client ? navigate(`/clients/${client.id}`) : navigate('/clients')}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={() => navigate('/clients')}
+              title="Zur Kundenliste"
+            >
+              <Users className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={() => client ? navigate(`/clients/${client.id}`) : navigate('/clients')}
+              title={client ? `Zurück zu ${client.name}` : 'Zurück'}
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </div>
           <div className="flex items-center gap-3 flex-1">
             <div className="p-2 bg-primary/10 rounded-lg">
               <Award className="h-8 w-8 text-primary" />
