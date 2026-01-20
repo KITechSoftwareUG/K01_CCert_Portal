@@ -22,6 +22,7 @@ import { useCreateClient, useParentClients, CertificationStandard } from '@/hook
 import { useCertificationBodies, useUpdateClientCertificationBodies } from '@/hooks/useCertificationBodies';
 import { useCertifications } from '@/hooks/useCertifications';
 import { useCreateClientCertification } from '@/hooks/useClientCertifications';
+import { useAuditors } from '@/hooks/useAuditors';
 import { Constants } from '@/integrations/supabase/types';
 
 interface NewClientDialogProps {
@@ -44,6 +45,12 @@ const COUNTRIES = [
   'Andere',
 ];
 
+// Track certification selection with optional auditor
+interface CertificationSelection {
+  certificationId: string;
+  auditorId: string | null;
+}
+
 export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) => {
   const [name, setName] = useState('');
   const [clientNumber, setClientNumber] = useState('');
@@ -54,7 +61,7 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
   const [address, setAddress] = useState('');
   const [country, setCountry] = useState('Deutschland');
   const [parentClientId, setParentClientId] = useState<string>('');
-  const [selectedCertifications, setSelectedCertifications] = useState<string[]>([]);
+  const [selectedCertifications, setSelectedCertifications] = useState<CertificationSelection[]>([]);
   const [selectedCertBodies, setSelectedCertBodies] = useState<string[]>([]);
   
   const createClient = useCreateClient();
@@ -63,6 +70,7 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
   const { data: certificationBodies = [] } = useCertificationBodies();
   const { data: parentClients = [] } = useParentClients();
   const { data: certifications = [] } = useCertifications();
+  const { data: auditors = [] } = useAuditors();
 
   const sortedParentClients = useMemo(() => 
     [...parentClients].sort((a, b) => a.name.localeCompare(b.name)),
@@ -70,11 +78,31 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
   );
 
   const toggleCertification = (certId: string) => {
-    setSelectedCertifications(prev =>
-      prev.includes(certId)
-        ? prev.filter(c => c !== certId)
-        : [...prev, certId]
+    setSelectedCertifications(prev => {
+      const exists = prev.find(c => c.certificationId === certId);
+      if (exists) {
+        return prev.filter(c => c.certificationId !== certId);
+      }
+      return [...prev, { certificationId: certId, auditorId: null }];
+    });
+  };
+
+  const updateCertificationAuditor = (certId: string, auditorId: string | null) => {
+    setSelectedCertifications(prev => 
+      prev.map(c => 
+        c.certificationId === certId 
+          ? { ...c, auditorId } 
+          : c
+      )
     );
+  };
+
+  const isCertificationSelected = (certId: string) => {
+    return selectedCertifications.some(c => c.certificationId === certId);
+  };
+
+  const getSelectedAuditor = (certId: string) => {
+    return selectedCertifications.find(c => c.certificationId === certId)?.auditorId || null;
   };
 
   const toggleCertBody = (bodyId: string) => {
@@ -129,11 +157,12 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
         });
       }
 
-      // Add client certifications (new system)
-      for (const certId of selectedCertifications) {
+      // Add client certifications (new system) with auditor if assigned
+      for (const certSelection of selectedCertifications) {
         await createClientCert.mutateAsync({
           client_id: client.id,
-          certification_id: certId,
+          certification_id: certSelection.certificationId,
+          auditor_id: certSelection.auditorId,
         });
       }
       
@@ -278,25 +307,54 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
             />
           </div>
 
-          {/* Certifications (New System) */}
+          {/* Certifications (New System) with Auditor Selection */}
           <div className="space-y-2">
             <Label>Zertifizierungen</Label>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-4 border rounded-lg">
-              {certifications.map((cert) => (
-                <div key={cert.id} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`cert-${cert.id}`}
-                    checked={selectedCertifications.includes(cert.id)}
-                    onCheckedChange={() => toggleCertification(cert.id)}
-                  />
-                  <label
-                    htmlFor={`cert-${cert.id}`}
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                  >
-                    {cert.name}
-                  </label>
-                </div>
-              ))}
+            <div className="space-y-3 p-4 border rounded-lg">
+              {certifications.map((cert) => {
+                const isSelected = isCertificationSelected(cert.id);
+                const selectedAuditor = getSelectedAuditor(cert.id);
+                
+                return (
+                  <div key={cert.id} className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`cert-${cert.id}`}
+                        checked={isSelected}
+                        onCheckedChange={() => toggleCertification(cert.id)}
+                      />
+                      <label
+                        htmlFor={`cert-${cert.id}`}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                      >
+                        {cert.name}
+                      </label>
+                    </div>
+                    {/* Auditor selection appears when certification is selected */}
+                    {isSelected && (
+                      <div className="ml-6 flex items-center gap-2">
+                        <Label className="text-xs text-muted-foreground whitespace-nowrap">Auditor:</Label>
+                        <Select 
+                          value={selectedAuditor || "none"} 
+                          onValueChange={(val) => updateCertificationAuditor(cert.id, val === "none" ? null : val)}
+                        >
+                          <SelectTrigger className="h-8 text-xs flex-1">
+                            <SelectValue placeholder="Kein Auditor" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border shadow-lg z-50">
+                            <SelectItem value="none">Kein Auditor</SelectItem>
+                            {auditors.map((auditor) => (
+                              <SelectItem key={auditor.id} value={auditor.id}>
+                                {auditor.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
 

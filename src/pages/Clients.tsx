@@ -7,6 +7,7 @@ import { useClients, DbClient } from '@/hooks/useClients';
 import { useAllClientCertifications } from '@/hooks/useClientCertifications';
 import { useContactsByClientIds } from '@/hooks/useContacts';
 import { useAuditorsForCertifications } from '@/hooks/useAuditorsForCertifications';
+import { useAuditors } from '@/hooks/useAuditors';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +16,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ContactPopover } from '@/components/ContactPopover';
 import { AuditorPopover } from '@/components/AuditorPopover';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { 
   Plus, 
   Search, 
@@ -27,7 +35,9 @@ import {
   Hash,
   Upload,
   Eye,
-  EyeOff
+  EyeOff,
+  AlertTriangle,
+  User
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 
@@ -74,9 +84,11 @@ const Clients = () => {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
   const [showInactive, setShowInactive] = useState(false);
+  const [auditorFilter, setAuditorFilter] = useState<string>('all');
   
   const { data: clients = [], isLoading, error } = useClients();
   const { data: allCertifications = [] } = useAllClientCertifications();
+  const { data: allAuditors = [] } = useAuditors();
 
   // Get all client IDs for bulk contact fetch
   const clientIds = useMemo(() => clients.map(c => c.id), [clients]);
@@ -163,7 +175,7 @@ const Clients = () => {
     return map;
   }, [allCertifications]);
 
-  // Filter clients by active status and search
+  // Filter clients by active status, search, and auditor
   const filteredClients = useMemo(() => {
     let result = clients;
     
@@ -182,9 +194,33 @@ const Clients = () => {
         client.country?.toLowerCase().includes(query)
       );
     }
+
+    // Filter by auditor
+    if (auditorFilter && auditorFilter !== 'all') {
+      const clientIdsWithAuditor = new Set<string>();
+      
+      if (auditorFilter === 'none') {
+        // Find clients that have at least one certification WITHOUT an auditor
+        Object.entries(certificationsByClient).forEach(([clientId, certRows]) => {
+          const hasNoAuditor = certRows.some(row => !auditorsByClientCertification[row.primaryCertificationId]);
+          if (hasNoAuditor) clientIdsWithAuditor.add(clientId);
+        });
+      } else {
+        // Find clients that have certifications with the selected auditor
+        Object.entries(certificationsByClient).forEach(([clientId, certRows]) => {
+          const hasAuditor = certRows.some(row => {
+            const auditor = auditorsByClientCertification[row.primaryCertificationId];
+            return auditor && auditor.auditorId === auditorFilter;
+          });
+          if (hasAuditor) clientIdsWithAuditor.add(clientId);
+        });
+      }
+      
+      result = result.filter(client => clientIdsWithAuditor.has(client.id));
+    }
     
     return result;
-  }, [searchQuery, clients, showInactive]);
+  }, [searchQuery, clients, showInactive, auditorFilter, certificationsByClient, auditorsByClientCertification]);
 
   // Group clients by parent - show parent as group header, children with their certs
   const companyGroups = useMemo(() => {
@@ -311,8 +347,8 @@ const Clients = () => {
               </Badge>
             )}
           </div>
-          {/* Auditor on the right side */}
-          {auditorInfo && (
+          {/* Auditor on the right side - show warning if missing */}
+          {auditorInfo ? (
             <AuditorPopover 
               auditor={{
                 id: auditorInfo.auditorId,
@@ -321,6 +357,11 @@ const Clients = () => {
                 phone: auditorInfo.auditorPhone,
               }}
             />
+          ) : (
+            <div className="flex items-center gap-1.5 text-warning">
+              <AlertTriangle className="h-4 w-4" />
+              <span className="text-xs font-medium">Kein Auditor</span>
+            </div>
           )}
         </div>
       );
@@ -418,9 +459,9 @@ const Clients = () => {
         <NewClientDialog open={showNewClientDialog} onOpenChange={setShowNewClientDialog} />
         <ExcelImportDialog open={showImportDialog} onOpenChange={setShowImportDialog} />
 
-        {/* Search + View Toggle */}
-        <div className="flex gap-4 items-center justify-between">
-          <div className="relative max-w-md flex-1">
+        {/* Search + View Toggle + Filters */}
+        <div className="flex gap-4 items-center justify-between flex-wrap">
+          <div className="relative max-w-md flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Suchen..."
@@ -430,7 +471,31 @@ const Clients = () => {
             />
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
+            {/* Auditor Filter */}
+            <div className="flex items-center gap-2">
+              <User className="h-4 w-4 text-muted-foreground" />
+              <Select value={auditorFilter} onValueChange={setAuditorFilter}>
+                <SelectTrigger className="w-[180px] h-9">
+                  <SelectValue placeholder="Alle Auditoren" />
+                </SelectTrigger>
+                <SelectContent className="bg-background border shadow-lg z-50">
+                  <SelectItem value="all">Alle Auditoren</SelectItem>
+                  <SelectItem value="none">
+                    <span className="flex items-center gap-1.5 text-warning">
+                      <AlertTriangle className="h-3 w-3" />
+                      Ohne Auditor
+                    </span>
+                  </SelectItem>
+                  {allAuditors.map((auditor) => (
+                    <SelectItem key={auditor.id} value={auditor.id}>
+                      {auditor.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="flex items-center gap-2">
               <Switch
                 id="show-inactive"
@@ -641,8 +706,8 @@ const Clients = () => {
                                             </Badge>
                                           )}
                                         </div>
-                                        {/* Auditor on the right side */}
-                                        {auditorInfo && (
+                                        {/* Auditor on the right side - show warning if missing */}
+                                        {auditorInfo ? (
                                           <AuditorPopover 
                                             auditor={{
                                               id: auditorInfo.auditorId,
@@ -651,6 +716,11 @@ const Clients = () => {
                                               phone: auditorInfo.auditorPhone,
                                             }}
                                           />
+                                        ) : (
+                                          <div className="flex items-center gap-1.5 text-warning">
+                                            <AlertTriangle className="h-4 w-4" />
+                                            <span className="text-xs font-medium">Kein Auditor</span>
+                                          </div>
                                         )}
                                       </div>
                                     );
