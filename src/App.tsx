@@ -14,6 +14,8 @@ import AuditDetail from "./pages/AuditDetail";
 import Calendar from "./pages/Calendar";
 import CertificationBodies from "./pages/CertificationBodies";
 import Auditors from "./pages/Auditors";
+import CertificationsManagement from "./pages/CertificationsManagement";
+import AuditTemplates from "./pages/AuditTemplates";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -37,6 +39,8 @@ const App = () => (
             <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
             <Route path="/certification-bodies" element={<ProtectedRoute><CertificationBodies /></ProtectedRoute>} />
             <Route path="/auditors" element={<ProtectedRoute><Auditors /></ProtectedRoute>} />
+            <Route path="/settings/certifications" element={<ProtectedRoute><CertificationsManagement /></ProtectedRoute>} />
+            <Route path="/settings/audit-templates" element={<ProtectedRoute><AuditTemplates /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
