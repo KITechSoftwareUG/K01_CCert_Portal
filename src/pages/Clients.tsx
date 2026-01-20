@@ -579,28 +579,28 @@ const Clients = () => {
                         </Badge>
                       )}
                     </div>
-                    {/* Company Contact Person on the right */}
+                    {/* Company Contact Person on the right - only for single clients, not groups */}
                     <div className="flex items-center gap-2">
-                      {primaryClient && (
-                        <ContactPopover
-                          legacyName={primaryClient.contact_person}
-                          legacyPhone={primaryClient.phone}
-                          legacyEmail={primaryClient.email}
-                          contacts={groupContacts}
-                          onEdit={() => navigate(`/clients/${primaryClient.id}`)}
-                        />
-                      )}
                       {!isMultiClient && primaryClient && (
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/clients/${primaryClient.id}`);
-                          }}
-                        >
-                          Details
-                        </Button>
+                        <>
+                          <ContactPopover
+                            legacyName={primaryClient.contact_person}
+                            legacyPhone={primaryClient.phone}
+                            legacyEmail={primaryClient.email}
+                            contacts={groupContacts}
+                            onEdit={() => navigate(`/clients/${primaryClient.id}`)}
+                          />
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/clients/${primaryClient.id}`);
+                            }}
+                          >
+                            Details
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>
