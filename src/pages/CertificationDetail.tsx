@@ -14,6 +14,7 @@ import {
 } from '@/hooks/useCertificationDocuments';
 import { useAuditors } from '@/hooks/useAuditors';
 import { AuditorPopover } from '@/components/AuditorPopover';
+import { CertificationAuditsList } from '@/components/CertificationAuditsList';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -597,6 +598,15 @@ const CertificationDetail = () => {
                 )}
               </CardContent>
             </Card>
+
+            {/* Audits Card */}
+            {id && client && (
+              <CertificationAuditsList
+                clientCertificationId={id}
+                clientId={client.id}
+                certificationName={certName}
+              />
+            )}
           </div>
 
           {/* Sidebar */}
