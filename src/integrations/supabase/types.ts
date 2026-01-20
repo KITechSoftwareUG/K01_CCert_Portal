@@ -61,6 +61,82 @@ export type Database = {
           },
         ]
       }
+      audit_template_tasks: {
+        Row: {
+          created_at: string
+          days_before_audit: number
+          description: string | null
+          id: string
+          sort_order: number
+          template_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          days_before_audit?: number
+          description?: string | null
+          id?: string
+          sort_order?: number
+          template_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          days_before_audit?: number
+          description?: string | null
+          id?: string
+          sort_order?: number
+          template_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_template_tasks_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "audit_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_templates: {
+        Row: {
+          audit_type: Database["public"]["Enums"]["audit_type"]
+          certification_id: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string | null
+          updated_at: string
+        }
+        Insert: {
+          audit_type: Database["public"]["Enums"]["audit_type"]
+          certification_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          audit_type?: Database["public"]["Enums"]["audit_type"]
+          certification_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_templates_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "certifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       auditors: {
         Row: {
           certification_body_id: string | null

@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { 
@@ -8,19 +8,29 @@ import {
   Calendar,
   Building2,
   UserCheck,
-  LogOut
+  LogOut,
+  Settings,
+  Award,
+  ListChecks,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 import logo from '@/assets/logo.png';
 import ChatBot from './ChatBot';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from './ui/button';
 import { useNavigate } from 'react-router-dom';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from './ui/collapsible';
 
 interface LayoutProps {
   children: ReactNode;
 }
 
-const navigation = [
+const mainNavigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Kunden', href: '/clients', icon: Users },
   { name: 'Audits', href: '/audits', icon: ClipboardCheck },
@@ -29,15 +39,25 @@ const navigation = [
   { name: 'Kalender', href: '/calendar', icon: Calendar },
 ];
 
+const settingsNavigation = [
+  { name: 'Zertifizierungen', href: '/settings/certifications', icon: Award },
+  { name: 'Audit-Vorlagen', href: '/settings/audit-templates', icon: ListChecks },
+];
+
 export const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const [settingsOpen, setSettingsOpen] = useState(
+    location.pathname.startsWith('/settings')
+  );
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
   };
+
+  const isSettingsActive = location.pathname.startsWith('/settings');
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -46,8 +66,9 @@ export const Layout = ({ children }: LayoutProps) => {
         <div className="flex items-center p-4 border-b border-sidebar-border">
           <img src={logo} alt="cert consulting pane·spark" className="h-12 w-auto" />
         </div>
-        <nav className="p-4 space-y-2 flex-1">
-          {navigation.map((item) => {
+        <nav className="p-4 space-y-2 flex-1 overflow-y-auto">
+          {/* Main Navigation */}
+          {mainNavigation.map((item) => {
             const isActive = location.pathname === item.href;
             return (
               <Link
@@ -65,6 +86,50 @@ export const Layout = ({ children }: LayoutProps) => {
               </Link>
             );
           })}
+
+          {/* Settings Section - Collapsible */}
+          <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
+            <CollapsibleTrigger asChild>
+              <button
+                className={cn(
+                  'flex items-center justify-between w-full px-4 py-3 rounded-lg transition-colors',
+                  isSettingsActive
+                    ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                    : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <Settings className="h-5 w-5" />
+                  <span className="font-medium">Einstellungen</span>
+                </div>
+                {settingsOpen ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-1 ml-4 space-y-1">
+              {settingsNavigation.map((item) => {
+                const isActive = location.pathname === item.href;
+                return (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className={cn(
+                      'flex items-center gap-3 px-4 py-2 rounded-lg transition-colors text-sm',
+                      isActive
+                        ? 'bg-sidebar-primary text-sidebar-primary-foreground'
+                        : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                    )}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    <span>{item.name}</span>
+                  </Link>
+                );
+              })}
+            </CollapsibleContent>
+          </Collapsible>
         </nav>
         
         {/* User section */}
