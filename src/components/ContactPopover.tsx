@@ -1,8 +1,9 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Copy, Check, Phone, Mail, Pencil, User, Plus } from 'lucide-react';
+import { Copy, Check, Phone, Mail, User, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { Contact } from '@/hooks/useContacts';
 
@@ -13,8 +14,8 @@ interface ContactPopoverProps {
   legacyEmail?: string | null;
   // Multiple contacts from contacts table
   contacts?: Contact[];
-  onEdit?: () => void;
-  onAddContact?: () => void;
+  // Client ID for navigation
+  clientId?: string;
 }
 
 export const ContactPopover = ({ 
@@ -22,9 +23,9 @@ export const ContactPopover = ({
   legacyPhone, 
   legacyEmail, 
   contacts = [],
-  onEdit,
-  onAddContact 
+  clientId
 }: ContactPopoverProps) => {
+  const navigate = useNavigate();
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const copyToClipboard = (text: string, field: string) => {
@@ -49,7 +50,7 @@ export const ContactPopover = ({
       <PopoverTrigger asChild>
         <Button 
           variant="ghost" 
-          className="h-auto p-1 text-sm font-normal hover:text-primary hover:underline gap-1"
+          className="h-auto p-1 text-xs font-normal text-sky-700 dark:text-sky-400 hover:text-sky-800 dark:hover:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-900/20 gap-1"
           onClick={(e) => e.stopPropagation()}
         >
           <User className="h-3 w-3" />
@@ -60,24 +61,29 @@ export const ContactPopover = ({
         </Button>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-80" 
+        className="w-72 border-sky-200 dark:border-sky-800" 
         align="end"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="space-y-4">
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <User className="h-4 w-4 text-sky-600 dark:text-sky-400" />
+            <p className="font-semibold text-sky-900 dark:text-sky-200">Ansprechpartner</p>
+          </div>
+          
           {hasContacts ? (
             // Multiple contacts view
             contacts.map((contact, idx) => (
-              <div key={contact.id} className={idx > 0 ? "border-t pt-3" : ""}>
+              <div key={contact.id} className={`pl-6 ${idx > 0 ? "border-t pt-3" : ""}`}>
                 <div className="flex items-center gap-2 mb-2">
-                  <p className="font-semibold">{contact.name}</p>
+                  <p className="font-medium">{contact.name}</p>
                   {contact.is_primary && (
-                    <Badge variant="default" className="text-xs">Hauptkontakt</Badge>
-                  )}
-                  {contact.role && (
-                    <span className="text-xs text-muted-foreground">{contact.role}</span>
+                    <Badge variant="default" className="text-xs">Haupt</Badge>
                   )}
                 </div>
+                {contact.role && (
+                  <p className="text-xs text-muted-foreground mb-2">{contact.role}</p>
+                )}
                 
                 {contact.phone && (
                   <div className="flex items-center justify-between gap-2 mb-1">
@@ -124,8 +130,8 @@ export const ContactPopover = ({
             ))
           ) : (
             // Legacy single contact view
-            <div>
-              <p className="font-semibold mb-2">{legacyName}</p>
+            <div className="pl-6">
+              <p className="font-medium mb-2">{legacyName}</p>
               
               {legacyPhone && (
                 <div className="flex items-center justify-between gap-2 mb-1">
@@ -175,30 +181,20 @@ export const ContactPopover = ({
             </div>
           )}
 
-          <div className="flex gap-2 pt-2 border-t">
-            {onAddContact && (
+          {/* Navigation arrow to client details */}
+          {clientId && (
+            <div className="border-t pt-2">
               <Button 
-                variant="outline" 
+                variant="ghost" 
                 size="sm" 
-                className="flex-1"
-                onClick={onAddContact}
+                className="w-full justify-between text-sky-700 dark:text-sky-400 hover:text-sky-800 dark:hover:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-900/20"
+                onClick={() => navigate(`/clients/${clientId}`)}
               >
-                <Plus className="h-3 w-3 mr-1" />
-                Kontakt
+                Zum Unternehmen
+                <ChevronRight className="h-4 w-4" />
               </Button>
-            )}
-            {onEdit && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="flex-1"
-                onClick={onEdit}
-              >
-                <Pencil className="h-3 w-3 mr-1" />
-                Details
-              </Button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </PopoverContent>
     </Popover>

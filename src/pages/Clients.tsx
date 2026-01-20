@@ -404,25 +404,13 @@ const Clients = () => {
               </Badge>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <ContactPopover
-              legacyName={client.contact_person}
-              legacyPhone={client.phone}
-              legacyEmail={client.email}
-              contacts={contacts}
-              onEdit={() => navigate(`/clients/${client.id}`)}
-            />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate(`/clients/${client.id}`);
-              }}
-            >
-              Details
-            </Button>
-          </div>
+          <ContactPopover
+            legacyName={client.contact_person}
+            legacyPhone={client.phone}
+            legacyEmail={client.email}
+            contacts={contacts}
+            clientId={client.id}
+          />
         </div>
         {isExpanded && (
           <div className="bg-muted/10">
@@ -581,25 +569,13 @@ const Clients = () => {
                     </div>
                     {/* Actions on the right - only for single clients, not for parent groups */}
                     {!isMultiClient && primaryClient && (
-                      <div className="flex items-center gap-2">
-                        <ContactPopover
-                          legacyName={primaryClient.contact_person}
-                          legacyPhone={primaryClient.phone}
-                          legacyEmail={primaryClient.email}
-                          contacts={groupContacts}
-                          onEdit={() => navigate(`/clients/${primaryClient.id}`)}
-                        />
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/clients/${primaryClient.id}`);
-                          }}
-                        >
-                          Details
-                        </Button>
-                      </div>
+                      <ContactPopover
+                        legacyName={primaryClient.contact_person}
+                        legacyPhone={primaryClient.phone}
+                        legacyEmail={primaryClient.email}
+                        contacts={groupContacts}
+                        clientId={primaryClient.id}
+                      />
                     )}
                   </div>
 
@@ -650,18 +626,8 @@ const Clients = () => {
                                     legacyPhone={client.phone}
                                     legacyEmail={client.email}
                                     contacts={contacts}
-                                    onEdit={() => navigate(`/clients/${client.id}`)}
+                                    clientId={client.id}
                                   />
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      navigate(`/clients/${client.id}`);
-                                    }}
-                                  >
-                                    Details
-                                  </Button>
                                 </div>
                               </div>
                             ) : null}
