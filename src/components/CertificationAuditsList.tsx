@@ -44,6 +44,7 @@ import { AUDIT_TYPE_LABELS } from '@/lib/constants';
 interface CertificationAuditsListProps {
   clientCertificationId: string;
   clientId: string;
+  certificationId: string;
   certificationName: string;
 }
 
@@ -101,6 +102,7 @@ const getAuditTypeBadge = (type: string) => {
 export const CertificationAuditsList = ({ 
   clientCertificationId, 
   clientId,
+  certificationId,
   certificationName 
 }: CertificationAuditsListProps) => {
   const navigate = useNavigate();
@@ -280,6 +282,7 @@ export const CertificationAuditsList = ({
         onOpenChange={handleDialogClose}
         clientCertificationId={clientCertificationId}
         clientId={clientId}
+        certificationId={certificationId}
         certificationName={certificationName}
         existingAudit={editingAudit}
       />

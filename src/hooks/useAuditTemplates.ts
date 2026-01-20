@@ -83,6 +83,33 @@ export const useAuditTemplateByType = (
   });
 };
 
+// Fetch template tasks directly by certification and audit type
+export const fetchTemplateTasksForAudit = async (
+  certificationId: string,
+  auditType: 'initial' | 'surveillance' | 'recertification' | 'six-month'
+): Promise<AuditTemplateTask[]> => {
+  // First find the template
+  const { data: template, error: templateError } = await supabase
+    .from('audit_templates')
+    .select('id')
+    .eq('certification_id', certificationId)
+    .eq('audit_type', auditType)
+    .maybeSingle();
+  
+  if (templateError) throw templateError;
+  if (!template) return [];
+  
+  // Then fetch tasks
+  const { data: tasks, error: tasksError } = await supabase
+    .from('audit_template_tasks')
+    .select('*')
+    .eq('template_id', template.id)
+    .order('sort_order', { ascending: true });
+  
+  if (tasksError) throw tasksError;
+  return tasks as AuditTemplateTask[];
+};
+
 // Fetch tasks for a template
 export const useAuditTemplateTasks = (templateId: string | undefined) => {
   return useQuery({

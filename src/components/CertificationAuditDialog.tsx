@@ -28,15 +28,16 @@ import {
 import { useAuditors } from '@/hooks/useAuditors';
 import { useCertificationBodies } from '@/hooks/useCertificationBodies';
 import { useCreateBulkAuditTasks } from '@/hooks/useAuditTasks';
+import { fetchTemplateTasksForAudit } from '@/hooks/useAuditTemplates';
 import { AUDIT_TYPE_LABELS } from '@/lib/constants';
-import { daysFromNow } from '@/lib/dateUtils';
-import { Constants } from '@/integrations/supabase/types';
+import { addDays } from 'date-fns';
 
 interface CertificationAuditDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   clientCertificationId: string;
   clientId: string;
+  certificationId: string; // ID der Zertifizierung für Template-Lookup
   certificationName: string;
   existingAudit?: CertificationAudit | null;
 }
@@ -55,42 +56,12 @@ const auditTypeOptions: { value: AuditType; label: string }[] = [
   { value: 'six-month', label: AUDIT_TYPE_LABELS['six-month'] },
 ];
 
-const getDefaultTasksForAuditType = (type: AuditType, scheduledDate: Date) => {
-  const taskTemplates: Record<AuditType, Array<{ title: string; description: string; dueDays: number; assignedTo: string }>> = {
-    initial: [
-      { title: 'Registrierung beim Zertifizierer', description: 'Registrierung beim Zertifizierer und im SURE-EU-System durchführen', dueDays: -20, assignedTo: 'Auditor' },
-      { title: 'Training und Dokumentation', description: 'Schulung der Mitarbeiter durchführen und vollständige Dokumentation erstellen', dueDays: -2, assignedTo: 'Auditor' },
-      { title: 'Zertifizierungsaudit und Umsetzung', description: 'Vollständiges Zertifizierungsaudit durchführen und Umsetzung der Standards prüfen', dueDays: 2, assignedTo: 'Auditor' },
-    ],
-    surveillance: [
-      { title: 'Zusendung der Unterlagen', description: 'Alle relevanten Unterlagen für die interne Überprüfung zusenden', dueDays: 1, assignedTo: 'Auditor' },
-      { title: 'Austausch und Korrektur', description: 'Feedback vom Zertifizierer besprechen und notwendige Korrekturen durchführen', dueDays: 8, assignedTo: 'Auditor' },
-    ],
-    recertification: [
-      { title: 'Vorbereitung Re-Zertifizierung', description: 'Alle Dokumente aktualisieren und für Re-Zertifizierung vorbereiten', dueDays: 20, assignedTo: 'Auditor' },
-      { title: 'Interne Überprüfung', description: 'Internes Audit zur Sicherstellung der Standards durchführen', dueDays: 35, assignedTo: 'Auditor' },
-      { title: 'Re-Zertifizierungsaudit', description: 'Vollständiges Re-Zertifizierungsaudit durchführen', dueDays: 42, assignedTo: 'Auditor' },
-    ],
-    'six-month': [
-      { title: 'Statusbericht erstellen', description: '6-Monats-Bericht über die Umsetzung der Zertifizierungsanforderungen erstellen', dueDays: 5, assignedTo: 'Auditor' },
-      { title: 'Dokumentation prüfen', description: 'Vollständigkeit und Aktualität der Dokumentation überprüfen', dueDays: 15, assignedTo: 'Auditor' },
-    ],
-  };
-
-  return taskTemplates[type].map((task) => ({
-    title: task.title,
-    description: task.description,
-    due_date: daysFromNow(task.dueDays).toISOString(),
-    assigned_to: task.assignedTo,
-    status: 'pending' as const,
-  }));
-};
-
 export const CertificationAuditDialog = ({ 
   open, 
   onOpenChange, 
   clientCertificationId,
   clientId,
+  certificationId,
   certificationName,
   existingAudit 
 }: CertificationAuditDialogProps) => {
@@ -165,14 +136,22 @@ export const CertificationAuditDialog = ({
           certifications: [],
         });
 
-        // Create default tasks for new audits
-        const defaultTasks = getDefaultTasksForAuditType(auditType, new Date(scheduledDate));
-        await createTasks.mutateAsync(
-          defaultTasks.map(task => ({
-            ...task,
-            audit_id: audit.id,
-          }))
-        );
+        // Load tasks from template, fallback to empty if no template exists
+        const templateTasks = await fetchTemplateTasksForAudit(certificationId, auditType);
+        
+        if (templateTasks.length > 0) {
+          const auditDate = new Date(scheduledDate);
+          await createTasks.mutateAsync(
+            templateTasks.map(task => ({
+              title: task.title,
+              description: task.description || undefined,
+              due_date: addDays(auditDate, -task.days_before_audit).toISOString(),
+              assigned_to: 'Auditor',
+              status: 'pending' as const,
+              audit_id: audit.id,
+            }))
+          );
+        }
 
         toast.success('Audit erfolgreich erstellt');
       }
