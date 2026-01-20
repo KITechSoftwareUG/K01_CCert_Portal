@@ -380,12 +380,12 @@ const CertificationDetail = () => {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="auditor">Auditor</Label>
-                      <Select value={auditorId || ''} onValueChange={(v) => setAuditorId(v || null)}>
+                      <Select value={auditorId || 'none'} onValueChange={(v) => setAuditorId(v === 'none' ? null : v)}>
                         <SelectTrigger id="auditor">
                           <SelectValue placeholder="Auditor auswählen" />
                         </SelectTrigger>
                         <SelectContent className="bg-background border shadow-lg z-50">
-                          <SelectItem value="">Kein Auditor</SelectItem>
+                          <SelectItem value="none">Kein Auditor</SelectItem>
                           {auditors.map((auditor) => (
                             <SelectItem key={auditor.id} value={auditor.id}>
                               {auditor.name}
