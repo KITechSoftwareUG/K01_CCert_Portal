@@ -9,15 +9,15 @@ export interface AuditorByClientCertification {
   auditorPhone: string | null;
 }
 
-// Fetches auditors for all client certifications based on their audits
+// Fetches auditors directly linked to client certifications via auditor_id
 export const useAuditorsForCertifications = () => {
   return useQuery({
     queryKey: ['auditors-for-certifications'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('audits')
+        .from('client_certifications')
         .select(`
-          client_certification_id,
+          id,
           auditor_id,
           auditors (
             id,
@@ -26,23 +26,21 @@ export const useAuditorsForCertifications = () => {
             phone
           )
         `)
-        .not('client_certification_id', 'is', null)
-        .not('auditor_id', 'is', null)
-        .order('scheduled_date', { ascending: false });
+        .not('auditor_id', 'is', null);
       
       if (error) throw error;
       
-      // Create a map of client_certification_id -> auditor info (take the most recent audit's auditor)
+      // Create a map of client_certification_id -> auditor info
       const auditorMap: Record<string, AuditorByClientCertification> = {};
       
-      data?.forEach((audit: any) => {
-        if (audit.client_certification_id && audit.auditors && !auditorMap[audit.client_certification_id]) {
-          auditorMap[audit.client_certification_id] = {
-            clientCertificationId: audit.client_certification_id,
-            auditorId: audit.auditors.id,
-            auditorName: audit.auditors.name,
-            auditorEmail: audit.auditors.email,
-            auditorPhone: audit.auditors.phone,
+      data?.forEach((cc: any) => {
+        if (cc.id && cc.auditors) {
+          auditorMap[cc.id] = {
+            clientCertificationId: cc.id,
+            auditorId: cc.auditors.id,
+            auditorName: cc.auditors.name,
+            auditorEmail: cc.auditors.email,
+            auditorPhone: cc.auditors.phone,
           };
         }
       });
