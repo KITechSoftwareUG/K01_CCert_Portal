@@ -12,6 +12,8 @@ import {
   useDeleteCertificationDocument,
   getDocumentUrl,
 } from '@/hooks/useCertificationDocuments';
+import { useAuditors } from '@/hooks/useAuditors';
+import { AuditorPopover } from '@/components/AuditorPopover';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -36,6 +38,7 @@ import {
   Building2,
   FileText,
   Upload,
+  User,
   Trash2,
   Download,
   Hash,
@@ -99,6 +102,7 @@ const CertificationDetail = () => {
   const { data: certification, isLoading } = useClientCertification(id);
   const { data: client } = useClient(certification?.client_id || '');
   const { data: documents = [], isLoading: documentsLoading } = useCertificationDocuments(id);
+  const { data: auditors = [] } = useAuditors();
   
   const updateCertification = useUpdateClientCertification();
   const uploadDocument = useUploadCertificationDocument();
@@ -111,6 +115,7 @@ const CertificationDetail = () => {
   const [status, setStatus] = useState('active');
   const [notes, setNotes] = useState('');
   const [scope, setScope] = useState('');
+  const [auditorId, setAuditorId] = useState<string | null>(null);
 
   // Initialize form when certification loads
   useEffect(() => {
@@ -121,6 +126,7 @@ const CertificationDetail = () => {
       setStatus(certification.status || 'active');
       setNotes(certification.notes || '');
       setScope((certification as any).scope || '');
+      setAuditorId((certification as any).auditor_id || null);
     }
   }, [certification]);
 
@@ -136,6 +142,7 @@ const CertificationDetail = () => {
         status,
         notes: notes || null,
         scope: scope || null,
+        auditor_id: auditorId || null,
       });
 
       toast.success('Zertifikat erfolgreich aktualisiert');
@@ -144,7 +151,7 @@ const CertificationDetail = () => {
       console.error('Error updating certification:', error);
       toast.error('Fehler beim Aktualisieren des Zertifikats');
     }
-  }, [id, certificateNumber, validFrom, validUntil, status, notes, scope, updateCertification]);
+  }, [id, certificateNumber, validFrom, validUntil, status, notes, scope, auditorId, updateCertification]);
 
   const handleCancel = useCallback(() => {
     if (certification) {
@@ -154,6 +161,7 @@ const CertificationDetail = () => {
       setStatus(certification.status || 'active');
       setNotes(certification.notes || '');
       setScope((certification as any).scope || '');
+      setAuditorId((certification as any).auditor_id || null);
     }
     setIsEditing(false);
   }, [certification]);
@@ -371,6 +379,23 @@ const CertificationDetail = () => {
                       </Select>
                     </div>
                     <div className="space-y-2">
+                      <Label htmlFor="auditor">Auditor</Label>
+                      <Select value={auditorId || ''} onValueChange={(v) => setAuditorId(v || null)}>
+                        <SelectTrigger id="auditor">
+                          <SelectValue placeholder="Auditor auswählen" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background border shadow-lg z-50">
+                          <SelectItem value="">Kein Auditor</SelectItem>
+                          {auditors.map((auditor) => (
+                            <SelectItem key={auditor.id} value={auditor.id}>
+                              {auditor.name}
+                              {auditor.certification_bodies?.short_name && ` (${auditor.certification_bodies.short_name})`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
                       <Label htmlFor="scope">Scope</Label>
                       <Textarea
                         id="scope"
@@ -424,6 +449,30 @@ const CertificationDetail = () => {
                               : 'Nicht festgelegt'}
                           </p>
                         </div>
+                      </div>
+                    </div>
+                    {/* Auditor display */}
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                      <User className="h-5 w-5 text-amber-600" />
+                      <div className="flex-1">
+                        <p className="text-sm text-muted-foreground">Auditor</p>
+                        {(() => {
+                          const currentAuditor = auditors.find(a => a.id === (certification as any).auditor_id);
+                          return currentAuditor ? (
+                            <div className="flex items-center gap-2">
+                              <AuditorPopover 
+                                auditor={{
+                                  id: currentAuditor.id,
+                                  name: currentAuditor.name,
+                                  email: currentAuditor.email,
+                                  phone: currentAuditor.phone,
+                                }}
+                              />
+                            </div>
+                          ) : (
+                            <p className="font-medium text-muted-foreground">Nicht zugewiesen</p>
+                          );
+                        })()}
                       </div>
                     </div>
                     {(certification as any).scope && (

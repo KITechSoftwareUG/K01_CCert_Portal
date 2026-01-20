@@ -321,6 +321,7 @@ export type Database = {
       }
       client_certifications: {
         Row: {
+          auditor_id: string | null
           certificate_number: string | null
           certification_id: string
           client_id: string
@@ -334,6 +335,7 @@ export type Database = {
           valid_until: string | null
         }
         Insert: {
+          auditor_id?: string | null
           certificate_number?: string | null
           certification_id: string
           client_id: string
@@ -347,6 +349,7 @@ export type Database = {
           valid_until?: string | null
         }
         Update: {
+          auditor_id?: string | null
           certificate_number?: string | null
           certification_id?: string
           client_id?: string
@@ -360,6 +363,13 @@ export type Database = {
           valid_until?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "client_certifications_auditor_id_fkey"
+            columns: ["auditor_id"]
+            isOneToOne: false
+            referencedRelation: "auditors"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "client_certifications_certification_id_fkey"
             columns: ["certification_id"]
