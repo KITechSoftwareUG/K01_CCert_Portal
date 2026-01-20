@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { useClient, useUpdateClient, useDeleteClient, useParentClients, CertificationStandard } from '@/hooks/useClients';
-import { useCertificationBodies, useClientCertificationBodies, useUpdateClientCertificationBodies } from '@/hooks/useCertificationBodies';
+
 import { ContactManagement } from '@/components/ContactManagement';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -31,7 +31,7 @@ import {
   Trash2,
   Calendar,
   Globe,
-  Award,
+  
   Hash,
   UserCheck,
   Users
@@ -100,10 +100,7 @@ const ClientDetail = () => {
   const navigate = useNavigate();
   
   const { data: client, isLoading } = useClient(id || '');
-  const { data: certificationBodies = [] } = useCertificationBodies();
-  const { data: clientCertBodies = [] } = useClientCertificationBodies(id);
   const updateClient = useUpdateClient();
-  const updateCertBodies = useUpdateClientCertificationBodies();
   const deleteClient = useDeleteClient();
   
   const { data: parentClients = [] } = useParentClients();
@@ -119,7 +116,7 @@ const ClientDetail = () => {
   const [country, setCountry] = useState('Deutschland');
   const [parentClientId, setParentClientId] = useState<string>('');
   const [selectedCertifications, setSelectedCertifications] = useState<CertificationStandard[]>([]);
-  const [selectedCertBodies, setSelectedCertBodies] = useState<string[]>([]);
+  
   const [isActive, setIsActive] = useState(true);
 
   // Filter out current client from parent options (can't be its own parent)
@@ -151,12 +148,6 @@ const ClientDetail = () => {
     }
   }, [client]);
 
-  // Initialize certification bodies when loaded
-  useEffect(() => {
-    if (clientCertBodies.length > 0) {
-      setSelectedCertBodies(clientCertBodies.map((cb: any) => cb.certification_body_id));
-    }
-  }, [clientCertBodies]);
 
   const toggleCertification = (cert: CertificationStandard) => {
     setSelectedCertifications(prev =>
@@ -166,13 +157,6 @@ const ClientDetail = () => {
     );
   };
 
-  const toggleCertBody = (bodyId: string) => {
-    setSelectedCertBodies(prev =>
-      prev.includes(bodyId)
-        ? prev.filter(id => id !== bodyId)
-        : [...prev, bodyId]
-    );
-  };
 
   const handleSave = useCallback(async () => {
     if (!id || !name || !contactPerson || !email) {
@@ -196,10 +180,6 @@ const ClientDetail = () => {
         is_active: isActive,
       });
 
-      await updateCertBodies.mutateAsync({
-        clientId: id,
-        certificationBodyIds: selectedCertBodies,
-      });
 
       toast.success('Kunde erfolgreich aktualisiert');
       setIsEditing(false);
@@ -207,7 +187,7 @@ const ClientDetail = () => {
       console.error('Error updating client:', error);
       toast.error('Fehler beim Aktualisieren des Kunden');
     }
-  }, [id, name, clientNumber, consultant, contactPerson, email, phone, address, country, parentClientId, selectedCertifications, selectedCertBodies, isActive, updateClient, updateCertBodies]);
+  }, [id, name, clientNumber, consultant, contactPerson, email, phone, address, country, parentClientId, selectedCertifications, isActive, updateClient]);
 
   const handleCancel = useCallback(() => {
     if (client) {
@@ -221,11 +201,11 @@ const ClientDetail = () => {
       setCountry(client.country || 'Deutschland');
       setParentClientId(client.parent_client_id || '');
       setSelectedCertifications((client.certifications || []) as CertificationStandard[]);
-      setSelectedCertBodies(clientCertBodies.map((cb: any) => cb.certification_body_id));
+      
       setIsActive((client as any).is_active !== false);
     }
     setIsEditing(false);
-  }, [client, clientCertBodies]);
+  }, [client]);
 
   const handleDelete = useCallback(async () => {
     if (!id) return;
@@ -240,10 +220,6 @@ const ClientDetail = () => {
     }
   }, [id, deleteClient, navigate]);
 
-  // Get assigned certification body names
-  const assignedCertBodyNames = clientCertBodies
-    .map((cb: any) => cb.certification_bodies?.name || cb.certification_bodies?.short_name)
-    .filter(Boolean);
 
   if (isLoading) {
     return <ClientDetailSkeleton />;
@@ -559,53 +535,6 @@ const ClientDetail = () => {
             {/* Contact Management Card */}
             <ContactManagement clientId={id!} isEditing={isEditing} />
 
-            {/* Certification Bodies Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Award className="h-5 w-5" />
-                  Zertifizierungsgesellschaften
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isEditing ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {certificationBodies.map((body) => (
-                      <div key={body.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`body-edit-${body.id}`}
-                          checked={selectedCertBodies.includes(body.id)}
-                          onCheckedChange={() => toggleCertBody(body.id)}
-                        />
-                        <label
-                          htmlFor={`body-edit-${body.id}`}
-                          className="text-sm font-medium leading-none cursor-pointer"
-                        >
-                          {body.short_name || body.name}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {clientCertBodies.length > 0 ? (
-                      clientCertBodies.map((cb: any) => (
-                        <Badge 
-                          key={cb.id} 
-                          variant="outline" 
-                          className="text-sm px-3 py-1 cursor-pointer hover:bg-primary/10 transition-colors"
-                          onClick={() => navigate('/certification-bodies')}
-                        >
-                          {cb.certification_bodies?.short_name || cb.certification_bodies?.name}
-                        </Badge>
-                      ))
-                    ) : (
-                      <p className="text-muted-foreground">Keine Zertifizierungsgesellschaften zugeordnet</p>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
           </div>
 
           {/* Sidebar */}
