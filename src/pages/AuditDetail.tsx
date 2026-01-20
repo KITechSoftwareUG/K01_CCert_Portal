@@ -341,7 +341,19 @@ const AuditDetail = () => {
                   </div>
                 </div>
 
-                {audit.certifications && audit.certifications.length > 0 && (
+                {/* Show certification from client_certification link (preferred) or legacy array */}
+                {audit.client_certifications?.certifications ? (
+                  <div className="pt-4 border-t">
+                    <p className="text-sm font-medium text-muted-foreground mb-2">
+                      Zertifizierung
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant="secondary">
+                        {audit.client_certifications.certifications.name}
+                      </Badge>
+                    </div>
+                  </div>
+                ) : audit.certifications && audit.certifications.length > 0 && (
                   <div className="pt-4 border-t">
                     <p className="text-sm font-medium text-muted-foreground mb-2">
                       Zertifizierungen

@@ -9,6 +9,10 @@ export type AuditStatus = Enums<'audit_status'>;
 
 export type AuditWithClient = DbAudit & {
   clients: Tables<'clients'> | null;
+  client_certifications?: {
+    id: string;
+    certifications: Tables<'certifications'> | null;
+  } | null;
 };
 
 export const useAudits = () => {
@@ -37,7 +41,11 @@ export const useAudit = (id: string) => {
         .from('audits')
         .select(`
           *,
-          clients (*)
+          clients (*),
+          client_certifications (
+            id,
+            certifications (*)
+          )
         `)
         .eq('id', id)
         .maybeSingle();
