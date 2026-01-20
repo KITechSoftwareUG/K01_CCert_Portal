@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 import { ContactPopover } from '@/components/ContactPopover';
 import { AuditorPopover } from '@/components/AuditorPopover';
 import {
@@ -28,7 +28,6 @@ import {
   Search, 
   ChevronDown, 
   ChevronRight, 
-  List, 
   FolderTree, 
   Award,
   Building2,
@@ -37,11 +36,15 @@ import {
   Eye,
   EyeOff,
   AlertTriangle,
-  User
+  User,
+  Globe
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 
-type ViewMode = 'list' | 'grouped';
+interface CountryGroup {
+  country: string;
+  companyGroups: CompanyGroup[];
+}
 
 interface CompanyGroup {
   id: string;
@@ -80,7 +83,7 @@ const Clients = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewClientDialog, setShowNewClientDialog] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('grouped');
+  const [expandedCountries, setExpandedCountries] = useState<Set<string>>(new Set());
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
   const [showInactive, setShowInactive] = useState(false);
@@ -222,8 +225,8 @@ const Clients = () => {
     return result;
   }, [searchQuery, clients, showInactive, auditorFilter, certificationsByClient, auditorsByClientCertification]);
 
-  // Group clients by parent - show parent as group header, children with their certs
-  const companyGroups = useMemo(() => {
+  // Group clients by country, then by parent company
+  const countryGroups = useMemo(() => {
     const groups: CompanyGroup[] = [];
     const parentClients = filteredClients.filter(c => !c.parent_client_id);
     const childClients = filteredClients.filter(c => c.parent_client_id);
@@ -282,8 +285,50 @@ const Clients = () => {
       }
     });
     
-    return groups.sort((a, b) => a.name.localeCompare(b.name));
+    // Now group by country
+    const byCountry: Record<string, CompanyGroup[]> = {};
+    groups.forEach(group => {
+      // Get country from the first client in the group
+      const country = group.children[0]?.client.country || 'Unbekannt';
+      if (!byCountry[country]) byCountry[country] = [];
+      byCountry[country].push(group);
+    });
+    
+    // Sort groups within each country
+    Object.values(byCountry).forEach(countryGroups => {
+      countryGroups.sort((a, b) => a.name.localeCompare(b.name));
+    });
+    
+    // Create country groups array, sorted with Deutschland first
+    const countryList: CountryGroup[] = Object.entries(byCountry).map(([country, companyGroups]) => ({
+      country,
+      companyGroups,
+    }));
+    
+    countryList.sort((a, b) => {
+      if (a.country === 'Deutschland') return -1;
+      if (b.country === 'Deutschland') return 1;
+      return a.country.localeCompare(b.country);
+    });
+    
+    return countryList;
   }, [filteredClients, certificationsByClient]);
+
+  // Initialize expanded countries on first load
+  useMemo(() => {
+    if (expandedCountries.size === 0 && countryGroups.length > 0) {
+      setExpandedCountries(new Set(countryGroups.map(cg => cg.country)));
+    }
+  }, [countryGroups]);
+
+  const toggleCountry = (country: string) => {
+    setExpandedCountries(prev => {
+      const next = new Set(prev);
+      if (next.has(country)) next.delete(country);
+      else next.add(country);
+      return next;
+    });
+  };
 
   const toggleGroup = (id: string) => {
     setExpandedGroups(prev => {
@@ -429,7 +474,7 @@ const Clients = () => {
           <div>
             <h1 className="text-3xl font-bold">Kunden</h1>
             <p className="text-muted-foreground">
-              {companyGroups.length} Unternehmen{companyGroups.length !== 1 ? '' : ''} • {clients.length} Standorte
+              {countryGroups.reduce((sum, cg) => sum + cg.companyGroups.length, 0)} Unternehmen • {clients.length} Standorte
             </p>
           </div>
           <div className="flex gap-2">
@@ -495,13 +540,6 @@ const Clients = () => {
                 Inaktive anzeigen
               </Label>
             </div>
-            
-            <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
-              <TabsList>
-                <TabsTrigger value="list" title="Flache Liste"><List className="h-4 w-4" /></TabsTrigger>
-                <TabsTrigger value="grouped" title="Gruppiert"><FolderTree className="h-4 w-4" /></TabsTrigger>
-              </TabsList>
-            </Tabs>
           </div>
         </div>
 
@@ -514,187 +552,215 @@ const Clients = () => {
           </div>
         ) : filteredClients.length === 0 ? (
           <p className="text-muted-foreground text-center py-12">Keine Kunden gefunden</p>
-        ) : viewMode === 'list' ? (
-          /* FLAT LIST - Shows each client with their certifications */
-          <div className="border rounded-lg divide-y">
-            {filteredClients.map(client => renderClientWithCerts(client))}
-          </div>
         ) : (
-          /* GROUPED VIEW - Groups by parent company, with certifications as rows */
-          <div className="border rounded-lg overflow-hidden">
-            {companyGroups.map(group => {
-              const isExpanded = expandedGroups.has(group.id);
-              const totalCerts = group.children.reduce((sum, c) => sum + c.certifications.length, 0);
-              const isMultiClient = group.children.length > 1 || group.isGroupOnly;
-
-              // Get primary contact for the group (from first client)
-              const primaryClient = group.children[0]?.client;
-              const groupContacts = primaryClient ? contactsMap[primaryClient.id] || [] : [];
+          /* GROUPED BY COUNTRY VIEW */
+          <div className="space-y-4">
+            {countryGroups.map(countryGroup => {
+              const isCountryExpanded = expandedCountries.has(countryGroup.country);
+              const totalCompanies = countryGroup.companyGroups.length;
               
               return (
-                <div key={group.id} className="border-b last:border-b-0">
-                  {/* Group Header */}
+                <div key={countryGroup.country} className="border rounded-lg overflow-hidden">
+                  {/* Country Header */}
                   <div
-                    className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-muted/50 bg-card"
-                    onClick={() => toggleGroup(group.id)}
+                    className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-muted/50 bg-primary/5"
+                    onClick={() => toggleCountry(countryGroup.country)}
                   >
                     <div className="flex items-center gap-3">
-                      {isExpanded ? (
+                      {isCountryExpanded ? (
                         <ChevronDown className="h-4 w-4 text-muted-foreground" />
                       ) : (
                         <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       )}
-                      {isMultiClient ? (
-                        <FolderTree className="h-4 w-4 text-primary" />
-                      ) : (
-                        <Building2 className="h-4 w-4 text-muted-foreground" />
-                      )}
-                      <span className="font-semibold">{group.name}</span>
-                      {isMultiClient && (
-                        <Badge variant="outline" className="text-xs">
-                          Gruppe
-                        </Badge>
-                      )}
-                      {!isMultiClient && group.children[0]?.client.client_number && (
-                        <Badge variant="outline" className="gap-1 text-xs">
-                          <Hash className="h-3 w-3" />
-                          {group.children[0].client.client_number}
-                        </Badge>
-                      )}
-                      {totalCerts > 0 && (
-                        <Badge variant="secondary" className="text-xs">
-                          {totalCerts} Zertifikat{totalCerts !== 1 ? 'e' : ''}
-                        </Badge>
-                      )}
+                      <Globe className="h-4 w-4 text-primary" />
+                      <span className="font-bold text-lg">{countryGroup.country}</span>
+                      <Badge variant="outline" className="text-xs">
+                        {totalCompanies} Unternehmen
+                      </Badge>
                     </div>
-                    {/* Actions on the right - only for single clients, not for parent groups */}
-                    {!isMultiClient && primaryClient && (
-                      <ContactPopover
-                        legacyName={primaryClient.contact_person}
-                        legacyPhone={primaryClient.phone}
-                        legacyEmail={primaryClient.email}
-                        contacts={groupContacts}
-                        clientId={primaryClient.id}
-                      />
-                    )}
                   </div>
 
-                  {/* Expanded Content - Shows clients in group */}
-                  {isExpanded && (
-                    <div className="bg-muted/20">
-                      {group.children.map((childWithCerts) => {
-                        const { client, certifications } = childWithCerts;
-                        const contacts = contactsMap[client.id] || [];
-                        const isClientExpanded = expandedClients.has(client.id);
-                        const clientIsActive = (client as any).is_active !== false;
+                  {/* Country Content - Company Groups */}
+                  {isCountryExpanded && (
+                    <div className="divide-y">
+                      {countryGroup.companyGroups.map(group => {
+                        const isExpanded = expandedGroups.has(group.id);
+                        const totalCerts = group.children.reduce((sum, c) => sum + c.certifications.length, 0);
+                        const isMultiClient = group.children.length > 1 || group.isGroupOnly;
+
+                        // Get primary contact for the group (from first client)
+                        const primaryClient = group.children[0]?.client;
+                        const groupContacts = primaryClient ? contactsMap[primaryClient.id] || [] : [];
                         
                         return (
-                          <div key={client.id}>
-                            {/* Client Row - always show for multi-client groups, clickable to expand certifications */}
-                            {isMultiClient ? (
-                              <div
-                                className={`flex items-center justify-between px-4 py-2 pl-10 bg-muted/30 border-t border-border/50 cursor-pointer hover:bg-muted/50 ${!clientIsActive ? 'opacity-60' : ''}`}
-                                onClick={() => certifications.length > 0 ? toggleClient(client.id) : navigate(`/clients/${client.id}`)}
-                              >
-                                <div className="flex items-center gap-3">
-                                  {certifications.length > 0 ? (
-                                    isClientExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />
-                                  ) : (
-                                    <Building2 className="h-4 w-4 text-muted-foreground" />
-                                  )}
-                                  <span className="font-medium">{client.name}</span>
-                                  {client.client_number && (
-                                    <Badge variant="outline" className="gap-1 text-xs">
-                                      <Hash className="h-3 w-3" />
-                                      {client.client_number}
-                                    </Badge>
-                                  )}
-                                  {!clientIsActive && (
-                                    <Badge variant="destructive" className="text-xs">
-                                      Inaktiv
-                                    </Badge>
-                                  )}
-                                  {certifications.length > 0 && (
-                                    <Badge variant="secondary" className="text-xs">
-                                      {certifications.length} Zertifikat{certifications.length !== 1 ? 'e' : ''}
-                                    </Badge>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <ContactPopover
-                                    legacyName={client.contact_person}
-                                    legacyPhone={client.phone}
-                                    legacyEmail={client.email}
-                                    contacts={contacts}
-                                    clientId={client.id}
-                                  />
-                                </div>
-                              </div>
-                            ) : null}
-                            
-                            {/* Certification Rows - only show when client is expanded (for multi) or always (for single) */}
-                            {(!isMultiClient || isClientExpanded) && (
-                              <>
-                                {certifications.length > 0 ? (
-                                  certifications.map((row, idx) => {
-                                    const auditorInfo = auditorsByClientCertification[row.primaryCertificationId];
-                                    
-                                    return (
-                                      <div
-                                        key={`${row.clientId}-${idx}`}
-                                        className={`flex items-center justify-between gap-4 px-4 py-2 text-sm border-t border-border/30 hover:bg-muted/40 cursor-pointer ${isMultiClient ? 'pl-14' : 'pl-10'}`}
-                                        onClick={() => navigate(`/certifications/${row.primaryCertificationId}`)}
-                                      >
-                                        <div className="flex items-center gap-4">
-                                          <div className="flex items-center gap-2">
-                                            {row.certifications.map((cert) => (
-                                              <Badge key={cert.certificationId} variant="secondary" className="gap-1">
-                                                <Award className="h-3 w-3" />
-                                                {cert.certificationName}
-                                              </Badge>
-                                            ))}
-                                          </div>
-                                          {row.certifications[0]?.certificateNumber && (
-                                            <span className="text-muted-foreground">
-                                              Nr. {row.certifications[0].certificateNumber}
-                                            </span>
-                                          )}
-                                          {row.earliestValidUntil && (
-                                            <span className="text-muted-foreground">
-                                              bis {new Date(row.earliestValidUntil).toLocaleDateString('de-DE')}
-                                            </span>
-                                          )}
-                                          {row.certifications.some(c => c.status && c.status !== 'active') && (
-                                            <Badge variant={row.certifications.some(c => c.status === 'expired') ? 'destructive' : 'outline'}>
-                                              {row.certifications.find(c => c.status !== 'active')?.status}
-                                            </Badge>
-                                          )}
-                                        </div>
-                                        {/* Auditor on the right side - show warning if missing */}
-                                        {auditorInfo ? (
-                                          <AuditorPopover 
-                                            auditor={{
-                                              id: auditorInfo.auditorId,
-                                              name: auditorInfo.auditorName,
-                                              email: auditorInfo.auditorEmail,
-                                              phone: auditorInfo.auditorPhone,
-                                            }}
-                                          />
-                                        ) : (
-                                          <div className="flex items-center gap-1.5 text-warning">
-                                            <AlertTriangle className="h-4 w-4" />
-                                            <span className="text-xs font-medium">Kein Auditor</span>
-                                          </div>
-                                        )}
-                                      </div>
-                                    );
-                                  })
+                          <div key={group.id}>
+                            {/* Group Header */}
+                            <div
+                              className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-muted/50 bg-card pl-8"
+                              onClick={() => toggleGroup(group.id)}
+                            >
+                              <div className="flex items-center gap-3">
+                                {isExpanded ? (
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
                                 ) : (
-                                  <div className={`py-2 text-sm text-muted-foreground italic ${isMultiClient ? 'pl-14' : 'pl-10'} border-t border-border/30`}>
-                                    Keine Zertifizierungen
-                                  </div>
+                                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
                                 )}
-                              </>
+                                {isMultiClient ? (
+                                  <FolderTree className="h-4 w-4 text-primary" />
+                                ) : (
+                                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                                )}
+                                <span className="font-semibold">{group.name}</span>
+                                {isMultiClient && (
+                                  <Badge variant="outline" className="text-xs">
+                                    Gruppe
+                                  </Badge>
+                                )}
+                                {!isMultiClient && group.children[0]?.client.client_number && (
+                                  <Badge variant="outline" className="gap-1 text-xs">
+                                    <Hash className="h-3 w-3" />
+                                    {group.children[0].client.client_number}
+                                  </Badge>
+                                )}
+                                {totalCerts > 0 && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    {totalCerts} Zertifikat{totalCerts !== 1 ? 'e' : ''}
+                                  </Badge>
+                                )}
+                              </div>
+                              {/* Actions on the right - only for single clients, not for parent groups */}
+                              {!isMultiClient && primaryClient && (
+                                <ContactPopover
+                                  legacyName={primaryClient.contact_person}
+                                  legacyPhone={primaryClient.phone}
+                                  legacyEmail={primaryClient.email}
+                                  contacts={groupContacts}
+                                  clientId={primaryClient.id}
+                                />
+                              )}
+                            </div>
+
+                            {/* Expanded Content - Shows clients in group */}
+                            {isExpanded && (
+                              <div className="bg-muted/20">
+                                {group.children.map((childWithCerts) => {
+                                  const { client, certifications } = childWithCerts;
+                                  const contacts = contactsMap[client.id] || [];
+                                  const isClientExpanded = expandedClients.has(client.id);
+                                  const clientIsActive = (client as any).is_active !== false;
+                                  
+                                  return (
+                                    <div key={client.id}>
+                                      {/* Client Row - always show for multi-client groups, clickable to expand certifications */}
+                                      {isMultiClient ? (
+                                        <div
+                                          className={`flex items-center justify-between px-4 py-2 pl-14 bg-muted/30 border-t border-border/50 cursor-pointer hover:bg-muted/50 ${!clientIsActive ? 'opacity-60' : ''}`}
+                                          onClick={() => certifications.length > 0 ? toggleClient(client.id) : navigate(`/clients/${client.id}`)}
+                                        >
+                                          <div className="flex items-center gap-3">
+                                            {certifications.length > 0 ? (
+                                              isClientExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />
+                                            ) : (
+                                              <Building2 className="h-4 w-4 text-muted-foreground" />
+                                            )}
+                                            <span className="font-medium">{client.name}</span>
+                                            {client.client_number && (
+                                              <Badge variant="outline" className="gap-1 text-xs">
+                                                <Hash className="h-3 w-3" />
+                                                {client.client_number}
+                                              </Badge>
+                                            )}
+                                            {!clientIsActive && (
+                                              <Badge variant="destructive" className="text-xs">
+                                                Inaktiv
+                                              </Badge>
+                                            )}
+                                            {certifications.length > 0 && (
+                                              <Badge variant="secondary" className="text-xs">
+                                                {certifications.length} Zertifikat{certifications.length !== 1 ? 'e' : ''}
+                                              </Badge>
+                                            )}
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            <ContactPopover
+                                              legacyName={client.contact_person}
+                                              legacyPhone={client.phone}
+                                              legacyEmail={client.email}
+                                              contacts={contacts}
+                                              clientId={client.id}
+                                            />
+                                          </div>
+                                        </div>
+                                      ) : null}
+                                      
+                                      {/* Certification Rows - only show when client is expanded (for multi) or always (for single) */}
+                                      {(!isMultiClient || isClientExpanded) && (
+                                        <>
+                                          {certifications.length > 0 ? (
+                                            certifications.map((row, idx) => {
+                                              const auditorInfo = auditorsByClientCertification[row.primaryCertificationId];
+                                              
+                                              return (
+                                                <div
+                                                  key={`${row.clientId}-${idx}`}
+                                                  className={`flex items-center justify-between gap-4 px-4 py-2 text-sm border-t border-border/30 hover:bg-muted/40 cursor-pointer ${isMultiClient ? 'pl-20' : 'pl-14'}`}
+                                                  onClick={() => navigate(`/certifications/${row.primaryCertificationId}`)}
+                                                >
+                                                  <div className="flex items-center gap-4">
+                                                    <div className="flex items-center gap-2">
+                                                      {row.certifications.map((cert) => (
+                                                        <Badge key={cert.certificationId} variant="secondary" className="gap-1">
+                                                          <Award className="h-3 w-3" />
+                                                          {cert.certificationName}
+                                                        </Badge>
+                                                      ))}
+                                                    </div>
+                                                    {row.certifications[0]?.certificateNumber && (
+                                                      <span className="text-muted-foreground">
+                                                        Nr. {row.certifications[0].certificateNumber}
+                                                      </span>
+                                                    )}
+                                                    {row.earliestValidUntil && (
+                                                      <span className="text-muted-foreground">
+                                                        bis {new Date(row.earliestValidUntil).toLocaleDateString('de-DE')}
+                                                      </span>
+                                                    )}
+                                                    {row.certifications.some(c => c.status && c.status !== 'active') && (
+                                                      <Badge variant={row.certifications.some(c => c.status === 'expired') ? 'destructive' : 'outline'}>
+                                                        {row.certifications.find(c => c.status !== 'active')?.status}
+                                                      </Badge>
+                                                    )}
+                                                  </div>
+                                                  {/* Auditor on the right side - show warning if missing */}
+                                                  {auditorInfo ? (
+                                                    <AuditorPopover 
+                                                      auditor={{
+                                                        id: auditorInfo.auditorId,
+                                                        name: auditorInfo.auditorName,
+                                                        email: auditorInfo.auditorEmail,
+                                                        phone: auditorInfo.auditorPhone,
+                                                      }}
+                                                    />
+                                                  ) : (
+                                                    <div className="flex items-center gap-1.5 text-warning">
+                                                      <AlertTriangle className="h-4 w-4" />
+                                                      <span className="text-xs font-medium">Kein Auditor</span>
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              );
+                                            })
+                                          ) : (
+                                            <div className={`py-2 text-sm text-muted-foreground italic ${isMultiClient ? 'pl-20' : 'pl-14'} border-t border-border/30`}>
+                                              Keine Zertifizierungen
+                                            </div>
+                                          )}
+                                        </>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             )}
                           </div>
                         );
