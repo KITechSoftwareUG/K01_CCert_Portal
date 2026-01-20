@@ -6,6 +6,9 @@ import { AuditTimeline } from '@/components/AuditTimeline';
 import { AlertsCard } from '@/components/AlertsCard';
 import { PreparationChecklist } from '@/components/PreparationChecklist';
 import { ExpiringCertificationsCard } from '@/components/ExpiringCertificationsCard';
+import { DataQualityWarningsCard } from '@/components/DataQualityWarningsCard';
+import { MissingAuditorsWarning } from '@/components/MissingAuditorsWarning';
+import { SuggestedAuditsCard } from '@/components/SuggestedAuditsCard';
 import { useAudits, AuditWithClient } from '@/hooks/useAudits';
 import { useAuditTasks } from '@/hooks/useAuditTasks';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -94,18 +97,23 @@ const Dashboard = () => {
           <p className="text-muted-foreground">Planung und Vorbereitung Ihrer Zertifizierungsaudits</p>
         </div>
 
-        {/* Critical Alerts Banner */}
-        {!isLoading && stats.overdueTasks > 0 && (
-          <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 flex items-center gap-3 animate-slide-up">
-            <AlertTriangle className="h-6 w-6 text-destructive shrink-0" />
-            <div className="flex-1">
-              <p className="font-semibold text-destructive">
-                Achtung: {stats.overdueTasks} überfällige Aufgabe{stats.overdueTasks > 1 ? 'n' : ''}
-              </p>
-              <p className="text-sm text-destructive/80">
-                Es gibt Aufgaben, die ihre Fälligkeit überschritten haben. Bitte umgehend bearbeiten.
-              </p>
-            </div>
+        {/* Critical Alerts Banners */}
+        {!isLoading && (
+          <div className="space-y-3">
+            {stats.overdueTasks > 0 && (
+              <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 flex items-center gap-3 animate-slide-up">
+                <AlertTriangle className="h-6 w-6 text-destructive shrink-0" />
+                <div className="flex-1">
+                  <p className="font-semibold text-destructive">
+                    Achtung: {stats.overdueTasks} überfällige Aufgabe{stats.overdueTasks > 1 ? 'n' : ''}
+                  </p>
+                  <p className="text-sm text-destructive/80">
+                    Es gibt Aufgaben, die ihre Fälligkeit überschritten haben. Bitte umgehend bearbeiten.
+                  </p>
+                </div>
+              </div>
+            )}
+            <MissingAuditorsWarning />
           </div>
         )}
 
@@ -156,11 +164,13 @@ const Dashboard = () => {
               <div className="lg:col-span-2 space-y-6">
                 <AlertsCard audits={audits} />
                 <UpcomingTasksCard audits={audits} />
+                <SuggestedAuditsCard />
               </div>
 
-              {/* Right Column - Expiring Certs & Preparation */}
+              {/* Right Column - Expiring Certs, Preparation & Data Quality */}
               <div className="space-y-6">
                 <ExpiringCertificationsCard />
+                <DataQualityWarningsCard />
                 <PreparationChecklist audits={audits} />
               </div>
             </div>
