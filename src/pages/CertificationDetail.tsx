@@ -506,10 +506,11 @@ const CertificationDetail = () => {
             </Card>
 
             {/* Audits Card */}
-            {id && client && (
+            {id && client && certification?.certification_id && (
               <CertificationAuditsList
                 clientCertificationId={id}
                 clientId={client.id}
+                certificationId={certification.certification_id}
                 certificationName={certName}
               />
             )}
