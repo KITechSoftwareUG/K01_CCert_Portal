@@ -256,8 +256,8 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Country */}
+          {/* Country - full width for company groups, half for clients */}
+          {isCompanyGroup ? (
             <div className="space-y-2">
               <Label htmlFor="country">Land *</Label>
               <Select value={country} onValueChange={setCountry}>
@@ -273,18 +273,37 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
                 </SelectContent>
               </Select>
             </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Country */}
+              <div className="space-y-2">
+                <Label htmlFor="country">Land *</Label>
+                <Select value={country} onValueChange={setCountry}>
+                  <SelectTrigger id="country">
+                    <SelectValue placeholder="Land auswählen" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border shadow-lg z-50">
+                    {COUNTRIES.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {c}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            {/* Consultant */}
-            <div className="space-y-2">
-              <Label htmlFor="consultant">Berater</Label>
-              <Input
-                id="consultant"
-                value={consultant}
-                onChange={(e) => setConsultant(e.target.value)}
-                placeholder="z.B. JP"
-              />
+              {/* Consultant - only for clients */}
+              <div className="space-y-2">
+                <Label htmlFor="consultant">Berater</Label>
+                <Input
+                  id="consultant"
+                  value={consultant}
+                  onChange={(e) => setConsultant(e.target.value)}
+                  placeholder="z.B. JP"
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Contact Person - only for clients */}
           {!isCompanyGroup && (
