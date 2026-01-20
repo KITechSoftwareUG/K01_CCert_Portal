@@ -16,6 +16,7 @@ import {
   Clock, 
   AlertCircle,
   ArrowLeft,
+  Users,
   User,
   FileText,
   CalendarPlus
@@ -212,13 +213,24 @@ const AuditDetail = () => {
       <div className="p-8 space-y-6 animate-fade-in">
         {/* Header */}
         <div className="flex items-center gap-4">
-          <Button 
-            variant="outline" 
-            size="icon"
-            onClick={() => navigate('/audits')}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={() => navigate('/clients')}
+              title="Zur Kundenliste"
+            >
+              <Users className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={() => navigate(`/clients/${audit.client_id}`)}
+              title="Zum Kunden"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </div>
           <div className="flex-1">
             <h1 className="text-3xl font-bold text-foreground">{audit.clients?.name || 'Unbekannt'}</h1>
             <p className="text-muted-foreground">{AUDIT_TYPE_LABELS[audit.type]}</p>
