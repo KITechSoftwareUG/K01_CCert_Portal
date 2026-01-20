@@ -438,15 +438,6 @@ const ClientDetail = () => {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="contact-person">Ansprechpartner *</Label>
-                      <Input
-                        id="contact-person"
-                        value={contactPerson}
-                        onChange={(e) => setContactPerson(e.target.value)}
-                        placeholder="Ansprechpartner"
-                      />
-                    </div>
-                    <div className="space-y-2">
                       <Label htmlFor="email">E-Mail *</Label>
                       <Input
                         id="email"
@@ -491,13 +482,6 @@ const ClientDetail = () => {
                         </div>
                       </div>
                     )}
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                      <Building2 className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <p className="text-sm text-muted-foreground">Ansprechpartner</p>
-                        <p className="font-medium">{client.contact_person}</p>
-                      </div>
-                    </div>
                     <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                       <Mail className="h-5 w-5 text-muted-foreground" />
                       <div>
