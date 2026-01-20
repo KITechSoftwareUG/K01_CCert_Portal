@@ -165,8 +165,8 @@ const Dashboard = () => {
               </div>
             </div>
 
-            {/* Full Width Timeline */}
-            <AuditTimeline audits={audits} />
+            {/* Full Width Timeline - temporarily hidden */}
+            {/* <AuditTimeline audits={audits} /> */}
           </>
         )}
       </div>
