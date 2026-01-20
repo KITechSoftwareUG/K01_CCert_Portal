@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { useClient, useUpdateClient, useDeleteClient, useParentClients, CertificationStandard } from '@/hooks/useClients';
 import { useCertificationBodies, useClientCertificationBodies, useUpdateClientCertificationBodies } from '@/hooks/useCertificationBodies';
+import { ContactManagement } from '@/components/ContactManagement';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -570,6 +571,9 @@ const ClientDetail = () => {
                 )}
               </CardContent>
             </Card>
+
+            {/* Contact Management Card */}
+            <ContactManagement clientId={id!} isEditing={isEditing} />
 
             {/* Certification Bodies Card */}
             <Card>
