@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables, TablesInsert, Enums } from '@/integrations/supabase/types';
+import { calculateNextClientNumber, getCountryPrefix } from '@/lib/clientNumberUtils';
 
 export type DbClient = Tables<'clients'>;
 export type DbClientInsert = TablesInsert<'clients'>;
@@ -78,7 +79,21 @@ export const useClient = (id: string) => {
   });
 };
 
-// Helper function to generate the next client number for a parent group
+// Helper function to generate the next client number for a country
+export const getNextClientNumberForCountry = async (country: string): Promise<string> => {
+  // Get all existing client numbers
+  const { data: clients, error } = await supabase
+    .from('clients')
+    .select('client_number')
+    .not('client_number', 'is', null);
+  
+  if (error) throw error;
+  
+  const existingNumbers = clients?.map(c => c.client_number) || [];
+  return calculateNextClientNumber(country, existingNumbers);
+};
+
+// Legacy function for child numbering (kept for backwards compatibility)
 export const getNextClientNumber = async (parentId: string): Promise<string> => {
   const { data: siblings, error } = await supabase
     .from('clients')
@@ -107,10 +122,14 @@ export const useCreateClient = () => {
   
   return useMutation({
     mutationFn: async (client: DbClientInsert) => {
-      // Auto-generate client_number if parent is selected and no number provided
       let clientNumber = client.client_number;
-      if (client.parent_client_id && !clientNumber) {
-        clientNumber = await getNextClientNumber(client.parent_client_id);
+      
+      // Auto-generate 4-digit client number if not provided (only for actual clients, not company groups)
+      // Company groups are identified by having no parent and typically no contact details
+      const isCompanyGroup = !client.parent_client_id && client.contact_person === '-';
+      
+      if (!clientNumber && !isCompanyGroup && client.country) {
+        clientNumber = await getNextClientNumberForCountry(client.country);
       }
       
       const { data, error } = await supabase

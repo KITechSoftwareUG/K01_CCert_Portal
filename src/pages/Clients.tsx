@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ClientNumberBadge } from '@/components/ClientNumberBadge';
 
 import { ContactPopover } from '@/components/ContactPopover';
 import { AuditorPopover } from '@/components/AuditorPopover';
@@ -31,7 +32,6 @@ import {
   FolderTree, 
   Award,
   Building2,
-  Hash,
   Upload,
   Eye,
   EyeOff,
@@ -432,12 +432,7 @@ const Clients = () => {
               <Building2 className="h-4 w-4 text-muted-foreground" />
             )}
             <span className={indent ? '' : 'font-medium'}>{client.name}</span>
-            {client.client_number && (
-              <Badge variant="outline" className="gap-1 text-xs">
-                <Hash className="h-3 w-3" />
-                {client.client_number}
-              </Badge>
-            )}
+            <ClientNumberBadge clientNumber={client.client_number} />
             {!clientIsActive && (
               <Badge variant="destructive" className="text-xs">
                 Inaktiv
@@ -616,11 +611,8 @@ const Clients = () => {
                                     Gruppe
                                   </Badge>
                                 )}
-                                {!isMultiClient && group.children[0]?.client.client_number && (
-                                  <Badge variant="outline" className="gap-1 text-xs">
-                                    <Hash className="h-3 w-3" />
-                                    {group.children[0].client.client_number}
-                                  </Badge>
+                                {!isMultiClient && (
+                                  <ClientNumberBadge clientNumber={group.children[0]?.client.client_number} />
                                 )}
                                 {totalCerts > 0 && (
                                   <Badge variant="secondary" className="text-xs">
@@ -664,12 +656,7 @@ const Clients = () => {
                                               <Building2 className="h-4 w-4 text-muted-foreground" />
                                             )}
                                             <span className="font-medium">{client.name}</span>
-                                            {client.client_number && (
-                                              <Badge variant="outline" className="gap-1 text-xs">
-                                                <Hash className="h-3 w-3" />
-                                                {client.client_number}
-                                              </Badge>
-                                            )}
+                                            <ClientNumberBadge clientNumber={client.client_number} />
                                             {!clientIsActive && (
                                               <Badge variant="destructive" className="text-xs">
                                                 Inaktiv

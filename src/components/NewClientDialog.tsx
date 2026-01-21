@@ -54,7 +54,6 @@ interface CertificationSelection {
 export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) => {
   const [isCompanyGroup, setIsCompanyGroup] = useState(false);
   const [name, setName] = useState('');
-  const [clientNumber, setClientNumber] = useState('');
   const [consultant, setConsultant] = useState('');
   const [contactPerson, setContactPerson] = useState('');
   const [email, setEmail] = useState('');
@@ -108,7 +107,6 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
   const resetForm = () => {
     setIsCompanyGroup(false);
     setName('');
-    setClientNumber('');
     setConsultant('');
     setContactPerson('');
     setEmail('');
@@ -138,7 +136,7 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
     try {
       const client = await createClient.mutateAsync({
         name,
-        client_number: isCompanyGroup ? null : (clientNumber || null),
+        // client_number is now auto-generated based on country
         consultant: consultant || null,
         contact_person: isCompanyGroup ? '-' : contactPerson, // Placeholder for company groups
         email: isCompanyGroup ? `${name.toLowerCase().replace(/\s+/g, '-')}@placeholder.local` : email, // Placeholder for company groups
@@ -242,18 +240,7 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
               />
             </div>
 
-            {/* Client Number - only for clients */}
-            {!isCompanyGroup && (
-              <div className="space-y-2">
-                <Label htmlFor="client-number">KD-Nr.</Label>
-                <Input
-                  id="client-number"
-                  value={clientNumber}
-                  onChange={(e) => setClientNumber(e.target.value)}
-                  placeholder="z.B. 02"
-                />
-              </div>
-            )}
+            {/* Note: Client number is auto-generated - no manual entry needed */}
           </div>
 
           {/* Country - full width for company groups, half for clients */}
