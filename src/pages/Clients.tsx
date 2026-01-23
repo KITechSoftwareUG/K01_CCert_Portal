@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ClientNumberBadge } from '@/components/ClientNumberBadge';
+import { ClientNumberBadge, GroupClientNumbers } from '@/components/ClientNumberBadge';
 
 import { ContactPopover } from '@/components/ContactPopover';
 import { AuditorPopover } from '@/components/AuditorPopover';
@@ -606,12 +606,17 @@ const Clients = () => {
                                   <Building2 className="h-4 w-4 text-muted-foreground" />
                                 )}
                                 <span className="font-semibold">{group.name}</span>
-                                {isMultiClient && (
-                                  <Badge variant="outline" className="text-xs">
-                                    Gruppe
-                                  </Badge>
-                                )}
-                                {!isMultiClient && (
+                                {isMultiClient ? (
+                                  <>
+                                    <Badge variant="outline" className="text-xs">
+                                      Gruppe
+                                    </Badge>
+                                    {/* Show child client numbers in group row */}
+                                    <GroupClientNumbers 
+                                      clientNumbers={group.children.map(c => c.client.client_number)} 
+                                    />
+                                  </>
+                                ) : (
                                   <ClientNumberBadge clientNumber={group.children[0]?.client.client_number} />
                                 )}
                                 {totalCerts > 0 && (
