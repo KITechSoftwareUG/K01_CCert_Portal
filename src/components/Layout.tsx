@@ -15,7 +15,7 @@ import {
   ChevronDown,
   ChevronRight
 } from 'lucide-react';
-import logo from '@/assets/logo.png';
+import logo from '@/assets/logo-white.png';
 import ChatBot from './ChatBot';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from './ui/button';
