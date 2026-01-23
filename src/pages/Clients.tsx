@@ -660,13 +660,38 @@ const Clients = () => {
                               </div>
                               {/* Actions on the right - only for single clients, not for parent groups */}
                               {!isMultiClient && primaryClient && (
-                                <ContactPopover
-                                  legacyName={primaryClient.contact_person}
-                                  legacyPhone={primaryClient.phone}
-                                  legacyEmail={primaryClient.email}
-                                  contacts={groupContacts}
-                                  clientId={primaryClient.id}
-                                />
+                                <div className="flex items-center gap-2">
+                                  <ContactPopover
+                                    legacyName={primaryClient.contact_person}
+                                    legacyPhone={primaryClient.phone}
+                                    legacyEmail={primaryClient.email}
+                                    contacts={groupContacts}
+                                    clientId={primaryClient.id}
+                                  />
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        title="Aktionen"
+                                        aria-label="Aktionen"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <MoreHorizontal className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigate(`/clients/${primaryClient.id}`);
+                                      }}>
+                                        <ExternalLink className="h-4 w-4 mr-2" />
+                                        Zum Unternehmen
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
                               )}
                             </div>
 
@@ -714,6 +739,29 @@ const Clients = () => {
                                               contacts={contacts}
                                               clientId={client.id}
                                             />
+                                            <DropdownMenu>
+                                              <DropdownMenuTrigger asChild>
+                                                <Button
+                                                  variant="outline"
+                                                  size="icon"
+                                                  className="h-8 w-8"
+                                                  title="Aktionen"
+                                                  aria-label="Aktionen"
+                                                  onClick={(e) => e.stopPropagation()}
+                                                >
+                                                  <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
+                                              </DropdownMenuTrigger>
+                                              <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  navigate(`/clients/${client.id}`);
+                                                }}>
+                                                  <ExternalLink className="h-4 w-4 mr-2" />
+                                                  Zum Unternehmen
+                                                </DropdownMenuItem>
+                                              </DropdownMenuContent>
+                                            </DropdownMenu>
                                           </div>
                                         </div>
                                       ) : null}
