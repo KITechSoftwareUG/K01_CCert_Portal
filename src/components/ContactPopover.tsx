@@ -35,13 +35,14 @@ export const ContactPopover = ({
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  // Use contacts if available, otherwise fall back to legacy
+  // Only show contacts from the contacts table - ignore legacy data
   const hasContacts = contacts.length > 0;
   const primaryContact = contacts.find(c => c.is_primary) || contacts[0];
-  const displayName = hasContacts ? primaryContact?.name : legacyName;
+  const displayName = hasContacts ? primaryContact?.name : null;
   const contactCount = contacts.length;
 
-  if (!displayName) {
+  // Don't show anything if there are no real contacts
+  if (!hasContacts) {
     return <span className="text-muted-foreground text-sm">-</span>;
   }
 
