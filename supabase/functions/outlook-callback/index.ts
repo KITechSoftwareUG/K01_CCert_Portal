@@ -72,15 +72,20 @@ serve(async (req) => {
     console.log('Token exchange response status:', tokenResponse.status);
 
     if (!tokenResponse.ok) {
-      console.error('Token exchange failed:', tokenData);
+      const errorDetail = tokenData.error_description || tokenData.error || 'Unknown error';
+      console.error('Token exchange failed:', JSON.stringify(tokenData, null, 2));
+      console.error('Redirect URI used:', redirectUri);
+      console.error('Client ID:', AZURE_CLIENT_ID);
       return new Response(`
         <html>
           <body>
             <script>
-              window.opener.postMessage({ type: 'outlook-auth-error', error: 'Token exchange failed' }, '*');
+              window.opener.postMessage({ type: 'outlook-auth-error', error: 'Token exchange failed: ${errorDetail.replace(/'/g, "\\'")}' }, '*');
               window.close();
             </script>
-            <p>Fehler beim Token-Austausch. Dieses Fenster schließt sich automatisch.</p>
+            <p>Fehler beim Token-Austausch: ${errorDetail}</p>
+            <p>Redirect URI: ${redirectUri}</p>
+            <p>Dieses Fenster schließt sich automatisch.</p>
           </body>
         </html>
       `, {
