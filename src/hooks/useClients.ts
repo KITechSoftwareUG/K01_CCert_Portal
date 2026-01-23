@@ -122,19 +122,10 @@ export const useCreateClient = () => {
   
   return useMutation({
     mutationFn: async (client: DbClientInsert) => {
-      let clientNumber = client.client_number;
-      
-      // Auto-generate 4-digit client number if not provided (only for actual clients, not company groups)
-      // Company groups are identified by having no parent and typically no contact details
-      const isCompanyGroup = !client.parent_client_id && client.contact_person === '-';
-      
-      if (!clientNumber && !isCompanyGroup && client.country) {
-        clientNumber = await getNextClientNumberForCountry(client.country);
-      }
-      
+      // Client number is now manually provided - no auto-generation
       const { data, error } = await supabase
         .from('clients')
-        .insert({ ...client, client_number: clientNumber })
+        .insert(client)
         .select()
         .single();
       

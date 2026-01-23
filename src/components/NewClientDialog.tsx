@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { useCreateClient, useParentClients, CertificationStandard } from '@/hooks/useClients';
+import { getCountryPrefix } from '@/lib/clientNumberUtils';
 
 import { useCertifications } from '@/hooks/useCertifications';
 import { useCreateClientCertification } from '@/hooks/useClientCertifications';
@@ -54,6 +55,7 @@ interface CertificationSelection {
 export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) => {
   const [isCompanyGroup, setIsCompanyGroup] = useState(false);
   const [name, setName] = useState('');
+  const [clientNumber, setClientNumber] = useState('0'); // Pre-filled with country prefix
   const [consultant, setConsultant] = useState('');
   const [contactPerson, setContactPerson] = useState('');
   const [email, setEmail] = useState('');
@@ -104,9 +106,19 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
   };
 
 
+  // Update client number prefix when country changes
+  const handleCountryChange = (newCountry: string) => {
+    setCountry(newCountry);
+    // Update the prefix in client number, keeping any existing sequence
+    const prefix = getCountryPrefix(newCountry);
+    const currentSequence = clientNumber.length > 1 ? clientNumber.slice(1) : '';
+    setClientNumber(prefix + currentSequence);
+  };
+
   const resetForm = () => {
     setIsCompanyGroup(false);
     setName('');
+    setClientNumber('0'); // Reset to Deutschland prefix
     setConsultant('');
     setContactPerson('');
     setEmail('');
@@ -131,12 +143,17 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
         toast.error('Bitte füllen Sie alle Pflichtfelder aus');
         return;
       }
+      // Validate client number for regular clients
+      if (!clientNumber || clientNumber.length < 2) {
+        toast.error('Bitte geben Sie eine gültige Kundennummer ein');
+        return;
+      }
     }
 
     try {
       const client = await createClient.mutateAsync({
         name,
-        // client_number is now auto-generated based on country
+        client_number: isCompanyGroup ? null : clientNumber, // Only clients get numbers
         consultant: consultant || null,
         contact_person: isCompanyGroup ? '-' : contactPerson, // Placeholder for company groups
         email: isCompanyGroup ? `${name.toLowerCase().replace(/\s+/g, '-')}@placeholder.local` : email, // Placeholder for company groups
@@ -240,7 +257,22 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
               />
             </div>
 
-            {/* Note: Client number is auto-generated - no manual entry needed */}
+            {/* Client Number - only for actual clients, not company groups */}
+            {!isCompanyGroup && (
+              <div className="space-y-2">
+                <Label htmlFor="clientNumber">Kundennummer *</Label>
+                <Input
+                  id="clientNumber"
+                  value={clientNumber}
+                  onChange={(e) => setClientNumber(e.target.value)}
+                  placeholder="z.B. 0001"
+                  className="font-mono"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Erste Ziffer = Land ({getCountryPrefix(country)} = {country})
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Country - full width for company groups, half for clients */}
@@ -265,7 +297,7 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
               {/* Country */}
               <div className="space-y-2">
                 <Label htmlFor="country">Land *</Label>
-                <Select value={country} onValueChange={setCountry}>
+                <Select value={country} onValueChange={handleCountryChange}>
                   <SelectTrigger id="country">
                     <SelectValue placeholder="Land auswählen" />
                   </SelectTrigger>
