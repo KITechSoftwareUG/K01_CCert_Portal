@@ -24,7 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Pencil, Trash2, User, Phone, Mail, Star, StarOff } from 'lucide-react';
+import { Plus, Pencil, Trash2, User, Phone, Mail, Star, StarOff, AlertCircle, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { 
   useContacts, 
@@ -39,6 +39,10 @@ import {
 interface ContactManagementProps {
   clientId: string;
   isEditing?: boolean;
+  // Legacy contact data from clients table
+  legacyContactPerson?: string;
+  legacyEmail?: string | null;
+  legacyPhone?: string | null;
 }
 
 interface ContactFormData {
@@ -59,7 +63,13 @@ const emptyFormData: ContactFormData = {
   is_primary: false,
 };
 
-export const ContactManagement = ({ clientId, isEditing = false }: ContactManagementProps) => {
+export const ContactManagement = ({ 
+  clientId, 
+  isEditing = false,
+  legacyContactPerson,
+  legacyEmail,
+  legacyPhone,
+}: ContactManagementProps) => {
   const { data: contacts = [], isLoading } = useContacts(clientId);
   const createContact = useCreateContact();
   const updateContact = useUpdateContact();
@@ -70,11 +80,28 @@ export const ContactManagement = ({ clientId, isEditing = false }: ContactManage
   const [deleteContactId, setDeleteContactId] = useState<string | null>(null);
   const [formData, setFormData] = useState<ContactFormData>(emptyFormData);
 
+  // Check if there's legacy data that should be migrated
+  const hasLegacyData = legacyContactPerson && contacts.length === 0;
+
   const openCreateDialog = () => {
     setEditingContact(null);
     setFormData({
       ...emptyFormData,
       is_primary: contacts.length === 0, // First contact is primary by default
+    });
+    setIsDialogOpen(true);
+  };
+
+  // Open create dialog pre-filled with legacy data
+  const openMigrateLegacyDialog = () => {
+    setEditingContact(null);
+    setFormData({
+      name: legacyContactPerson || '',
+      role: '',
+      email: legacyEmail || '',
+      phone: legacyPhone || '',
+      notes: '',
+      is_primary: true,
     });
     setIsDialogOpen(true);
   };
@@ -237,7 +264,35 @@ export const ContactManagement = ({ clientId, isEditing = false }: ContactManage
           </Button>
         </CardHeader>
         <CardContent>
-          {contacts.length === 0 ? (
+          {/* Show legacy data migration hint if applicable */}
+          {hasLegacyData && (
+            <div className="mb-4 p-4 rounded-lg bg-warning/10 border border-warning/30">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-warning mt-0.5 shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium mb-1">
+                    Legacy-Kontaktdaten gefunden
+                  </p>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    <strong>{legacyContactPerson}</strong>
+                    {legacyEmail && <> • {legacyEmail}</>}
+                    {legacyPhone && <> • {legacyPhone}</>}
+                  </p>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={openMigrateLegacyDialog}
+                    className="gap-1"
+                  >
+                    <ArrowRight className="h-3 w-3" />
+                    Als Ansprechpartner übernehmen
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {contacts.length === 0 && !hasLegacyData ? (
             <div className="text-center py-8 text-muted-foreground">
               <User className="h-12 w-12 mx-auto mb-3 opacity-30" />
               <p>Keine Ansprechpartner vorhanden</p>
@@ -249,6 +304,8 @@ export const ContactManagement = ({ clientId, isEditing = false }: ContactManage
                 Ersten Ansprechpartner hinzufügen
               </Button>
             </div>
+          ) : contacts.length === 0 && hasLegacyData ? (
+            null // Legacy hint already shown above
           ) : (
             <div className="space-y-3">
               {contacts.map((contact) => (

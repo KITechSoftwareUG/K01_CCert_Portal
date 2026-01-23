@@ -564,7 +564,13 @@ const ClientDetail = () => {
             </Card>
 
             {/* Contact Management Card */}
-            <ContactManagement clientId={id!} isEditing={isEditing} />
+            <ContactManagement 
+              clientId={id!} 
+              isEditing={isEditing}
+              legacyContactPerson={client.contact_person}
+              legacyEmail={client.email}
+              legacyPhone={client.phone}
+            />
 
           </div>
 
