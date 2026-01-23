@@ -37,8 +37,16 @@ import {
   EyeOff,
   AlertTriangle,
   User,
-  Globe
+  Globe,
+  MoreHorizontal,
+  ExternalLink
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
 
 interface CountryGroup {
@@ -444,13 +452,31 @@ const Clients = () => {
               </Badge>
             )}
           </div>
-          <ContactPopover
-            legacyName={client.contact_person}
-            legacyPhone={client.phone}
-            legacyEmail={client.email}
-            contacts={contacts}
-            clientId={client.id}
-          />
+          <div className="flex items-center gap-2">
+            <ContactPopover
+              legacyName={client.contact_person}
+              legacyPhone={client.phone}
+              legacyEmail={client.email}
+              contacts={contacts}
+              clientId={client.id}
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/clients/${client.id}`);
+                }}>
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Zum Unternehmen
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
         {isExpanded && (
           <div className="bg-muted/10">
