@@ -64,7 +64,7 @@ export const Layout = ({ children }: LayoutProps) => {
       {/* Sidebar */}
       <aside className="w-64 bg-sidebar border-r border-sidebar-border flex flex-col">
         <div className="flex items-center p-4 border-b border-sidebar-border">
-          <img src={logo} alt="cert consulting pane·spark" className="h-12 w-auto" />
+          <img src={logo} alt="cert consulting" className="h-16 w-auto" />
         </div>
         <nav className="p-4 space-y-2 flex-1 overflow-y-auto">
           {/* Main Navigation */}
