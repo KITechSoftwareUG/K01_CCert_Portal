@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { 
   useClientCertification, 
-  useUpdateClientCertification 
+  useUpdateClientCertification,
+  useDeleteClientCertification 
 } from '@/hooks/useClientCertifications';
 import { useClient } from '@/hooks/useClients';
 import { 
@@ -107,6 +108,7 @@ const CertificationDetail = () => {
   const { data: auditors = [] } = useAuditors();
   
   const updateCertification = useUpdateClientCertification();
+  const deleteCertification = useDeleteClientCertification();
   const uploadDocument = useUploadCertificationDocument();
   const deleteDocument = useDeleteCertificationDocument();
   
@@ -664,6 +666,45 @@ const CertificationDetail = () => {
                   <Calendar className="h-4 w-4" />
                   Audits anzeigen
                 </Button>
+                
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Zertifikat löschen
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Zertifikat löschen?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Das Zertifikat "{certName}" für {client?.name || 'diesen Kunden'} wird dauerhaft gelöscht. 
+                        Alle verknüpften Dokumente und Audits bleiben erhalten, verlieren aber die Verknüpfung.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={async () => {
+                          try {
+                            await deleteCertification.mutateAsync(id!);
+                            toast.success('Zertifikat erfolgreich gelöscht');
+                            navigate(client ? `/clients/${client.id}` : '/clients');
+                          } catch (error) {
+                            console.error('Error deleting certification:', error);
+                            toast.error('Fehler beim Löschen des Zertifikats');
+                          }
+                        }}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        {deleteCertification.isPending ? 'Löscht...' : 'Löschen'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </CardContent>
             </Card>
           </div>
