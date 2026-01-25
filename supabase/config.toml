@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.outlook-sync]
 verify_jwt = true
+
+[functions.chat-assistant]
+verify_jwt = false
