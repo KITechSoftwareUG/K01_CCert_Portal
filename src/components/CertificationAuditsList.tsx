@@ -178,7 +178,8 @@ export const CertificationAuditsList = ({
               {audits.map((audit) => (
                 <div
                   key={audit.id}
-                  className="flex items-start justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors"
+                  className="flex items-start justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer group"
+                  onClick={() => navigate(`/audits/${audit.id}`)}
                 >
                   <div className="flex-1 space-y-2">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -193,7 +194,7 @@ export const CertificationAuditsList = ({
                       </span>
                       
                       {audit.auditors && (
-                        <span className="flex items-center gap-1">
+                        <span className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                           <User className="h-4 w-4" />
                           <AuditorPopover 
                             auditor={{
@@ -221,14 +222,15 @@ export const CertificationAuditsList = ({
                     )}
                   </div>
                   
-                  <div className="flex items-center gap-1 ml-4">
+                  <div className="flex items-center gap-1 ml-4" onClick={(e) => e.stopPropagation()}>
                     <Button
-                      variant="ghost"
-                      size="icon"
+                      variant="outline"
+                      size="sm"
                       onClick={() => navigate(`/audits/${audit.id}`)}
-                      title="Audit öffnen"
+                      className="gap-2 opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <ExternalLink className="h-4 w-4" />
+                      Aufgaben
                     </Button>
                     <Button
                       variant="ghost"
