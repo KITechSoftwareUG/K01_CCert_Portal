@@ -44,6 +44,7 @@ import { AuditTask } from '@/types/audit';
 import { AUDIT_TYPE_LABELS, AUDIT_STATUS_CONFIG, TASK_STATUS_CONFIG } from '@/lib/constants';
 import { isOverdue } from '@/lib/dateUtils';
 import { DbAuditTask } from '@/hooks/useAuditTasks';
+import { EditAuditDialog } from '@/components/EditAuditDialog';
 
 const StatusIcon = {
   scheduled: Clock,
@@ -159,6 +160,7 @@ const AuditDetail = () => {
   const deleteAudit = useDeleteAudit();
   
   const [notes, setNotes] = useState('');
+  const [showEditDialog, setShowEditDialog] = useState(false);
 
   // Update notes when audit loads
   useMemo(() => {
@@ -453,10 +455,7 @@ const AuditDetail = () => {
                 <Button 
                   variant="outline" 
                   className="w-full justify-start"
-                  onClick={() => toast({
-                    title: "In Entwicklung",
-                    description: "Die Bearbeitungsfunktion wird bald verfügbar sein.",
-                  })}
+                  onClick={() => setShowEditDialog(true)}
                 >
                   <Pencil className="h-4 w-4 mr-2" />
                   Audit bearbeiten
@@ -502,6 +501,13 @@ const AuditDetail = () => {
             </Card>
           </div>
         </div>
+
+        {/* Edit Audit Dialog */}
+        <EditAuditDialog
+          audit={audit}
+          open={showEditDialog}
+          onOpenChange={setShowEditDialog}
+        />
       </div>
     </Layout>
   );
