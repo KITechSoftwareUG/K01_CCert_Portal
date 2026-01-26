@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Layout } from '@/components/Layout';
 import { useAuditors, useCreateAuditor, useUpdateAuditor, useDeleteAuditor, AuditorWithCertificationBody } from '@/hooks/useAuditors';
 import { useCertificationBodies } from '@/hooks/useCertificationBodies';
@@ -44,6 +44,7 @@ import {
 } from '@/components/ui/table';
 import { Plus, Pencil, Trash2, Search, User, Building2, Mail, Phone } from 'lucide-react';
 import { toast } from 'sonner';
+import { formatAuditorName, sortAuditorsByLastName } from '@/lib/auditorUtils';
 
 const Auditors = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -63,11 +64,15 @@ const Auditors = () => {
   const updateAuditor = useUpdateAuditor();
   const deleteAuditor = useDeleteAuditor();
 
-  const filteredAuditors = auditors.filter(auditor =>
-    auditor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    auditor.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    auditor.certification_bodies?.name?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Sort auditors by last name and filter by search
+  const sortedAndFilteredAuditors = useMemo(() => {
+    const sorted = sortAuditorsByLastName(auditors);
+    return sorted.filter(auditor =>
+      auditor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      auditor.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      auditor.certification_bodies?.name?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [auditors, searchQuery]);
 
   const resetForm = () => {
     setName('');
@@ -171,7 +176,7 @@ const Auditors = () => {
           <div className="space-y-2">
             {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full" />)}
           </div>
-        ) : filteredAuditors.length === 0 ? (
+        ) : sortedAndFilteredAuditors.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
               <User className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -194,9 +199,9 @@ const Auditors = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredAuditors.map((auditor) => (
+                {sortedAndFilteredAuditors.map((auditor) => (
                   <TableRow key={auditor.id}>
-                    <TableCell className="font-medium">{auditor.name}</TableCell>
+                    <TableCell className="font-medium">{formatAuditorName(auditor.name)}</TableCell>
                     <TableCell>
                       {auditor.certification_bodies ? (
                         <Badge variant="outline" className="gap-1">

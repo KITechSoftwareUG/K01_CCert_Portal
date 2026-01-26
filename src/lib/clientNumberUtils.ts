@@ -22,6 +22,8 @@ export const COUNTRY_PREFIXES: Record<string, string> = {
   'Spanien': '9',
   // Countries beyond 9 get letter prefixes
   'Vereinigtes Königreich': 'A',
+  'Ungarn': 'B',
+  'Rumänien': 'C',
   'Andere': 'X',
 };
 

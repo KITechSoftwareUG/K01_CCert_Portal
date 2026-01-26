@@ -1,7 +1,7 @@
 import { useState, useCallback, memo, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
-import { useAudit } from '@/hooks/useAudits';
+import { useAudit, useUpdateAudit, useDeleteAudit } from '@/hooks/useAudits';
 import { useAuditTasks, useUpdateAuditTask } from '@/hooks/useAuditTasks';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,17 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { 
   Calendar, 
   Building2, 
@@ -20,7 +31,9 @@ import {
   User,
   FileText,
   CalendarPlus,
-  ChevronRight
+  ChevronRight,
+  Pencil,
+  XCircle
 } from 'lucide-react';
 import { exportAuditToCalendar } from '@/lib/calendarExport';
 import { toast } from '@/hooks/use-toast';
@@ -142,6 +155,8 @@ const AuditDetail = () => {
   const { data: audit, isLoading: auditLoading } = useAudit(id || '');
   const { data: tasks = [], isLoading: tasksLoading } = useAuditTasks(id);
   const updateTask = useUpdateAuditTask();
+  const updateAudit = useUpdateAudit();
+  const deleteAudit = useDeleteAudit();
   
   const [notes, setNotes] = useState('');
 
@@ -182,6 +197,42 @@ const AuditDetail = () => {
       });
     }
   }, [audit]);
+
+  const handleSaveNotes = useCallback(async () => {
+    if (audit && id) {
+      try {
+        await updateAudit.mutateAsync({ id, notes });
+        toast({
+          title: "Gespeichert",
+          description: "Notizen wurden aktualisiert.",
+        });
+      } catch (error) {
+        toast({
+          title: "Fehler",
+          description: "Notizen konnten nicht gespeichert werden.",
+          variant: "destructive",
+        });
+      }
+    }
+  }, [audit, id, notes, updateAudit]);
+
+  const handleCancelAudit = useCallback(async () => {
+    if (audit && id) {
+      try {
+        await updateAudit.mutateAsync({ id, status: 'cancelled' });
+        toast({
+          title: "Audit abgebrochen",
+          description: "Das Audit wurde als abgebrochen markiert.",
+        });
+      } catch (error) {
+        toast({
+          title: "Fehler",
+          description: "Audit konnte nicht abgebrochen werden.",
+          variant: "destructive",
+        });
+      }
+    }
+  }, [audit, id, updateAudit]);
 
   if (auditLoading || tasksLoading) {
     return <AuditDetailSkeleton />;
@@ -311,7 +362,13 @@ const AuditDetail = () => {
                   placeholder="Notizen zum Audit hinzufügen..."
                   className="min-h-32"
                 />
-                <Button className="mt-4">Notizen speichern</Button>
+                <Button 
+                  className="mt-4" 
+                  onClick={handleSaveNotes}
+                  disabled={updateAudit.isPending}
+                >
+                  {updateAudit.isPending ? 'Speichert...' : 'Notizen speichern'}
+                </Button>
               </CardContent>
             </Card>
           </div>
@@ -393,15 +450,54 @@ const AuditDetail = () => {
                   <CalendarPlus className="h-4 w-4 mr-2" />
                   Zu Outlook hinzufügen
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => toast({
+                    title: "In Entwicklung",
+                    description: "Die Bearbeitungsfunktion wird bald verfügbar sein.",
+                  })}
+                >
+                  <Pencil className="h-4 w-4 mr-2" />
                   Audit bearbeiten
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => toast({
+                    title: "In Entwicklung",
+                    description: "Die Berichtfunktion wird bald verfügbar sein.",
+                  })}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
                   Bericht generieren
                 </Button>
-                <Button variant="outline" className="w-full justify-start text-destructive">
-                  Audit abbrechen
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start text-destructive"
+                      disabled={audit.status === 'cancelled'}
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      {audit.status === 'cancelled' ? 'Bereits abgebrochen' : 'Audit abbrechen'}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Audit abbrechen?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Möchten Sie dieses Audit wirklich abbrechen? Diese Aktion kann nicht rückgängig gemacht werden.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Nein, behalten</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleCancelAudit} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Ja, abbrechen
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </CardContent>
             </Card>
           </div>
