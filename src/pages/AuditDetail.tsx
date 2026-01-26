@@ -262,34 +262,54 @@ const AuditDetail = () => {
   const totalTasks = tasks.length;
   const percentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
+  // Get certification name for breadcrumb
+  const certificationName = audit.client_certifications?.certifications?.name || 
+    (audit.certifications && audit.certifications.length > 0 ? audit.certifications[0] : null);
+
   return (
     <Layout>
       <div className="p-8 space-y-6 animate-fade-in">
+        {/* Breadcrumb Navigation */}
+        <nav className="flex items-center text-sm text-muted-foreground">
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={() => navigate('/clients')}
+            className="text-muted-foreground hover:text-foreground px-2"
+          >
+            Kunden
+          </Button>
+          <ChevronRight className="h-4 w-4 mx-1" />
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={() => navigate(`/clients/${audit.client_id}`)}
+            className="text-muted-foreground hover:text-foreground px-2"
+          >
+            {audit.clients?.name || 'Unbekannt'}
+          </Button>
+          {certificationName && audit.client_certification_id && (
+            <>
+              <ChevronRight className="h-4 w-4 mx-1" />
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => navigate(`/certifications/${audit.client_certification_id}`)}
+                className="text-muted-foreground hover:text-foreground px-2"
+              >
+                {certificationName}
+              </Button>
+            </>
+          )}
+          <ChevronRight className="h-4 w-4 mx-1" />
+          <span className="font-medium text-foreground px-2">
+            {AUDIT_TYPE_LABELS[audit.type]}
+          </span>
+        </nav>
+
         {/* Header */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center">
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => navigate('/clients')}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <Users className="h-4 w-4 mr-1" />
-              Kunden
-            </Button>
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => navigate(`/clients/${audit.client_id}`)}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <Building2 className="h-4 w-4 mr-1" />
-              {audit.clients?.name || 'Unbekannt'}
-            </Button>
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          </div>
-          <div className="flex-1">
+        <div className="flex items-center justify-between">
+          <div>
             <h1 className="text-2xl font-bold text-foreground">{AUDIT_TYPE_LABELS[audit.type]}</h1>
             <p className="text-muted-foreground text-sm">
               {format(new Date(audit.scheduled_date), 'dd. MMMM yyyy', { locale: de })}
