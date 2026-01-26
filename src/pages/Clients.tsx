@@ -356,15 +356,49 @@ const Clients = () => {
     });
   };
 
-  const renderCertificationRows = (clientId: string) => {
+  const renderCertificationRows = (clientId: string, client: DbClient) => {
     const certRows = certificationsByClient[clientId] || [];
-    if (certRows.length === 0) {
+    
+    // Check for legacy certifications that are not yet migrated
+    const legacyCerts = (client.certifications || []) as string[];
+    const hasLegacyCerts = legacyCerts.length > 0 && certRows.length === 0;
+    
+    if (certRows.length === 0 && !hasLegacyCerts) {
       return (
         <div className="pl-16 py-2 text-sm text-muted-foreground italic">
           Keine Zertifizierungen
         </div>
       );
     }
+
+    // Show legacy certifications with migration hint if no new ones exist
+    if (hasLegacyCerts) {
+      return (
+        <div
+          className="flex items-center justify-between gap-4 pl-16 pr-4 py-2 text-sm border-t border-border/30 hover:bg-muted/30 cursor-pointer"
+          onClick={() => navigate(`/clients/${clientId}`)}
+        >
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              {legacyCerts.map((cert) => (
+                <Badge key={cert} variant="outline" className="gap-1 border-warning text-warning">
+                  <Award className="h-3 w-3" />
+                  {cert}
+                </Badge>
+              ))}
+            </div>
+            <span className="text-xs text-warning bg-warning/10 px-2 py-0.5 rounded">
+              Migration erforderlich
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 text-warning">
+            <AlertTriangle className="h-4 w-4" />
+            <span className="text-xs font-medium">Bitte Zertifikat öffnen</span>
+          </div>
+        </div>
+      );
+    }
+
     return certRows.map((row, idx) => {
       // Get auditor for the first certification in this row
       const auditorInfo = auditorsByClientCertification[row.primaryCertificationId];
@@ -423,6 +457,8 @@ const Clients = () => {
 
   const renderClientWithCerts = (client: DbClient, indent = false) => {
     const certs = certificationsByClient[client.id] || [];
+    const legacyCerts = (client.certifications || []) as string[];
+    const hasCerts = certs.length > 0 || legacyCerts.length > 0;
     const isExpanded = expandedClients.has(client.id);
     const contacts = contactsMap[client.id] || [];
     const clientIsActive = (client as any).is_active !== false;
@@ -431,10 +467,10 @@ const Clients = () => {
       <div key={client.id}>
         <div
           className={`flex items-center justify-between px-4 py-3 hover:bg-muted/50 cursor-pointer border-t border-border/50 ${indent ? 'pl-10 bg-muted/20' : ''} ${!clientIsActive ? 'opacity-60' : ''}`}
-          onClick={() => certs.length > 0 ? toggleClient(client.id) : navigate(`/clients/${client.id}`)}
+          onClick={() => hasCerts ? toggleClient(client.id) : navigate(`/clients/${client.id}`)}
         >
           <div className="flex items-center gap-3">
-            {certs.length > 0 ? (
+            {hasCerts ? (
               isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />
             ) : (
               <Building2 className="h-4 w-4 text-muted-foreground" />
@@ -446,9 +482,9 @@ const Clients = () => {
                 Inaktiv
               </Badge>
             )}
-            {certs.length > 0 && (
-              <Badge variant="secondary" className="text-xs">
-                {certs.length} Zertifikat{certs.length !== 1 ? 'e' : ''}
+            {hasCerts && (
+              <Badge variant={legacyCerts.length > 0 && certs.length === 0 ? 'outline' : 'secondary'} className={`text-xs ${legacyCerts.length > 0 && certs.length === 0 ? 'border-warning text-warning' : ''}`}>
+                {certs.length > 0 ? `${certs.length} Zertifikat${certs.length !== 1 ? 'e' : ''}` : `${legacyCerts.length} (Migration)`}
               </Badge>
             )}
           </div>
@@ -487,7 +523,7 @@ const Clients = () => {
         </div>
         {isExpanded && (
           <div className="bg-muted/10">
-            {renderCertificationRows(client.id)}
+            {renderCertificationRows(client.id, client)}
           </div>
         )}
       </div>
