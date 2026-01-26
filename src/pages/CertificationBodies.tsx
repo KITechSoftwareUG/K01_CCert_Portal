@@ -145,17 +145,18 @@ const CertificationBodies = () => {
     }
   };
 
-  const FormFields = () => (
+  const FormFields = ({ autoFocusName = false }: { autoFocusName?: boolean }) => (
     <div className="grid gap-3 md:grid-cols-2">
       <div className="space-y-1">
         <label className="text-xs font-medium flex items-center gap-1.5">
-          <Building2 className="h-3 w-3" /> Name *
+          <Building2 className="h-3 w-3" /> Name <span className="text-destructive">*</span>
         </label>
         <Input
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           placeholder="z.B. TÜV SÜD"
           className="h-8 text-sm"
+          autoFocus={autoFocusName}
         />
       </div>
       <div className="space-y-1">
@@ -271,7 +272,7 @@ const CertificationBodies = () => {
             <CardTitle className="text-base">Neue Zertifizierungsgesellschaft</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 pb-4">
-            <FormFields />
+            <FormFields autoFocusName={true} />
             <div className="flex gap-2 pt-1">
               <Button size="sm" onClick={handleSave} disabled={createBody.isPending}>
                 <Check className="h-3 w-3 mr-1" />
@@ -292,7 +293,7 @@ const CertificationBodies = () => {
           <Card key={body.id} className={editingId === body.id ? 'border-primary/50' : ''}>
             {editingId === body.id ? (
               <CardContent className="pt-4 pb-4 space-y-3">
-                <FormFields />
+                <FormFields autoFocusName={true} />
                 <div className="flex gap-2 pt-1">
                   <Button size="sm" onClick={handleSave} disabled={updateBody.isPending}>
                     <Check className="h-3 w-3 mr-1" />

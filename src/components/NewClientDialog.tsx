@@ -43,6 +43,8 @@ const COUNTRIES = [
   'Italien',
   'Spanien',
   'Vereinigtes Königreich',
+  'Ungarn',
+  'Rumänien',
   'Andere',
 ];
 
@@ -62,6 +64,7 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [country, setCountry] = useState('Deutschland');
+  const [customCountry, setCustomCountry] = useState(''); // For "Andere" option
   const [parentClientId, setParentClientId] = useState<string>('');
   const [selectedCertifications, setSelectedCertifications] = useState<CertificationSelection[]>([]);
   
@@ -125,12 +128,18 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
     setPhone('');
     setAddress('');
     setCountry('Deutschland');
+    setCustomCountry('');
     setParentClientId('');
     setSelectedCertifications([]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Determine effective country (use customCountry if "Andere" is selected)
+    const effectiveCountry = country === 'Andere' && customCountry.trim() 
+      ? customCountry.trim() 
+      : country;
     
     // Different validation for company groups vs clients
     if (isCompanyGroup) {
@@ -139,8 +148,13 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
         return;
       }
     } else {
-      if (!name || !contactPerson || !email) {
-        toast.error('Bitte füllen Sie alle Pflichtfelder aus');
+      // Only name and consultant are mandatory for clients now
+      if (!name) {
+        toast.error('Bitte geben Sie einen Firmennamen ein');
+        return;
+      }
+      if (!consultant.trim()) {
+        toast.error('Bitte geben Sie einen Berater an');
         return;
       }
       // Validate client number for regular clients
@@ -148,18 +162,28 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
         toast.error('Bitte geben Sie eine gültige Kundennummer ein');
         return;
       }
+      // Validate custom country if "Andere" is selected
+      if (country === 'Andere' && !customCountry.trim()) {
+        toast.error('Bitte geben Sie das Land ein');
+        return;
+      }
     }
 
     try {
+      // Determine effective country (use customCountry if "Andere" is selected)
+      const effectiveCountry = country === 'Andere' && customCountry.trim() 
+        ? customCountry.trim() 
+        : country;
+
       const client = await createClient.mutateAsync({
         name,
         client_number: isCompanyGroup ? null : clientNumber, // Only clients get numbers
         consultant: consultant || null,
-        contact_person: isCompanyGroup ? '-' : contactPerson, // Placeholder for company groups
-        email: isCompanyGroup ? `${name.toLowerCase().replace(/\s+/g, '-')}@placeholder.local` : email, // Placeholder for company groups
+        contact_person: contactPerson || '-', // Optional, default placeholder
+        email: email || `${name.toLowerCase().replace(/\s+/g, '-')}@placeholder.local`, // Optional, with fallback
         phone: phone || null,
         address: address || null,
-        country,
+        country: effectiveCountry,
         parent_client_id: isCompanyGroup ? null : (parentClientId || null), // Company groups have no parent
         certifications: [], // Legacy field, no longer used
       });
@@ -248,7 +272,7 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Company Name */}
             <div className={`space-y-2 ${isCompanyGroup ? 'md:col-span-3' : 'md:col-span-2'}`}>
-              <Label htmlFor="name">{isCompanyGroup ? 'Gruppenname' : 'Firmenname'} *</Label>
+              <Label htmlFor="name">{isCompanyGroup ? 'Gruppenname' : 'Firmenname'} <span className="text-destructive">*</span></Label>
               <Input
                 id="name"
                 value={name}
@@ -260,7 +284,7 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
             {/* Client Number - only for actual clients, not company groups */}
             {!isCompanyGroup && (
               <div className="space-y-2">
-                <Label htmlFor="clientNumber">Kundennummer *</Label>
+                <Label htmlFor="clientNumber">Kundennummer <span className="text-destructive">*</span></Label>
                 <Input
                   id="clientNumber"
                   value={clientNumber}
@@ -269,7 +293,7 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
                   className="font-mono"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Erste Ziffer = Land ({getCountryPrefix(country)} = {country})
+                  Erste Ziffer = Land ({getCountryPrefix(country)} = {country === 'Andere' && customCountry ? customCountry : country})
                 </p>
               </div>
             )}
@@ -293,65 +317,83 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
               </Select>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Country */}
-              <div className="space-y-2">
-                <Label htmlFor="country">Land *</Label>
-                <Select value={country} onValueChange={handleCountryChange}>
-                  <SelectTrigger id="country">
-                    <SelectValue placeholder="Land auswählen" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-background border shadow-lg z-50">
-                    {COUNTRIES.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {c}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Country */}
+                <div className="space-y-2">
+                  <Label htmlFor="country">Land <span className="text-destructive">*</span></Label>
+                  <Select value={country} onValueChange={handleCountryChange}>
+                    <SelectTrigger id="country">
+                      <SelectValue placeholder="Land auswählen" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border shadow-lg z-50">
+                      {COUNTRIES.map((c) => (
+                        <SelectItem key={c} value={c}>
+                          {c}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              {/* Consultant - only for clients */}
-              <div className="space-y-2">
-                <Label htmlFor="consultant">Berater</Label>
-                <Input
-                  id="consultant"
-                  value={consultant}
-                  onChange={(e) => setConsultant(e.target.value)}
-                  placeholder="z.B. JP"
-                />
+                {/* Consultant - MANDATORY for clients */}
+                <div className="space-y-2">
+                  <Label htmlFor="consultant">Berater <span className="text-destructive">*</span></Label>
+                  <Input
+                    id="consultant"
+                    value={consultant}
+                    onChange={(e) => setConsultant(e.target.value)}
+                    placeholder="z.B. JP"
+                  />
+                </div>
               </div>
+              
+              {/* Custom country input when "Andere" is selected */}
+              {country === 'Andere' && (
+                <div className="space-y-2">
+                  <Label htmlFor="customCountry">Land eingeben <span className="text-destructive">*</span></Label>
+                  <Input
+                    id="customCountry"
+                    value={customCountry}
+                    onChange={(e) => setCustomCountry(e.target.value)}
+                    placeholder="z.B. Dänemark, Schweden..."
+                  />
+                </div>
+              )}
             </div>
           )}
 
-          {/* Contact Person - only for clients */}
+          {/* Contact Person - optional for clients */}
           {!isCompanyGroup && (
             <div className="space-y-2">
-              <Label htmlFor="contact-person">Ansprechpartner *</Label>
+              <Label htmlFor="contact-person">Ansprechpartner</Label>
               <Input
                 id="contact-person"
                 value={contactPerson}
                 onChange={(e) => setContactPerson(e.target.value)}
-                placeholder="z.B. Hans Müller"
+                placeholder="z.B. Hans Müller (optional, später ergänzbar)"
               />
+              <p className="text-xs text-muted-foreground">
+                Kontaktdaten werden später bei "Zum Unternehmen" ergänzt
+              </p>
             </div>
           )}
 
-          {/* Email - only for clients */}
+          {/* Email - optional for clients */}
           {!isCompanyGroup && (
             <div className="space-y-2">
-              <Label htmlFor="email">E-Mail *</Label>
+              <Label htmlFor="email">E-Mail</Label>
               <Input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="kontakt@beispiel.de"
+                placeholder="kontakt@beispiel.de (optional)"
               />
             </div>
           )}
 
-          {/* Phone - only for clients */}
+          {/* Phone - optional for clients */}
           {!isCompanyGroup && (
             <div className="space-y-2">
               <Label htmlFor="phone">Telefon</Label>
@@ -360,7 +402,7 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="+49 123 456789"
+                placeholder="+49 123 456789 (optional)"
               />
             </div>
           )}
