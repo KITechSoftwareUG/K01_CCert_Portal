@@ -4,7 +4,8 @@ import { Layout } from '@/components/Layout';
 import { useClient, useUpdateClient, useDeleteClient, useParentClients, CertificationStandard } from '@/hooks/useClients';
 
 import { ContactManagement } from '@/components/ContactManagement';
-import { useClientCertifications } from '@/hooks/useClientCertifications';
+import { useClientCertifications, useCreateClientCertification } from '@/hooks/useClientCertifications';
+import { useCertifications } from '@/hooks/useCertifications';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -36,7 +37,9 @@ import {
   UserCheck,
   Users,
   ChevronRight,
-  Award
+  Award,
+  AlertTriangle,
+  RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -101,12 +104,16 @@ const ClientDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   
-  const { data: client, isLoading } = useClient(id || '');
-  const { data: clientCertifications = [], isLoading: certificationsLoading } = useClientCertifications(id);
+  const { data: client, isLoading, refetch: refetchClient } = useClient(id || '');
+  const { data: clientCertifications = [], isLoading: certificationsLoading, refetch: refetchCertifications } = useClientCertifications(id);
+  const { data: allCertifications = [] } = useCertifications();
   const updateClient = useUpdateClient();
   const deleteClient = useDeleteClient();
+  const createClientCertification = useCreateClientCertification();
   
   const { data: parentClients = [] } = useParentClients();
+  
+  const [isMigrating, setIsMigrating] = useState(false);
   
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState('');
@@ -223,6 +230,57 @@ const ClientDetail = () => {
     }
   }, [id, deleteClient, navigate]);
 
+  // Migrate legacy certifications to the new client_certifications table
+  const handleMigrateCertifications = useCallback(async () => {
+    if (!id || !client?.certifications || client.certifications.length === 0) return;
+    
+    setIsMigrating(true);
+    
+    try {
+      // Map legacy certification names to certification IDs
+      for (const legacyCertName of client.certifications) {
+        const certMatch = allCertifications.find(
+          c => c.name.toLowerCase() === legacyCertName.toLowerCase() ||
+               c.name.includes(legacyCertName) ||
+               legacyCertName.includes(c.name)
+        );
+        
+        if (certMatch) {
+          // Check if this certification already exists for this client
+          const exists = clientCertifications.some(
+            cc => cc.certification_id === certMatch.id
+          );
+          
+          if (!exists) {
+            await createClientCertification.mutateAsync({
+              client_id: id,
+              certification_id: certMatch.id,
+            });
+          }
+        } else {
+          console.warn(`No matching certification found for: ${legacyCertName}`);
+          toast.warning(`Zertifizierung "${legacyCertName}" nicht gefunden. Bitte manuell hinzufügen.`);
+        }
+      }
+      
+      // Clear the legacy certifications array
+      await updateClient.mutateAsync({
+        id,
+        certifications: [],
+      });
+      
+      // Refetch data
+      await refetchClient();
+      await refetchCertifications();
+      
+      toast.success('Zertifizierungen erfolgreich migriert');
+    } catch (error) {
+      console.error('Error migrating certifications:', error);
+      toast.error('Fehler bei der Migration der Zertifizierungen');
+    } finally {
+      setIsMigrating(false);
+    }
+  }, [id, client, allCertifications, clientCertifications, createClientCertification, updateClient, refetchClient, refetchCertifications]);
 
   if (isLoading) {
     return <ClientDetailSkeleton />;
@@ -550,12 +608,32 @@ const ClientDetail = () => {
                     ))}
                   </div>
                 ) : client?.certifications && client.certifications.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {client.certifications.map((cert) => (
-                      <Badge key={cert} variant="secondary" className="text-sm px-3 py-1">
-                        {cert}
-                      </Badge>
-                    ))}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30">
+                      <AlertTriangle className="h-5 w-5 text-warning" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-warning">Legacy-Zertifizierungen gefunden</p>
+                        <p className="text-xs text-muted-foreground">
+                          Diese Zertifizierungen wurden noch nicht in das neue System migriert.
+                        </p>
+                      </div>
+                      <Button 
+                        size="sm" 
+                        onClick={handleMigrateCertifications}
+                        disabled={isMigrating}
+                        className="gap-2"
+                      >
+                        <RefreshCw className={`h-4 w-4 ${isMigrating ? 'animate-spin' : ''}`} />
+                        {isMigrating ? 'Migriert...' : 'Jetzt migrieren'}
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {client.certifications.map((cert) => (
+                        <Badge key={cert} variant="outline" className="text-sm px-3 py-1 border-warning text-warning">
+                          {cert}
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
                 ) : (
                   <p className="text-muted-foreground">Keine Zertifizierungen hinterlegt</p>
