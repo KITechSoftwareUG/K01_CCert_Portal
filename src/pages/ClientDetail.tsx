@@ -3,7 +3,17 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { useClient, useUpdateClient, useDeleteClient, useParentClients } from '@/hooks/useClients';
 import { ContactManagement } from '@/components/ContactManagement';
-import { useClientCertifications } from '@/hooks/useClientCertifications';
+import { useClientCertifications, useCreateClientCertification } from '@/hooks/useClientCertifications';
+import { useCertifications } from '@/hooks/useCertifications';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -34,7 +44,8 @@ import {
   UserCheck,
   Users,
   ChevronRight,
-  Award
+  Award,
+  Plus
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -98,12 +109,18 @@ const ClientDetail = () => {
   
   const { data: client, isLoading } = useClient(id || '');
   const { data: clientCertifications = [], isLoading: certificationsLoading } = useClientCertifications(id);
+  const { data: availableCertifications = [] } = useCertifications();
+  const createClientCertification = useCreateClientCertification();
   const updateClient = useUpdateClient();
   const deleteClient = useDeleteClient();
   
   const { data: parentClients = [] } = useParentClients();
   
   const [isEditing, setIsEditing] = useState(false);
+  const [showAddCertDialog, setShowAddCertDialog] = useState(false);
+  const [selectedCertificationId, setSelectedCertificationId] = useState<string>('');
+  const [isAddingCert, setIsAddingCert] = useState(false);
+  
   const [name, setName] = useState('');
   const [clientNumber, setClientNumber] = useState('');
   const [consultant, setConsultant] = useState('');
@@ -114,6 +131,12 @@ const ClientDetail = () => {
   const [country, setCountry] = useState('Deutschland');
   const [parentClientId, setParentClientId] = useState<string>('');
   const [isActive, setIsActive] = useState(true);
+
+  // Filter certifications that client doesn't already have
+  const availableCertsToAdd = useMemo(() => {
+    const existingCertIds = clientCertifications.map(cc => cc.certification_id);
+    return availableCertifications.filter(cert => !existingCertIds.includes(cert.id));
+  }, [availableCertifications, clientCertifications]);
 
   // Filter out current client from parent options (can't be its own parent)
   const sortedParentClients = useMemo(() => 
@@ -202,6 +225,29 @@ const ClientDetail = () => {
       toast.error('Fehler beim Löschen des Kunden');
     }
   }, [id, deleteClient, navigate]);
+
+  const handleAddCertification = useCallback(async () => {
+    if (!id || !selectedCertificationId) {
+      toast.error('Bitte wählen Sie eine Zertifizierung aus');
+      return;
+    }
+
+    setIsAddingCert(true);
+    try {
+      await createClientCertification.mutateAsync({
+        client_id: id,
+        certification_id: selectedCertificationId,
+      });
+      toast.success('Zertifizierung erfolgreich hinzugefügt');
+      setShowAddCertDialog(false);
+      setSelectedCertificationId('');
+    } catch (error) {
+      console.error('Error adding certification:', error);
+      toast.error('Fehler beim Hinzufügen der Zertifizierung');
+    } finally {
+      setIsAddingCert(false);
+    }
+  }, [id, selectedCertificationId, createClientCertification]);
 
   if (isLoading) {
     return <ClientDetailSkeleton />;
@@ -476,11 +522,55 @@ const ClientDetail = () => {
 
             {/* Certifications Card */}
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <Award className="h-5 w-5" />
                   Zertifizierungen
                 </CardTitle>
+                <Dialog open={showAddCertDialog} onOpenChange={setShowAddCertDialog}>
+                  <DialogTrigger asChild>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="gap-2"
+                      disabled={availableCertsToAdd.length === 0}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Hinzufügen
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Neue Zertifizierung hinzufügen</DialogTitle>
+                      <DialogDescription>
+                        Wählen Sie eine Zertifizierung aus, die diesem Kunden hinzugefügt werden soll.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                      <Label htmlFor="certification">Zertifizierung</Label>
+                      <Select value={selectedCertificationId} onValueChange={setSelectedCertificationId}>
+                        <SelectTrigger id="certification" className="mt-2">
+                          <SelectValue placeholder="Zertifizierung auswählen" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background border shadow-lg z-50">
+                          {availableCertsToAdd.map((cert) => (
+                            <SelectItem key={cert.id} value={cert.id}>
+                              {cert.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setShowAddCertDialog(false)}>
+                        Abbrechen
+                      </Button>
+                      <Button onClick={handleAddCertification} disabled={!selectedCertificationId || isAddingCert}>
+                        {isAddingCert ? 'Wird hinzugefügt...' : 'Hinzufügen'}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </CardHeader>
               <CardContent>
                 {certificationsLoading ? (
