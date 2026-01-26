@@ -1,17 +1,14 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
-import { useClient, useUpdateClient, useDeleteClient, useParentClients, CertificationStandard } from '@/hooks/useClients';
-
+import { useClient, useUpdateClient, useDeleteClient, useParentClients } from '@/hooks/useClients';
 import { ContactManagement } from '@/components/ContactManagement';
-import { useClientCertifications, useCreateClientCertification } from '@/hooks/useClientCertifications';
-import { useCertifications } from '@/hooks/useCertifications';
+import { useClientCertifications } from '@/hooks/useClientCertifications';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -37,14 +34,11 @@ import {
   UserCheck,
   Users,
   ChevronRight,
-  Award,
-  AlertTriangle,
-  RefreshCw
+  Award
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { Constants } from '@/integrations/supabase/types';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -56,8 +50,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-
-const certificationOptions = Constants.public.Enums.certification_standard;
 
 const COUNTRIES = [
   'Deutschland',
@@ -104,16 +96,12 @@ const ClientDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   
-  const { data: client, isLoading, refetch: refetchClient } = useClient(id || '');
-  const { data: clientCertifications = [], isLoading: certificationsLoading, refetch: refetchCertifications } = useClientCertifications(id);
-  const { data: allCertifications = [] } = useCertifications();
+  const { data: client, isLoading } = useClient(id || '');
+  const { data: clientCertifications = [], isLoading: certificationsLoading } = useClientCertifications(id);
   const updateClient = useUpdateClient();
   const deleteClient = useDeleteClient();
-  const createClientCertification = useCreateClientCertification();
   
   const { data: parentClients = [] } = useParentClients();
-  
-  const [isMigrating, setIsMigrating] = useState(false);
   
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState('');
@@ -125,8 +113,6 @@ const ClientDetail = () => {
   const [address, setAddress] = useState('');
   const [country, setCountry] = useState('Deutschland');
   const [parentClientId, setParentClientId] = useState<string>('');
-  const [selectedCertifications, setSelectedCertifications] = useState<CertificationStandard[]>([]);
-  
   const [isActive, setIsActive] = useState(true);
 
   // Filter out current client from parent options (can't be its own parent)
@@ -153,20 +139,9 @@ const ClientDetail = () => {
       setAddress(client.address || '');
       setCountry(client.country || 'Deutschland');
       setParentClientId(client.parent_client_id || '');
-      setSelectedCertifications((client.certifications || []) as CertificationStandard[]);
       setIsActive((client as any).is_active !== false);
     }
   }, [client]);
-
-
-  const toggleCertification = (cert: CertificationStandard) => {
-    setSelectedCertifications(prev =>
-      prev.includes(cert)
-        ? prev.filter(c => c !== cert)
-        : [...prev, cert]
-    );
-  };
-
 
   const handleSave = useCallback(async () => {
     if (!id || !name || !contactPerson || !email) {
@@ -186,10 +161,9 @@ const ClientDetail = () => {
         address: address || null,
         country,
         parent_client_id: parentClientId || null,
-        certifications: selectedCertifications,
+        // Note: certifications field is intentionally omitted - managed via client_certifications table
         is_active: isActive,
       });
-
 
       toast.success('Kunde erfolgreich aktualisiert');
       setIsEditing(false);
@@ -197,7 +171,7 @@ const ClientDetail = () => {
       console.error('Error updating client:', error);
       toast.error('Fehler beim Aktualisieren des Kunden');
     }
-  }, [id, name, clientNumber, consultant, contactPerson, email, phone, address, country, parentClientId, selectedCertifications, isActive, updateClient]);
+  }, [id, name, clientNumber, consultant, contactPerson, email, phone, address, country, parentClientId, isActive, updateClient]);
 
   const handleCancel = useCallback(() => {
     if (client) {
@@ -210,8 +184,7 @@ const ClientDetail = () => {
       setAddress(client.address || '');
       setCountry(client.country || 'Deutschland');
       setParentClientId(client.parent_client_id || '');
-      setSelectedCertifications((client.certifications || []) as CertificationStandard[]);
-      
+      // Note: Certifications are managed via client_certifications table
       setIsActive((client as any).is_active !== false);
     }
     setIsEditing(false);
@@ -229,58 +202,6 @@ const ClientDetail = () => {
       toast.error('Fehler beim Löschen des Kunden');
     }
   }, [id, deleteClient, navigate]);
-
-  // Migrate legacy certifications to the new client_certifications table
-  const handleMigrateCertifications = useCallback(async () => {
-    if (!id || !client?.certifications || client.certifications.length === 0) return;
-    
-    setIsMigrating(true);
-    
-    try {
-      // Map legacy certification names to certification IDs
-      for (const legacyCertName of client.certifications) {
-        const certMatch = allCertifications.find(
-          c => c.name.toLowerCase() === legacyCertName.toLowerCase() ||
-               c.name.includes(legacyCertName) ||
-               legacyCertName.includes(c.name)
-        );
-        
-        if (certMatch) {
-          // Check if this certification already exists for this client
-          const exists = clientCertifications.some(
-            cc => cc.certification_id === certMatch.id
-          );
-          
-          if (!exists) {
-            await createClientCertification.mutateAsync({
-              client_id: id,
-              certification_id: certMatch.id,
-            });
-          }
-        } else {
-          console.warn(`No matching certification found for: ${legacyCertName}`);
-          toast.warning(`Zertifizierung "${legacyCertName}" nicht gefunden. Bitte manuell hinzufügen.`);
-        }
-      }
-      
-      // Clear the legacy certifications array
-      await updateClient.mutateAsync({
-        id,
-        certifications: [],
-      });
-      
-      // Refetch data
-      await refetchClient();
-      await refetchCertifications();
-      
-      toast.success('Zertifizierungen erfolgreich migriert');
-    } catch (error) {
-      console.error('Error migrating certifications:', error);
-      toast.error('Fehler bei der Migration der Zertifizierungen');
-    } finally {
-      setIsMigrating(false);
-    }
-  }, [id, client, allCertifications, clientCertifications, createClientCertification, updateClient, refetchClient, refetchCertifications]);
 
   if (isLoading) {
     return <ClientDetailSkeleton />;
@@ -562,25 +483,7 @@ const ClientDetail = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {isEditing ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {certificationOptions.map((cert) => (
-                      <div key={cert} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`edit-${cert}`}
-                          checked={selectedCertifications.includes(cert)}
-                          onCheckedChange={() => toggleCertification(cert)}
-                        />
-                        <label
-                          htmlFor={`edit-${cert}`}
-                          className="text-sm font-medium leading-none cursor-pointer"
-                        >
-                          {cert}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                ) : certificationsLoading ? (
+                {certificationsLoading ? (
                   <div className="flex gap-2">
                     <Skeleton className="h-8 w-20" />
                     <Skeleton className="h-8 w-20" />
@@ -606,34 +509,6 @@ const ClientDetail = () => {
                         <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
                       </div>
                     ))}
-                  </div>
-                ) : client?.certifications && client.certifications.length > 0 ? (
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30">
-                      <AlertTriangle className="h-5 w-5 text-warning" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-warning">Legacy-Zertifizierungen gefunden</p>
-                        <p className="text-xs text-muted-foreground">
-                          Diese Zertifizierungen wurden noch nicht in das neue System migriert.
-                        </p>
-                      </div>
-                      <Button 
-                        size="sm" 
-                        onClick={handleMigrateCertifications}
-                        disabled={isMigrating}
-                        className="gap-2"
-                      >
-                        <RefreshCw className={`h-4 w-4 ${isMigrating ? 'animate-spin' : ''}`} />
-                        {isMigrating ? 'Migriert...' : 'Jetzt migrieren'}
-                      </Button>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {client.certifications.map((cert) => (
-                        <Badge key={cert} variant="outline" className="text-sm px-3 py-1 border-warning text-warning">
-                          {cert}
-                        </Badge>
-                      ))}
-                    </div>
                   </div>
                 ) : (
                   <p className="text-muted-foreground">Keine Zertifizierungen hinterlegt</p>
