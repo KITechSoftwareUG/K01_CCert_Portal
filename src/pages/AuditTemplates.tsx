@@ -63,6 +63,23 @@ import {
   Check,
   X
 } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const AUDIT_TYPE_LABELS: Record<string, string> = {
   'initial': 'Initialaudit',
@@ -78,7 +95,139 @@ const AUDIT_TYPE_COLORS: Record<string, string> = {
   'six-month': 'bg-purple-100 text-purple-800',
 };
 
-// Template Task List Component with full editing
+// Sortable Task Item Component
+function SortableTaskItem({
+  task,
+  editingTaskId,
+  editTask,
+  setEditTask,
+  onStartEdit,
+  onSaveEdit,
+  onCancelEdit,
+  onDelete,
+  isUpdating,
+}: {
+  task: AuditTemplateTask;
+  editingTaskId: string | null;
+  editTask: { title: string; description: string; days_before_audit: number };
+  setEditTask: (data: { title: string; description: string; days_before_audit: number }) => void;
+  onStartEdit: (task: AuditTemplateTask) => void;
+  onSaveEdit: (task: AuditTemplateTask) => void;
+  onCancelEdit: () => void;
+  onDelete: (task: AuditTemplateTask) => void;
+  isUpdating: boolean;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: task.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg group"
+    >
+      {editingTaskId === task.id ? (
+        // Edit mode
+        <div className="flex-1 space-y-3">
+          <div className="space-y-2">
+            <Label htmlFor={`editTitle-${task.id}`}>Titel *</Label>
+            <Input
+              id={`editTitle-${task.id}`}
+              value={editTask.title}
+              onChange={(e) => setEditTask({ ...editTask, title: e.target.value })}
+              autoFocus
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={`editDesc-${task.id}`}>Beschreibung</Label>
+            <Textarea
+              id={`editDesc-${task.id}`}
+              value={editTask.description}
+              onChange={(e) => setEditTask({ ...editTask, description: e.target.value })}
+              rows={2}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={`editDays-${task.id}`}>Tage vor Audit</Label>
+            <Input
+              id={`editDays-${task.id}`}
+              type="number"
+              min={0}
+              value={editTask.days_before_audit}
+              onChange={(e) => setEditTask({ ...editTask, days_before_audit: parseInt(e.target.value) || 0 })}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" size="sm" onClick={onCancelEdit}>
+              <X className="h-4 w-4 mr-1" />
+              Abbrechen
+            </Button>
+            <Button size="sm" onClick={() => onSaveEdit(task)} disabled={isUpdating}>
+              {isUpdating && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+              <Check className="h-4 w-4 mr-1" />
+              Speichern
+            </Button>
+          </div>
+        </div>
+      ) : (
+        // View mode
+        <>
+          <button
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing touch-none"
+          >
+            <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5" />
+          </button>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-sm">{task.title}</span>
+              <Badge variant="outline" className="text-xs">
+                <Clock className="h-3 w-3 mr-1" />
+                {task.days_before_audit} Tage vorher
+              </Badge>
+            </div>
+            {task.description && (
+              <p className="text-xs text-muted-foreground mt-1">{task.description}</p>
+            )}
+          </div>
+          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => onStartEdit(task)}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-destructive"
+              onClick={() => onDelete(task)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// Template Task List Component with full editing and drag-and-drop
 function TemplateTaskList({ template }: { template: AuditTemplate }) {
   const { data: tasks, isLoading } = useAuditTemplateTasks(template.id);
   const createTask = useCreateAuditTemplateTask();
@@ -97,6 +246,43 @@ function TemplateTaskList({ template }: { template: AuditTemplate }) {
     description: '',
     days_before_audit: 14,
   });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id && tasks) {
+      const oldIndex = tasks.findIndex((t) => t.id === active.id);
+      const newIndex = tasks.findIndex((t) => t.id === over.id);
+      
+      const reorderedTasks = arrayMove(tasks, oldIndex, newIndex);
+      
+      // Update sort_order for all affected tasks
+      try {
+        await Promise.all(
+          reorderedTasks.map((task, index) =>
+            updateTask.mutateAsync({
+              id: task.id,
+              sort_order: index,
+            })
+          )
+        );
+        toast.success('Reihenfolge aktualisiert');
+      } catch (error: any) {
+        toast.error('Fehler beim Aktualisieren der Reihenfolge');
+      }
+    }
+  };
 
   const handleAddTask = async () => {
     if (!newTask.title.trim()) {
@@ -174,94 +360,33 @@ function TemplateTaskList({ template }: { template: AuditTemplate }) {
   return (
     <div className="space-y-3">
       {tasks && tasks.length > 0 ? (
-        <div className="space-y-2">
-          {tasks.map((task) => (
-            <div
-              key={task.id}
-              className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg group"
-            >
-              {editingTaskId === task.id ? (
-                // Edit mode
-                <div className="flex-1 space-y-3">
-                  <div className="space-y-2">
-                    <Label htmlFor={`editTitle-${task.id}`}>Titel *</Label>
-                    <Input
-                      id={`editTitle-${task.id}`}
-                      value={editTask.title}
-                      onChange={(e) => setEditTask({ ...editTask, title: e.target.value })}
-                      autoFocus
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor={`editDesc-${task.id}`}>Beschreibung</Label>
-                    <Textarea
-                      id={`editDesc-${task.id}`}
-                      value={editTask.description}
-                      onChange={(e) => setEditTask({ ...editTask, description: e.target.value })}
-                      rows={2}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor={`editDays-${task.id}`}>Tage vor Audit</Label>
-                    <Input
-                      id={`editDays-${task.id}`}
-                      type="number"
-                      min={0}
-                      value={editTask.days_before_audit}
-                      onChange={(e) => setEditTask({ ...editTask, days_before_audit: parseInt(e.target.value) || 0 })}
-                    />
-                  </div>
-                  <div className="flex justify-end gap-2">
-                    <Button variant="outline" size="sm" onClick={handleCancelEdit}>
-                      <X className="h-4 w-4 mr-1" />
-                      Abbrechen
-                    </Button>
-                    <Button size="sm" onClick={() => handleSaveEdit(task)} disabled={updateTask.isPending}>
-                      {updateTask.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
-                      <Check className="h-4 w-4 mr-1" />
-                      Speichern
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                // View mode
-                <>
-                  <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm">{task.title}</span>
-                      <Badge variant="outline" className="text-xs">
-                        <Clock className="h-3 w-3 mr-1" />
-                        {task.days_before_audit} Tage vorher
-                      </Badge>
-                    </div>
-                    {task.description && (
-                      <p className="text-xs text-muted-foreground mt-1">{task.description}</p>
-                    )}
-                  </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => handleStartEdit(task)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive"
-                      onClick={() => handleDeleteTask(task)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </>
-              )}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={tasks.map((t) => t.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="space-y-2">
+              {tasks.map((task) => (
+                <SortableTaskItem
+                  key={task.id}
+                  task={task}
+                  editingTaskId={editingTaskId}
+                  editTask={editTask}
+                  setEditTask={setEditTask}
+                  onStartEdit={handleStartEdit}
+                  onSaveEdit={handleSaveEdit}
+                  onCancelEdit={handleCancelEdit}
+                  onDelete={handleDeleteTask}
+                  isUpdating={updateTask.isPending}
+                />
+              ))}
             </div>
-          ))}
-        </div>
+          </SortableContext>
+        </DndContext>
       ) : (
         <p className="text-sm text-muted-foreground py-2">
           Keine Aufgaben definiert. Fügen Sie Aufgaben hinzu, die automatisch erstellt werden.

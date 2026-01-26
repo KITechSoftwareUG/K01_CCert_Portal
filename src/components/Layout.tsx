@@ -9,7 +9,6 @@ import {
   Building2,
   UserCheck,
   LogOut,
-  Settings,
   Award,
   ListChecks,
   ChevronDown,
@@ -99,8 +98,8 @@ export const Layout = ({ children }: LayoutProps) => {
                 )}
               >
                 <div className="flex items-center gap-3">
-                  <Settings className="h-5 w-5" />
-                  <span className="font-medium">Einstellungen</span>
+                  <ListChecks className="h-5 w-5" />
+                  <span className="font-medium">Vorlagen</span>
                 </div>
                 {settingsOpen ? (
                   <ChevronDown className="h-4 w-4" />
