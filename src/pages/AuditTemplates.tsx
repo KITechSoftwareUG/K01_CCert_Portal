@@ -41,9 +41,11 @@ import { useCertifications } from '@/hooks/useCertifications';
 import {
   useAuditTemplates,
   useCreateAuditTemplate,
+  useUpdateAuditTemplate,
   useDeleteAuditTemplate,
   useAuditTemplateTasks,
   useCreateAuditTemplateTask,
+  useUpdateAuditTemplateTask,
   useDeleteAuditTemplateTask,
   AuditTemplate,
   AuditTemplateTask,
@@ -56,7 +58,10 @@ import {
   Loader2,
   ListChecks,
   Clock,
-  GripVertical
+  GripVertical,
+  Pencil,
+  Check,
+  X
 } from 'lucide-react';
 
 const AUDIT_TYPE_LABELS: Record<string, string> = {
@@ -73,14 +78,21 @@ const AUDIT_TYPE_COLORS: Record<string, string> = {
   'six-month': 'bg-purple-100 text-purple-800',
 };
 
-// Template Task List Component
+// Template Task List Component with full editing
 function TemplateTaskList({ template }: { template: AuditTemplate }) {
   const { data: tasks, isLoading } = useAuditTemplateTasks(template.id);
   const createTask = useCreateAuditTemplateTask();
+  const updateTask = useUpdateAuditTemplateTask();
   const deleteTask = useDeleteAuditTemplateTask();
   
   const [isAddingTask, setIsAddingTask] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [newTask, setNewTask] = useState({
+    title: '',
+    description: '',
+    days_before_audit: 14,
+  });
+  const [editTask, setEditTask] = useState({
     title: '',
     description: '',
     days_before_audit: 14,
@@ -106,6 +118,40 @@ function TemplateTaskList({ template }: { template: AuditTemplate }) {
     } catch (error: any) {
       toast.error(error.message || 'Fehler beim Hinzufügen');
     }
+  };
+
+  const handleStartEdit = (task: AuditTemplateTask) => {
+    setEditingTaskId(task.id);
+    setEditTask({
+      title: task.title,
+      description: task.description || '',
+      days_before_audit: task.days_before_audit,
+    });
+  };
+
+  const handleSaveEdit = async (task: AuditTemplateTask) => {
+    if (!editTask.title.trim()) {
+      toast.error('Bitte geben Sie einen Titel ein');
+      return;
+    }
+
+    try {
+      await updateTask.mutateAsync({
+        id: task.id,
+        title: editTask.title.trim(),
+        description: editTask.description.trim() || null,
+        days_before_audit: editTask.days_before_audit,
+      });
+      toast.success('Aufgabe aktualisiert');
+      setEditingTaskId(null);
+    } catch (error: any) {
+      toast.error(error.message || 'Fehler beim Speichern');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingTaskId(null);
+    setEditTask({ title: '', description: '', days_before_audit: 14 });
   };
 
   const handleDeleteTask = async (task: AuditTemplateTask) => {
@@ -134,27 +180,85 @@ function TemplateTaskList({ template }: { template: AuditTemplate }) {
               key={task.id}
               className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg group"
             >
-              <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-sm">{task.title}</span>
-                  <Badge variant="outline" className="text-xs">
-                    <Clock className="h-3 w-3 mr-1" />
-                    {task.days_before_audit} Tage vorher
-                  </Badge>
+              {editingTaskId === task.id ? (
+                // Edit mode
+                <div className="flex-1 space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor={`editTitle-${task.id}`}>Titel *</Label>
+                    <Input
+                      id={`editTitle-${task.id}`}
+                      value={editTask.title}
+                      onChange={(e) => setEditTask({ ...editTask, title: e.target.value })}
+                      autoFocus
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`editDesc-${task.id}`}>Beschreibung</Label>
+                    <Textarea
+                      id={`editDesc-${task.id}`}
+                      value={editTask.description}
+                      onChange={(e) => setEditTask({ ...editTask, description: e.target.value })}
+                      rows={2}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`editDays-${task.id}`}>Tage vor Audit</Label>
+                    <Input
+                      id={`editDays-${task.id}`}
+                      type="number"
+                      min={0}
+                      value={editTask.days_before_audit}
+                      onChange={(e) => setEditTask({ ...editTask, days_before_audit: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" size="sm" onClick={handleCancelEdit}>
+                      <X className="h-4 w-4 mr-1" />
+                      Abbrechen
+                    </Button>
+                    <Button size="sm" onClick={() => handleSaveEdit(task)} disabled={updateTask.isPending}>
+                      {updateTask.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                      <Check className="h-4 w-4 mr-1" />
+                      Speichern
+                    </Button>
+                  </div>
                 </div>
-                {task.description && (
-                  <p className="text-xs text-muted-foreground mt-1">{task.description}</p>
-                )}
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={() => handleDeleteTask(task)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              ) : (
+                // View mode
+                <>
+                  <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm">{task.title}</span>
+                      <Badge variant="outline" className="text-xs">
+                        <Clock className="h-3 w-3 mr-1" />
+                        {task.days_before_audit} Tage vorher
+                      </Badge>
+                    </div>
+                    {task.description && (
+                      <p className="text-xs text-muted-foreground mt-1">{task.description}</p>
+                    )}
+                  </div>
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleStartEdit(task)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive"
+                      onClick={() => handleDeleteTask(task)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           ))}
         </div>
@@ -173,6 +277,7 @@ function TemplateTaskList({ template }: { template: AuditTemplate }) {
               value={newTask.title}
               onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
               placeholder="z.B. Dokumentation prüfen"
+              autoFocus
             />
           </div>
           <div className="space-y-2">
@@ -215,6 +320,133 @@ function TemplateTaskList({ template }: { template: AuditTemplate }) {
         </Button>
       )}
     </div>
+  );
+}
+
+// Editable Template Card Component
+function EditableTemplateCard({ 
+  template, 
+  onDelete 
+}: { 
+  template: AuditTemplate;
+  onDelete: (template: AuditTemplate) => void;
+}) {
+  const updateTemplate = useUpdateAuditTemplate();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editData, setEditData] = useState({
+    name: template.name || '',
+    description: template.description || '',
+  });
+
+  const handleSave = async () => {
+    try {
+      await updateTemplate.mutateAsync({
+        id: template.id,
+        name: editData.name.trim() || null,
+        description: editData.description.trim() || null,
+      });
+      toast.success('Vorlage aktualisiert');
+      setIsEditing(false);
+    } catch (error: any) {
+      toast.error(error.message || 'Fehler beim Speichern');
+    }
+  };
+
+  const handleCancel = () => {
+    setEditData({
+      name: template.name || '',
+      description: template.description || '',
+    });
+    setIsEditing(false);
+  };
+
+  return (
+    <Card className="border-dashed">
+      <CardHeader className="py-3 px-4">
+        {isEditing ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Badge className={AUDIT_TYPE_COLORS[template.audit_type]}>
+                {AUDIT_TYPE_LABELS[template.audit_type]}
+              </Badge>
+              <span className="text-xs text-muted-foreground">(Typ nicht änderbar)</span>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={`templateName-${template.id}`}>Name</Label>
+              <Input
+                id={`templateName-${template.id}`}
+                value={editData.name}
+                onChange={(e) => setEditData({ ...editData, name: e.target.value })}
+                placeholder="Optionaler Name für die Vorlage"
+                autoFocus
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={`templateDesc-${template.id}`}>Beschreibung</Label>
+              <Textarea
+                id={`templateDesc-${template.id}`}
+                value={editData.description}
+                onChange={(e) => setEditData({ ...editData, description: e.target.value })}
+                placeholder="Optionale Beschreibung"
+                rows={2}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={handleCancel}>
+                <X className="h-4 w-4 mr-1" />
+                Abbrechen
+              </Button>
+              <Button size="sm" onClick={handleSave} disabled={updateTemplate.isPending}>
+                {updateTemplate.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                <Check className="h-4 w-4 mr-1" />
+                Speichern
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Badge className={AUDIT_TYPE_COLORS[template.audit_type]}>
+                  {AUDIT_TYPE_LABELS[template.audit_type]}
+                </Badge>
+                {template.name && (
+                  <span className="text-sm text-muted-foreground">
+                    — {template.name}
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setIsEditing(true)}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-destructive"
+                  onClick={() => onDelete(template)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            {template.description && (
+              <p className="text-sm text-muted-foreground mt-1">
+                {template.description}
+              </p>
+            )}
+          </>
+        )}
+      </CardHeader>
+      <CardContent className="pt-0 px-4 pb-4">
+        <TemplateTaskList template={template} />
+      </CardContent>
+    </Card>
   );
 }
 
@@ -328,38 +560,11 @@ export default function AuditTemplates() {
                     <AccordionContent>
                       <div className="space-y-4 pt-2">
                         {certTemplates.map((template) => (
-                          <Card key={template.id} className="border-dashed">
-                            <CardHeader className="py-3 px-4">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <Badge className={AUDIT_TYPE_COLORS[template.audit_type]}>
-                                    {AUDIT_TYPE_LABELS[template.audit_type]}
-                                  </Badge>
-                                  {template.name && (
-                                    <span className="text-sm text-muted-foreground">
-                                      — {template.name}
-                                    </span>
-                                  )}
-                                </div>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-destructive"
-                                  onClick={() => setDeleteDialogTemplate(template)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                              {template.description && (
-                                <p className="text-sm text-muted-foreground mt-1">
-                                  {template.description}
-                                </p>
-                              )}
-                            </CardHeader>
-                            <CardContent className="pt-0 px-4 pb-4">
-                              <TemplateTaskList template={template} />
-                            </CardContent>
-                          </Card>
+                          <EditableTemplateCard 
+                            key={template.id} 
+                            template={template}
+                            onDelete={setDeleteDialogTemplate}
+                          />
                         ))}
                       </div>
                     </AccordionContent>

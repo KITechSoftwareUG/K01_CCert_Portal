@@ -1,0 +1,192 @@
+import { useState, useEffect } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Label } from '@/components/ui/label';
+import { Loader2, CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
+import { de } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
+import { useUpdateAudit, AuditWithClient } from '@/hooks/useAudits';
+import { useAuditors } from '@/hooks/useAuditors';
+import { formatAuditorName, sortAuditorsByLastName } from '@/lib/auditorUtils';
+import { toast } from '@/hooks/use-toast';
+import { AUDIT_STATUS_CONFIG } from '@/lib/constants';
+
+interface EditAuditDialogProps {
+  audit: AuditWithClient | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+const AUDIT_STATUSES = [
+  { value: 'scheduled', label: 'Geplant' },
+  { value: 'in-progress', label: 'In Bearbeitung' },
+  { value: 'completed', label: 'Abgeschlossen' },
+  { value: 'cancelled', label: 'Abgebrochen' },
+] as const;
+
+export function EditAuditDialog({ audit, open, onOpenChange }: EditAuditDialogProps) {
+  const updateAudit = useUpdateAudit();
+  const { data: auditors = [] } = useAuditors();
+  
+  const [scheduledDate, setScheduledDate] = useState<Date | undefined>(undefined);
+  const [status, setStatus] = useState<string>('scheduled');
+  const [auditorId, setAuditorId] = useState<string>('__none__');
+
+  // Reset form when audit changes
+  useEffect(() => {
+    if (audit) {
+      setScheduledDate(new Date(audit.scheduled_date));
+      setStatus(audit.status);
+      setAuditorId(audit.auditor_id || '__none__');
+    }
+  }, [audit]);
+
+  const sortedAuditors = sortAuditorsByLastName(auditors);
+
+  const handleSave = async () => {
+    if (!audit || !scheduledDate) {
+      toast({
+        title: "Fehler",
+        description: "Bitte wählen Sie ein Datum.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await updateAudit.mutateAsync({
+        id: audit.id,
+        scheduled_date: scheduledDate.toISOString(),
+        status: status as 'scheduled' | 'in-progress' | 'completed' | 'cancelled',
+        auditor_id: auditorId === '__none__' ? null : auditorId,
+      });
+      
+      toast({
+        title: "Gespeichert",
+        description: "Audit wurde erfolgreich aktualisiert.",
+      });
+      onOpenChange(false);
+    } catch (error) {
+      toast({
+        title: "Fehler",
+        description: "Audit konnte nicht aktualisiert werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (!audit) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Audit bearbeiten</DialogTitle>
+          <DialogDescription>
+            Ändern Sie Datum, Status und Auditor für dieses Audit.
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-4 py-4">
+          {/* Scheduled Date */}
+          <div className="space-y-2">
+            <Label>Auditdatum *</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !scheduledDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {scheduledDate ? (
+                    format(scheduledDate, 'dd. MMMM yyyy', { locale: de })
+                  ) : (
+                    <span>Datum wählen...</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={scheduledDate}
+                  onSelect={setScheduledDate}
+                  initialFocus
+                  className="p-3 pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* Status */}
+          <div className="space-y-2">
+            <Label>Status</Label>
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger>
+                <SelectValue placeholder="Status wählen..." />
+              </SelectTrigger>
+              <SelectContent>
+                {AUDIT_STATUSES.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Auditor */}
+          <div className="space-y-2">
+            <Label>Auditor</Label>
+            <Select value={auditorId} onValueChange={setAuditorId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Auditor wählen..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">— Kein Auditor —</SelectItem>
+                {sortedAuditors.map((auditor) => (
+                  <SelectItem key={auditor.id} value={auditor.id}>
+                    {formatAuditorName(auditor.name)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Abbrechen
+          </Button>
+          <Button onClick={handleSave} disabled={updateAudit.isPending}>
+            {updateAudit.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            Speichern
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
