@@ -3,13 +3,15 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 const AZURE_CLIENT_ID = Deno.env.get('AZURE_CLIENT_ID')!;
 const AZURE_CLIENT_SECRET = Deno.env.get('AZURE_CLIENT_SECRET')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+const OUTLOOK_SCOPE = 'offline_access Calendars.ReadWrite';
 
 async function refreshAccessToken(supabase: any, userId: string, refreshToken: string): Promise<string | null> {
   console.log('Refreshing access token for user:', userId);
@@ -23,6 +25,7 @@ async function refreshAccessToken(supabase: any, userId: string, refreshToken: s
       client_id: AZURE_CLIENT_ID,
       client_secret: AZURE_CLIENT_SECRET,
       refresh_token: refreshToken,
+      scope: OUTLOOK_SCOPE,
       grant_type: 'refresh_token',
     }),
   });
