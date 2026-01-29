@@ -51,7 +51,9 @@ export const OutlookIntegration = ({ auditCount = 0, audits = [] }: OutlookInteg
         setIsConnecting(false);
         toast({
           title: "Verbindungsfehler",
-          description: "Die Authentifizierung ist fehlgeschlagen.",
+          description: typeof event.data?.error === 'string' && event.data.error.trim().length > 0
+            ? event.data.error
+            : "Die Authentifizierung ist fehlgeschlagen.",
           variant: "destructive",
         });
       }

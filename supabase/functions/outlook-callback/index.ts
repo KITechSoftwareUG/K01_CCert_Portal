@@ -6,6 +6,9 @@ const AZURE_CLIENT_SECRET = Deno.env.get('AZURE_CLIENT_SECRET')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
+// Must match the scopes used when generating the authorize URL
+const OUTLOOK_SCOPE = 'offline_access Calendars.ReadWrite';
+
 serve(async (req) => {
   try {
     const url = new URL(req.url);
@@ -64,6 +67,7 @@ serve(async (req) => {
         client_secret: AZURE_CLIENT_SECRET,
         code,
         redirect_uri: redirectUri,
+        scope: OUTLOOK_SCOPE,
         grant_type: 'authorization_code',
       }),
     });
