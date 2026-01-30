@@ -14,11 +14,12 @@ interface UpcomingTasksCardProps {
   maxTasks?: number;
 }
 
+// Use subtle icons for tasks - not aggressive
 const UrgencyIcon = {
-  overdue: AlertTriangle,
+  overdue: Clock,
   critical: Clock,
   warning: Clock,
-  normal: CheckCircle2,
+  normal: Clock,
 };
 
 export const UpcomingTasksCard = memo(({ audits, maxTasks = 8 }: UpcomingTasksCardProps) => {

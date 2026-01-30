@@ -72,22 +72,22 @@ export const TIMELINE_STATUS_CONFIG = {
   },
 } as const;
 
-// Urgency configuration for tasks
+// Urgency configuration for tasks - subtle/informational styling
 export const URGENCY_CONFIG = {
   overdue: { 
-    bg: 'bg-destructive/10 border-destructive/30', 
-    text: 'text-destructive',
+    bg: 'bg-muted/50 border-muted-foreground/20', 
+    text: 'text-muted-foreground',
     badge: 'Überfällig',
   },
   critical: { 
-    bg: 'bg-warning/10 border-warning/30', 
-    text: 'text-warning',
+    bg: 'bg-muted/30 border-border', 
+    text: 'text-muted-foreground',
     badge: 'Dringend',
   },
   warning: { 
-    bg: 'bg-accent/10 border-accent/30', 
-    text: 'text-accent-foreground',
-    badge: 'Diese Woche',
+    bg: 'bg-card border-border', 
+    text: 'text-muted-foreground',
+    badge: null,
   },
   normal: { 
     bg: 'bg-card border-border', 

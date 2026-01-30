@@ -69,6 +69,14 @@ export const ExpiringCertificationsCard = () => {
     warning: expiringCertifications.filter(c => c.status === 'warning').length,
   }), [expiringCertifications]);
 
+  const formatValidUntil = (date: Date) => {
+    // Ensure the year is displayed correctly (fix for dates showing wrong century)
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = format(date, 'MMM', { locale: de });
+    const year = date.getFullYear();
+    return `${day}. ${month} ${year}`;
+  };
+
   const getStatusBadge = (status: ExpiringCertification['status'], days: number) => {
     switch (status) {
       case 'expired':
@@ -179,7 +187,7 @@ export const ExpiringCertificationsCard = () => {
                         {cert.clientName}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Gültig bis: {format(cert.validUntil, 'dd. MMM yyyy', { locale: de })}
+                        Gültig bis: {formatValidUntil(cert.validUntil)}
                       </p>
                     </div>
                     <Button
