@@ -278,16 +278,8 @@ const CertificationDetail = () => {
             <Button 
               variant="outline" 
               size="icon"
-              onClick={() => navigate('/clients')}
-              title="Zur Kundenliste"
-            >
-              <Users className="h-4 w-4" />
-            </Button>
-            <Button 
-              variant="outline" 
-              size="icon"
-              onClick={() => client ? navigate(`/clients/${client.id}`) : navigate('/clients')}
-              title={client ? `Zurück zu ${client.name}` : 'Zurück'}
+              onClick={() => navigate(-1)}
+              title="Zurück"
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>

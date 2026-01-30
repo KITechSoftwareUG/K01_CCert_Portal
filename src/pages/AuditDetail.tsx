@@ -269,43 +269,53 @@ const AuditDetail = () => {
   return (
     <Layout>
       <div className="p-8 space-y-6 animate-fade-in">
-        {/* Breadcrumb Navigation */}
-        <nav className="flex items-center text-sm text-muted-foreground">
+        {/* Back Navigation + Breadcrumb */}
+        <div className="flex items-center gap-4">
           <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={() => navigate('/clients')}
-            className="text-muted-foreground hover:text-foreground px-2"
+            variant="outline" 
+            size="icon"
+            onClick={() => navigate(-1)}
+            title="Zurück"
           >
-            Kunden
+            <ArrowLeft className="h-4 w-4" />
           </Button>
-          <ChevronRight className="h-4 w-4 mx-1" />
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={() => navigate(`/clients/${audit.client_id}`)}
-            className="text-muted-foreground hover:text-foreground px-2"
-          >
-            {audit.clients?.name || 'Unbekannt'}
-          </Button>
-          {certificationName && audit.client_certification_id && (
-            <>
-              <ChevronRight className="h-4 w-4 mx-1" />
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => navigate(`/certifications/${audit.client_certification_id}`)}
-                className="text-muted-foreground hover:text-foreground px-2"
-              >
-                {certificationName}
-              </Button>
-            </>
-          )}
-          <ChevronRight className="h-4 w-4 mx-1" />
-          <span className="font-medium text-foreground px-2">
-            {AUDIT_TYPE_LABELS[audit.type]}
-          </span>
-        </nav>
+          <nav className="flex items-center text-sm text-muted-foreground">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => navigate('/clients')}
+              className="text-muted-foreground hover:text-foreground px-2"
+            >
+              Kunden
+            </Button>
+            <ChevronRight className="h-4 w-4 mx-1" />
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => navigate(`/clients/${audit.client_id}`)}
+              className="text-muted-foreground hover:text-foreground px-2"
+            >
+              {audit.clients?.name || 'Unbekannt'}
+            </Button>
+            {certificationName && audit.client_certification_id && (
+              <>
+                <ChevronRight className="h-4 w-4 mx-1" />
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => navigate(`/certifications/${audit.client_certification_id}`)}
+                  className="text-muted-foreground hover:text-foreground px-2"
+                >
+                  {certificationName}
+                </Button>
+              </>
+            )}
+            <ChevronRight className="h-4 w-4 mx-1" />
+            <span className="font-medium text-foreground px-2">
+              {AUDIT_TYPE_LABELS[audit.type]}
+            </span>
+          </nav>
+        </div>
 
         {/* Header */}
         <div className="flex items-center justify-between">
