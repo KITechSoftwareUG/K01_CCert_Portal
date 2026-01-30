@@ -151,7 +151,7 @@ export const ExpiringCertificationsCard = () => {
             </p>
           </div>
         ) : (
-          <ScrollArea className="max-h-[280px] pr-4">
+          <ScrollArea className="h-[260px] pr-4">
             <div className="space-y-3">
               {expiringCertifications.map((cert) => (
                 <div
