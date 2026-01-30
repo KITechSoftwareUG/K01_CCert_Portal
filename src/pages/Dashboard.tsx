@@ -89,11 +89,9 @@ const Dashboard = () => {
 
   return (
     <Layout>
-      <div className="p-6 space-y-4 animate-fade-in">
+      <div className="p-6 space-y-5 animate-fade-in">
         {/* AI Chat Section */}
-        <div className="bg-gradient-to-r from-primary/5 via-primary/3 to-transparent rounded-xl p-4 border border-primary/10">
-          <DashboardAIChat />
-        </div>
+        <DashboardAIChat />
 
         {/* Critical Alerts - Compact */}
         {!isLoading && stats.overdueTasks > 0 && (

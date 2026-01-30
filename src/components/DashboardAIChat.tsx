@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Sparkles, Loader2 } from 'lucide-react';
+import { Send, Sparkles, Loader2, MessageCircle, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -128,7 +128,6 @@ export const DashboardAIChat = ({ className }: DashboardAIChatProps) => {
     }
     if (user?.email) {
       const namePart = user.email.split('@')[0];
-      // Capitalize first letter
       return namePart.charAt(0).toUpperCase() + namePart.slice(1);
     }
     return 'Du';
@@ -167,7 +166,6 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
       });
     };
 
-    // Small delay to make it feel more natural
     const timer = setTimeout(loadGreeting, 500);
     return () => clearTimeout(timer);
   }, [getUserName, greetingLoaded]);
@@ -212,62 +210,92 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
   }, []);
 
   return (
-    <div className={cn("space-y-3", className)}>
-      {/* Greeting Message */}
-      <div className="min-h-[2rem]">
-        {greeting ? (
-          <p className="text-lg text-muted-foreground animate-fade-in">
-            <Sparkles className="inline h-4 w-4 mr-2 text-primary" />
-            {greeting}
-          </p>
-        ) : (
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-sm">Lade personalisierte Begrüßung...</span>
-          </div>
-        )}
+    <div className={cn("relative", className)}>
+      {/* Decorative background elements */}
+      <div className="absolute inset-0 overflow-hidden rounded-2xl">
+        <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-accent/10 rounded-full blur-2xl" />
       </div>
 
-      {/* Chat Input */}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Input
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyPress}
-            placeholder="Frag mich etwas zur Datenbank..."
-            className="pr-4 bg-background/50 border-border/50 focus:bg-background transition-colors"
-            disabled={isLoading}
-          />
-        </div>
-        <Button 
-          onClick={handleSend} 
-          size="icon"
-          disabled={!input.trim() || isLoading}
-          className="shrink-0"
-        >
-          {isLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Send className="h-4 w-4" />
+      {/* Main container */}
+      <div className="relative backdrop-blur-sm bg-gradient-to-br from-card/80 via-card/60 to-card/40 rounded-2xl border border-border/50 shadow-lg overflow-hidden">
+        {/* Header accent line */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-accent to-primary/50" />
+
+        <div className="p-5 space-y-4">
+          {/* AI Icon and Greeting */}
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-md">
+              <Sparkles className="h-5 w-5 text-primary-foreground" />
+            </div>
+            
+            <div className="flex-1 min-h-[2.5rem] pt-1">
+              {greeting ? (
+                <p className="text-base text-foreground/90 leading-relaxed animate-fade-in">
+                  {greeting}
+                </p>
+              ) : (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <div className="flex gap-1">
+                    <span className="w-2 h-2 bg-primary/60 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
+                    <span className="w-2 h-2 bg-primary/60 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
+                    <span className="w-2 h-2 bg-primary/60 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+                  </div>
+                  <span className="text-sm">Einen Moment...</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Chat Input */}
+          <div className="flex gap-2 items-center">
+            <div className="relative flex-1">
+              <MessageCircle className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+              <Input
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyPress}
+                placeholder="Stelle eine Frage zur Datenbank..."
+                className="pl-10 pr-4 h-11 bg-background/60 border-border/40 rounded-xl focus:bg-background focus:border-primary/50 transition-all placeholder:text-muted-foreground/50"
+                disabled={isLoading}
+              />
+            </div>
+            <Button 
+              onClick={handleSend} 
+              size="icon"
+              disabled={!input.trim() || isLoading}
+              className="h-11 w-11 rounded-xl bg-primary hover:bg-primary/90 shadow-md transition-all hover:shadow-lg hover:scale-105 active:scale-95"
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+
+          {/* Response Area */}
+          {response && (
+            <div className="animate-slide-up">
+              <div className="relative bg-gradient-to-br from-muted/60 via-muted/40 to-muted/20 rounded-xl p-4 border border-border/30 shadow-inner">
+                {/* Close button */}
+                <button
+                  onClick={clearResponse}
+                  className="absolute top-2 right-2 p-1.5 rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-background/50 transition-colors"
+                  aria-label="Schließen"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+
+                <div className="pr-8 prose prose-sm max-w-none text-foreground/90 prose-headings:text-foreground prose-strong:text-foreground prose-p:text-foreground/90 prose-li:text-foreground/90 prose-p:my-1 prose-ul:my-1 prose-ol:my-1">
+                  <ReactMarkdown>{response}</ReactMarkdown>
+                </div>
+              </div>
+            </div>
           )}
-        </Button>
-      </div>
-
-      {/* Response Area */}
-      {response && (
-        <div 
-          className="bg-muted/50 rounded-lg p-4 border border-border/50 animate-fade-in cursor-pointer hover:bg-muted/70 transition-colors"
-          onClick={clearResponse}
-          title="Klicken zum Schließen"
-        >
-          <div className="prose prose-sm max-w-none text-foreground prose-headings:text-foreground prose-strong:text-foreground prose-p:text-foreground prose-li:text-foreground">
-            <ReactMarkdown>{response}</ReactMarkdown>
-          </div>
-          <p className="text-xs text-muted-foreground mt-2 text-right">Klicken zum Schließen</p>
         </div>
-      )}
+      </div>
     </div>
   );
 };
