@@ -15,7 +15,6 @@ import {
   ChevronRight
 } from 'lucide-react';
 import logo from '@/assets/logo-white.png';
-import ChatBot from './ChatBot';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from './ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -152,9 +151,6 @@ export const Layout = ({ children }: LayoutProps) => {
       <main className="flex-1 overflow-auto">
         {children}
       </main>
-
-      {/* ChatBot */}
-      <ChatBot />
     </div>
   );
 };
