@@ -119,7 +119,7 @@ export const ExpiringCertificationsCard = () => {
   }
 
   return (
-    <Card className="h-full">
+    <Card>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -151,7 +151,7 @@ export const ExpiringCertificationsCard = () => {
             </p>
           </div>
         ) : (
-          <ScrollArea className="h-[300px] pr-4">
+          <ScrollArea className="max-h-[280px] pr-4">
             <div className="space-y-3">
               {expiringCertifications.map((cert) => (
                 <div
