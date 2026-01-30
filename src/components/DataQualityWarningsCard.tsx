@@ -138,7 +138,7 @@ export const DataQualityWarningsCard = () => {
           )}
         </div>
 
-        <ScrollArea className="max-h-[200px] pr-4">
+        <ScrollArea className="h-[180px] pr-4">
           <div className="space-y-2">
             {issues.slice(0, 10).map((issue) => (
               <div
