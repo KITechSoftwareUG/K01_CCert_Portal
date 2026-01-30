@@ -13,6 +13,11 @@ interface DashboardAIChatProps {
   className?: string;
 }
 
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 async function streamChat({
   messages,
   onDelta,
@@ -116,7 +121,8 @@ export const DashboardAIChat = ({ className }: DashboardAIChatProps) => {
   const { user } = useAuth();
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [response, setResponse] = useState<string | null>(null);
+  const [conversationHistory, setConversationHistory] = useState<Message[]>([]);
+  const [currentResponse, setCurrentResponse] = useState<string | null>(null);
   const [greeting, setGreeting] = useState<string | null>(null);
   const [greetingLoaded, setGreetingLoaded] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -133,7 +139,7 @@ export const DashboardAIChat = ({ className }: DashboardAIChatProps) => {
     return 'Du';
   }, [user]);
 
-  // Load personalized greeting on mount
+  // Load personalized greeting on mount and store in conversation history
   useEffect(() => {
     if (greetingLoaded) return;
     
@@ -158,10 +164,16 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
         },
         onDone: () => {
           setGreetingLoaded(true);
+          // Store the greeting in conversation history so follow-ups can reference it
+          if (greetingContent) {
+            setConversationHistory([{ role: 'assistant', content: greetingContent }]);
+          }
         },
         onError: () => {
-          setGreeting(`Hey ${userName}, willkommen zurück! 👋`);
+          const fallbackGreeting = `Hey ${userName}, willkommen zurück! 👋`;
+          setGreeting(fallbackGreeting);
           setGreetingLoaded(true);
+          setConversationHistory([{ role: 'assistant', content: fallbackGreeting }]);
         },
       });
     };
@@ -174,28 +186,41 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
     if (!input.trim() || isLoading) return;
 
     const userQuery = input.trim();
+    const userMessage: Message = { role: 'user', content: userQuery };
+    
     setInput('');
     setIsLoading(true);
-    setResponse('');
+    setCurrentResponse('');
+
+    // Add user message to history
+    const updatedHistory = [...conversationHistory, userMessage];
+    setConversationHistory(updatedHistory);
 
     let responseContent = "";
 
     await streamChat({
-      messages: [{ role: 'user', content: userQuery }],
+      // Send full conversation history so AI can reference previous messages
+      messages: updatedHistory,
       onDelta: (chunk) => {
         responseContent += chunk;
-        setResponse(responseContent);
+        setCurrentResponse(responseContent);
       },
       onDone: () => {
         setIsLoading(false);
+        // Add assistant response to history
+        if (responseContent) {
+          setConversationHistory(prev => [...prev, { role: 'assistant', content: responseContent }]);
+        }
       },
       onError: (error) => {
         toast.error(error);
-        setResponse(null);
+        setCurrentResponse(null);
         setIsLoading(false);
+        // Remove the user message on error
+        setConversationHistory(conversationHistory);
       },
     });
-  }, [input, isLoading]);
+  }, [input, isLoading, conversationHistory]);
 
   const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -205,9 +230,24 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
   }, [handleSend]);
 
   const clearResponse = useCallback(() => {
-    setResponse(null);
+    setCurrentResponse(null);
     inputRef.current?.focus();
   }, []);
+
+  // Get the last assistant response (excluding the greeting)
+  const lastAssistantResponse = currentResponse || 
+    (conversationHistory.length > 1 
+      ? conversationHistory.filter(m => m.role === 'assistant').slice(-1)[0]?.content 
+      : null);
+
+  // Only show response area if there's a response after a user question
+  const showResponseArea = currentResponse !== null || conversationHistory.filter(m => m.role === 'user').length > 0;
+  const displayResponse = currentResponse || 
+    (conversationHistory.length > 1 
+      ? conversationHistory.slice(-1)[0]?.role === 'assistant' 
+        ? conversationHistory.slice(-1)[0]?.content 
+        : null 
+      : null);
 
   return (
     <div className={cn("relative", className)}>
@@ -256,7 +296,7 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyPress}
-                placeholder="Stelle eine Frage zur Datenbank..."
+                placeholder="Frag nach – ich beziehe mich auf alles Gesagte..."
                 className="pl-10 pr-4 h-11 bg-background/60 border-border/40 rounded-xl focus:bg-background focus:border-primary/50 transition-all placeholder:text-muted-foreground/50"
                 disabled={isLoading}
               />
@@ -276,7 +316,7 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
           </div>
 
           {/* Response Area */}
-          {response && (
+          {displayResponse && (
             <div className="animate-slide-up">
               <div className="relative bg-gradient-to-br from-muted/60 via-muted/40 to-muted/20 rounded-xl p-4 border border-border/30 shadow-inner">
                 {/* Close button */}
@@ -289,7 +329,7 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
                 </button>
 
                 <div className="pr-8 prose prose-sm max-w-none text-foreground/90 prose-headings:text-foreground prose-strong:text-foreground prose-p:text-foreground/90 prose-li:text-foreground/90 prose-p:my-1 prose-ul:my-1 prose-ol:my-1">
-                  <ReactMarkdown>{response}</ReactMarkdown>
+                  <ReactMarkdown>{displayResponse}</ReactMarkdown>
                 </div>
               </div>
             </div>
