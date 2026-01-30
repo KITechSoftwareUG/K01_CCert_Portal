@@ -2,13 +2,12 @@ import { useMemo } from 'react';
 import { Layout } from '@/components/Layout';
 import { StatCard } from '@/components/StatCard';
 import { UpcomingTasksCard } from '@/components/UpcomingTasksCard';
-import { AuditTimeline } from '@/components/AuditTimeline';
 import { AlertsCard } from '@/components/AlertsCard';
-import { PreparationChecklist } from '@/components/PreparationChecklist';
 import { ExpiringCertificationsCard } from '@/components/ExpiringCertificationsCard';
 import { DataQualityWarningsCard } from '@/components/DataQualityWarningsCard';
 import { MissingAuditorsWarning } from '@/components/MissingAuditorsWarning';
 import { SuggestedAuditsCard } from '@/components/SuggestedAuditsCard';
+import { DashboardAIChat } from '@/components/DashboardAIChat';
 import { useAudits, AuditWithClient } from '@/hooks/useAudits';
 import { useAuditTasks } from '@/hooks/useAuditTasks';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -42,12 +41,12 @@ const transformAuditToLocal = (dbAudit: AuditWithClient, tasks: any[]): Audit =>
 });
 
 const StatCardSkeleton = () => (
-  <Card>
-    <CardHeader className="pb-2">
-      <Skeleton className="h-4 w-24" />
+  <Card className="h-auto">
+    <CardHeader className="pb-1 pt-3 px-4">
+      <Skeleton className="h-3 w-20" />
     </CardHeader>
-    <CardContent>
-      <Skeleton className="h-8 w-16" />
+    <CardContent className="pb-3 px-4">
+      <Skeleton className="h-7 w-12" />
     </CardContent>
   </Card>
 );
@@ -90,35 +89,25 @@ const Dashboard = () => {
 
   return (
     <Layout>
-      <div className="p-8 space-y-6 animate-fade-in">
-        {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">Audit-Übersicht</h1>
-          <p className="text-muted-foreground">Planung und Vorbereitung Ihrer Zertifizierungsaudits</p>
+      <div className="p-6 space-y-4 animate-fade-in">
+        {/* AI Chat Section */}
+        <div className="bg-gradient-to-r from-primary/5 via-primary/3 to-transparent rounded-xl p-4 border border-primary/10">
+          <DashboardAIChat />
         </div>
 
-        {/* Critical Alerts Banners */}
-        {!isLoading && (
-          <div className="space-y-3">
-            {stats.overdueTasks > 0 && (
-              <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 flex items-center gap-3 animate-slide-up">
-                <AlertTriangle className="h-6 w-6 text-destructive shrink-0" />
-                <div className="flex-1">
-                  <p className="font-semibold text-destructive">
-                    Achtung: {stats.overdueTasks} überfällige Aufgabe{stats.overdueTasks > 1 ? 'n' : ''}
-                  </p>
-                  <p className="text-sm text-destructive/80">
-                    Es gibt Aufgaben, die ihre Fälligkeit überschritten haben. Bitte umgehend bearbeiten.
-                  </p>
-                </div>
-              </div>
-            )}
-            <MissingAuditorsWarning />
+        {/* Critical Alerts - Compact */}
+        {!isLoading && stats.overdueTasks > 0 && (
+          <div className="bg-destructive/10 border border-destructive/30 rounded-lg px-4 py-2 flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+            <p className="text-sm font-medium text-destructive">
+              {stats.overdueTasks} überfällige Aufgabe{stats.overdueTasks > 1 ? 'n' : ''} – bitte umgehend bearbeiten
+            </p>
           </div>
         )}
+        {!isLoading && <MissingAuditorsWarning />}
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Stats Grid - Compact */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {isLoading ? (
             <>
               <StatCardSkeleton />
@@ -133,51 +122,49 @@ const Dashboard = () => {
                 value={stats.activeAudits}
                 icon={ClipboardCheck}
                 variant="default"
+                compact
               />
               <StatCard
-                title="Audits diesen Monat"
+                title="Diesen Monat"
                 value={stats.upcomingThisMonth}
                 icon={Calendar}
                 variant="accent"
+                compact
               />
               <StatCard
                 title="Offene Aufgaben"
                 value={stats.pendingTasks}
                 icon={ListTodo}
                 variant="warning"
+                compact
               />
               <StatCard
-                title="Überfällige Aufgaben"
+                title="Überfällig"
                 value={stats.overdueTasks}
                 icon={AlertTriangle}
                 variant={stats.overdueTasks > 0 ? 'warning' : 'success'}
+                compact
               />
             </>
           )}
         </div>
 
-        {/* Main Content Grid */}
+        {/* Main Content Grid - More Compact */}
         {!isLoading && (
-          <>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Left Column - Alerts & Tasks */}
-              <div className="lg:col-span-2 space-y-6">
-                <AlertsCard audits={audits} />
-                <UpcomingTasksCard audits={audits} />
-                <SuggestedAuditsCard />
-              </div>
-
-              {/* Right Column - Expiring Certs, Preparation & Data Quality */}
-              <div className="space-y-6">
-                <ExpiringCertificationsCard />
-                <DataQualityWarningsCard />
-                <PreparationChecklist audits={audits} />
-              </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Left Column */}
+            <div className="lg:col-span-2 space-y-4">
+              <AlertsCard audits={audits} />
+              <UpcomingTasksCard audits={audits} />
+              <SuggestedAuditsCard />
             </div>
 
-            {/* Full Width Timeline - temporarily hidden */}
-            {/* <AuditTimeline audits={audits} /> */}
-          </>
+            {/* Right Column */}
+            <div className="space-y-4">
+              <ExpiringCertificationsCard />
+              <DataQualityWarningsCard />
+            </div>
+          </div>
         )}
       </div>
     </Layout>
