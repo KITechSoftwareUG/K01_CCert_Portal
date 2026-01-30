@@ -1,19 +1,38 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
-import { AuditCard } from '@/components/AuditCard';
 import { NewAuditDialog } from '@/components/NewAuditDialog';
 import { useAudits, AuditWithClient } from '@/hooks/useAudits';
 import { useAuditTasks } from '@/hooks/useAuditTasks';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Plus, Search, Filter } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Plus, Search, ChevronRight, Calendar, Building2, ClipboardCheck, Users } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Audit } from '@/types/audit';
+import { AUDIT_TYPE_LABELS, AUDIT_STATUS_CONFIG } from '@/lib/constants';
+import { format } from 'date-fns';
+import { de } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 type StatusFilter = 'all' | 'scheduled' | 'in-progress' | 'completed';
+type GroupBy = 'client' | 'type' | 'none';
 
 // Transform database audit to local Audit type
 const transformAuditToLocal = (dbAudit: AuditWithClient, tasks: any[]): Audit => ({
@@ -39,30 +58,98 @@ const transformAuditToLocal = (dbAudit: AuditWithClient, tasks: any[]): Audit =>
   createdAt: new Date(dbAudit.created_at),
 });
 
-const AuditCardSkeleton = () => (
-  <Card>
-    <CardHeader>
-      <div className="flex items-center gap-3">
-        <Skeleton className="h-10 w-10 rounded-lg" />
-        <div>
-          <Skeleton className="h-6 w-32 mb-2" />
-          <Skeleton className="h-4 w-24" />
+const TableRowSkeleton = () => (
+  <TableRow>
+    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+    <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+    <TableCell><Skeleton className="h-8 w-8" /></TableCell>
+  </TableRow>
+);
+
+interface AuditRowProps {
+  audit: Audit;
+  onClick: () => void;
+  showClient?: boolean;
+  showType?: boolean;
+}
+
+const AuditRow = ({ audit, onClick, showClient = true, showType = true }: AuditRowProps) => {
+  const statusConfig = AUDIT_STATUS_CONFIG[audit.status];
+  const pendingTasks = audit.tasks.filter(t => t.status !== 'completed').length;
+  const overdueTasks = audit.tasks.filter(t => t.status === 'overdue' || (t.status !== 'completed' && t.dueDate < new Date())).length;
+
+  return (
+    <TableRow 
+      className="cursor-pointer hover:bg-muted/50 transition-colors"
+      onClick={onClick}
+    >
+      {showClient && (
+        <TableCell className="font-medium">{audit.clientName}</TableCell>
+      )}
+      {showType && (
+        <TableCell>
+          <span className="text-sm">{AUDIT_TYPE_LABELS[audit.type]}</span>
+        </TableCell>
+      )}
+      <TableCell>
+        <div className="flex items-center gap-2 text-sm">
+          <Calendar className="h-4 w-4 text-muted-foreground" />
+          {format(audit.scheduledDate, 'dd. MMM yyyy', { locale: de })}
         </div>
-      </div>
-    </CardHeader>
-    <CardContent className="space-y-4">
-      <Skeleton className="h-4 w-full" />
-      <Skeleton className="h-4 w-3/4" />
-      <Skeleton className="h-2 w-full" />
-      <Skeleton className="h-10 w-full" />
-    </CardContent>
-  </Card>
+      </TableCell>
+      <TableCell>
+        <Badge 
+          variant={statusConfig.variant}
+          className={cn("text-xs", statusConfig.className)}
+        >
+          {statusConfig.label}
+        </Badge>
+      </TableCell>
+      <TableCell>
+        {pendingTasks > 0 ? (
+          <div className="flex items-center gap-1">
+            <span className={cn(
+              "text-sm",
+              overdueTasks > 0 ? "text-destructive font-medium" : "text-muted-foreground"
+            )}>
+              {overdueTasks > 0 ? `${overdueTasks} überfällig` : `${pendingTasks} offen`}
+            </span>
+          </div>
+        ) : (
+          <span className="text-sm text-success">✓ Fertig</span>
+        )}
+      </TableCell>
+      <TableCell>
+        <Button variant="ghost" size="icon" className="h-8 w-8">
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </TableCell>
+    </TableRow>
+  );
+};
+
+interface GroupHeaderProps {
+  title: string;
+  count: number;
+  icon?: React.ReactNode;
+}
+
+const GroupHeader = ({ title, count, icon }: GroupHeaderProps) => (
+  <div className="flex items-center gap-3 py-3 px-4 bg-muted/30 border-y border-border sticky top-0">
+    {icon}
+    <span className="font-semibold text-foreground">{title}</span>
+    <Badge variant="secondary" className="text-xs">{count}</Badge>
+  </div>
 );
 
 const Audits = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [groupBy, setGroupBy] = useState<GroupBy>('client');
   const [showNewAuditDialog, setShowNewAuditDialog] = useState(false);
 
   const { data: dbAudits = [], isLoading: auditsLoading, error: auditsError } = useAudits();
@@ -78,23 +165,58 @@ const Audits = () => {
   }, [navigate]);
 
   const filteredAudits = useMemo(() => {
-    return audits.filter(audit => {
-      const matchesSearch = audit.clientName.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesStatus = statusFilter === 'all' || audit.status === statusFilter;
-      return matchesSearch && matchesStatus;
-    });
+    return audits
+      .filter(audit => {
+        const matchesSearch = audit.clientName.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesStatus = statusFilter === 'all' || audit.status === statusFilter;
+        return matchesSearch && matchesStatus;
+      })
+      .sort((a, b) => a.scheduledDate.getTime() - b.scheduledDate.getTime());
   }, [audits, searchQuery, statusFilter]);
+
+  // Group audits
+  const groupedAudits = useMemo(() => {
+    if (groupBy === 'none') {
+      return [{ key: 'all', title: 'Alle Audits', audits: filteredAudits }];
+    }
+
+    const groups = new Map<string, { title: string; audits: Audit[] }>();
+
+    filteredAudits.forEach(audit => {
+      let key: string;
+      let title: string;
+
+      if (groupBy === 'client') {
+        key = audit.clientId;
+        title = audit.clientName;
+      } else {
+        key = audit.type;
+        title = AUDIT_TYPE_LABELS[audit.type];
+      }
+
+      if (!groups.has(key)) {
+        groups.set(key, { title, audits: [] });
+      }
+      groups.get(key)!.audits.push(audit);
+    });
+
+    return Array.from(groups.entries())
+      .map(([key, value]) => ({ key, ...value }))
+      .sort((a, b) => a.title.localeCompare(b.title, 'de'));
+  }, [filteredAudits, groupBy]);
 
   const isLoading = auditsLoading || tasksLoading;
 
   return (
     <Layout>
-      <div className="p-8 space-y-8 animate-fade-in">
+      <div className="p-6 space-y-6 animate-fade-in">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Audits</h1>
-            <p className="text-muted-foreground">Verwaltung und Planung aller Zertifizierungsaudits</p>
+            <h1 className="text-2xl font-bold text-foreground mb-1">Audits</h1>
+            <p className="text-sm text-muted-foreground">
+              {filteredAudits.length} Audit{filteredAudits.length !== 1 ? 's' : ''} gefunden
+            </p>
           </div>
           <Button className="gap-2" onClick={() => setShowNewAuditDialog(true)}>
             <Plus className="h-4 w-4" />
@@ -102,21 +224,46 @@ const Audits = () => {
           </Button>
         </div>
 
-        {/* Filters */}
-        <div className="flex gap-4">
-          <div className="relative flex-1">
+        {/* Filters Row */}
+        <div className="flex flex-wrap gap-3 items-center">
+          <div className="relative flex-1 min-w-[200px] max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Audit oder Kunde suchen..."
+              placeholder="Kunde suchen..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
             />
           </div>
-          <Button variant="outline" className="gap-2">
-            <Filter className="h-4 w-4" />
-            Filter
-          </Button>
+          
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Gruppieren:</span>
+            <Select value={groupBy} onValueChange={(v) => setGroupBy(v as GroupBy)}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="client">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Nach Kunde
+                  </div>
+                </SelectItem>
+                <SelectItem value="type">
+                  <div className="flex items-center gap-2">
+                    <ClipboardCheck className="h-4 w-4" />
+                    Nach Auditart
+                  </div>
+                </SelectItem>
+                <SelectItem value="none">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4" />
+                    Keine Gruppierung
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Status Tabs */}
@@ -128,19 +275,34 @@ const Audits = () => {
             <TabsTrigger value="completed">Abgeschlossen</TabsTrigger>
           </TabsList>
 
-          <TabsContent value={statusFilter} className="mt-6">
+          <TabsContent value={statusFilter} className="mt-4">
             {auditsError ? (
               <div className="text-center py-12">
                 <p className="text-destructive">Fehler beim Laden der Audits</p>
               </div>
             ) : isLoading ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                {[1, 2, 3].map((i) => (
-                  <AuditCardSkeleton key={i} />
-                ))}
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Kunde</TableHead>
+                      <TableHead>Auditart</TableHead>
+                      <TableHead>Termin</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Aufgaben</TableHead>
+                      <TableHead className="w-12"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <TableRowSkeleton key={i} />
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             ) : filteredAudits.length === 0 ? (
-              <div className="text-center py-12">
+              <div className="text-center py-12 border rounded-lg bg-muted/20">
+                <ClipboardCheck className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
                 <p className="text-muted-foreground">
                   {searchQuery || statusFilter !== 'all' ? 'Keine Audits gefunden' : 'Noch keine Audits vorhanden'}
                 </p>
@@ -151,9 +313,45 @@ const Audits = () => {
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                {filteredAudits.map((audit) => (
-                  <AuditCard key={audit.id} audit={audit} onViewDetails={handleViewDetails} />
+              <div className="border rounded-lg overflow-hidden bg-card">
+                {groupedAudits.map((group) => (
+                  <div key={group.key}>
+                    {groupBy !== 'none' && (
+                      <GroupHeader 
+                        title={group.title} 
+                        count={group.audits.length}
+                        icon={groupBy === 'client' 
+                          ? <Users className="h-4 w-4 text-primary" />
+                          : <ClipboardCheck className="h-4 w-4 text-primary" />
+                        }
+                      />
+                    )}
+                    <Table>
+                      {groupBy === 'none' && (
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Kunde</TableHead>
+                            <TableHead>Auditart</TableHead>
+                            <TableHead>Termin</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Aufgaben</TableHead>
+                            <TableHead className="w-12"></TableHead>
+                          </TableRow>
+                        </TableHeader>
+                      )}
+                      <TableBody>
+                        {group.audits.map((audit) => (
+                          <AuditRow
+                            key={audit.id}
+                            audit={audit}
+                            onClick={() => handleViewDetails(audit)}
+                            showClient={groupBy !== 'client'}
+                            showType={groupBy !== 'type'}
+                          />
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 ))}
               </div>
             )}
