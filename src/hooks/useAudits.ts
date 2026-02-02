@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables, TablesInsert, Enums } from '@/integrations/supabase/types';
+import { useOutlookSync } from './useOutlookSync';
 
 export type DbAudit = Tables<'audits'>;
 export type DbAuditInsert = TablesInsert<'audits'>;
@@ -59,26 +60,45 @@ export const useAudit = (id: string) => {
 
 export const useCreateAudit = () => {
   const queryClient = useQueryClient();
+  const { syncSingleAudit } = useOutlookSync();
   
   return useMutation({
-    mutationFn: async (audit: DbAuditInsert) => {
+    mutationFn: async (audit: DbAuditInsert & { clientName?: string }) => {
+      const { clientName, ...auditData } = audit;
       const { data, error } = await supabase
         .from('audits')
-        .insert(audit)
-        .select()
+        .insert(auditData)
+        .select(`
+          *,
+          clients (name, address)
+        `)
         .single();
       
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ['audits'] });
+      
+      // Auto-sync to Outlook if connected
+      if (data && data.clients) {
+        await syncSingleAudit({
+          id: data.id,
+          clientName: data.clients.name || 'Unbekannt',
+          type: data.type,
+          scheduledDate: data.scheduled_date,
+          certifications: data.certifications || [],
+          notes: data.notes || undefined,
+          clientAddress: data.clients.address || undefined,
+        });
+      }
     },
   });
 };
 
 export const useUpdateAudit = () => {
   const queryClient = useQueryClient();
+  const { syncSingleAudit } = useOutlookSync();
   
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<DbAudit> & { id: string }) => {
@@ -86,14 +106,30 @@ export const useUpdateAudit = () => {
         .from('audits')
         .update(updates)
         .eq('id', id)
-        .select()
+        .select(`
+          *,
+          clients (name, address)
+        `)
         .single();
       
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ['audits'] });
+      
+      // Auto-sync to Outlook if connected and audit is scheduled
+      if (data && data.clients && data.status === 'scheduled') {
+        await syncSingleAudit({
+          id: data.id,
+          clientName: data.clients.name || 'Unbekannt',
+          type: data.type,
+          scheduledDate: data.scheduled_date,
+          certifications: data.certifications || [],
+          notes: data.notes || undefined,
+          clientAddress: data.clients.address || undefined,
+        });
+      }
     },
   });
 };

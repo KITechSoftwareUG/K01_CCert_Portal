@@ -161,12 +161,17 @@ const Calendar = () => {
     return events;
   }, [clientCertifications]);
   
-  const { daysInMonth, monthStart } = useMemo(() => {
+  const { daysInMonth, monthStart, startDayOffset } = useMemo(() => {
     const start = startOfMonth(currentDate);
     const end = endOfMonth(currentDate);
+    // getDay() returns 0 for Sunday, we need Monday = 0
+    // So: Monday=0, Tuesday=1, ... Sunday=6
+    const dayOfWeek = start.getDay();
+    const offset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
     return {
       monthStart: start,
       daysInMonth: eachDayOfInterval({ start, end }),
+      startDayOffset: offset,
     };
   }, [currentDate]);
 
@@ -299,6 +304,10 @@ const Calendar = () => {
                         {day}
                       </div>
                     ))}
+                    {/* Empty cells for days before the first of the month */}
+                    {Array.from({ length: startDayOffset }).map((_, i) => (
+                      <div key={`empty-${i}`} className="min-h-24 p-2" />
+                    ))}
                     {daysInMonth.map((day) => {
                       const dayAudits = getAuditsForDay(day);
                       const dayCertEvents = getCertEventsForDay(day);
@@ -314,7 +323,7 @@ const Calendar = () => {
                             'min-h-24 p-2 border rounded-lg transition-colors',
                             hasEvents ? 'bg-primary/5 border-primary/20' : 'border-border',
                             hasDangerEvent && 'bg-destructive/10 border-destructive/30',
-                            hasWarningEvent && !hasDangerEvent && 'bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800/30',
+                            hasWarningEvent && !hasDangerEvent && 'bg-warning/10 border-warning/30',
                             isToday && 'ring-2 ring-primary'
                           )}
                         >
@@ -339,7 +348,7 @@ const Calendar = () => {
                               className={cn(
                                 "text-xs px-2 py-1 rounded mb-1 truncate",
                                 event.variant === 'danger' && 'bg-destructive/20 text-destructive',
-                                event.variant === 'warning' && 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200',
+                                event.variant === 'warning' && 'bg-warning/20 text-warning-foreground',
                                 event.variant === 'default' && 'bg-muted text-muted-foreground'
                               )}
                               title={event.title}
