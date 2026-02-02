@@ -6,6 +6,7 @@ export const AUDIT_TYPE_LABELS: Record<AuditType, string> = {
   surveillance: 'Überwachungsaudit',
   recertification: 'Re-Zertifizierung',
   'six-month': '6-Monats-Überwachung',
+  internal: 'Internes Audit',
 } as const;
 
 // Audit status configuration

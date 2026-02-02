@@ -185,6 +185,7 @@ serve(async (req) => {
             'surveillance': 'Überwachungsaudit',
             'recertification': 'Rezertifizierung',
             'six-month': '6-Monats-Audit',
+            'internal': 'Internes Audit',
           };
           const auditTypeLabel = auditTypeLabels[audit.type] || audit.type;
 

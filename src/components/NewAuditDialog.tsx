@@ -60,6 +60,11 @@ const getDefaultTasksForAuditType = (type: AuditType, scheduledDate: Date) => {
       { title: 'Statusbericht erstellen', description: '6-Monats-Bericht über die Umsetzung der Zertifizierungsanforderungen erstellen', dueDays: 5, assignedTo: 'Auditor' },
       { title: 'Dokumentation prüfen', description: 'Vollständigkeit und Aktualität der Dokumentation überprüfen', dueDays: 15, assignedTo: 'Auditor' },
     ],
+    internal: [
+      { title: 'Internes Audit vorbereiten', description: 'Prüfplan erstellen und Dokumente zusammenstellen', dueDays: -7, assignedTo: 'Berater' },
+      { title: 'Internes Audit durchführen', description: 'Interne Prüfung der Prozesse und Dokumentation durchführen', dueDays: 0, assignedTo: 'Berater' },
+      { title: 'Bericht erstellen', description: 'Ergebnisse dokumentieren und Maßnahmenplan erstellen', dueDays: 7, assignedTo: 'Berater' },
+    ],
   };
 
   return taskTemplates[type].map((task) => ({
