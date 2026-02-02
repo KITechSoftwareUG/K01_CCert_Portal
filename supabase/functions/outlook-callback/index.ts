@@ -1,10 +1,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const AZURE_CLIENT_ID = Deno.env.get('AZURE_CLIENT_ID')!;
-const AZURE_CLIENT_SECRET = Deno.env.get('AZURE_CLIENT_SECRET')!;
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const AZURE_CLIENT_ID = (Deno.env.get('AZURE_CLIENT_ID') ?? '').trim();
+const AZURE_CLIENT_SECRET = (Deno.env.get('AZURE_CLIENT_SECRET') ?? '').trim();
+const SUPABASE_URL = (Deno.env.get('SUPABASE_URL') ?? '').trim();
+const SUPABASE_SERVICE_ROLE_KEY = (Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '').trim();
+
+if (!AZURE_CLIENT_ID) throw new Error('Missing AZURE_CLIENT_ID');
+if (!AZURE_CLIENT_SECRET) throw new Error('Missing AZURE_CLIENT_SECRET');
+if (!SUPABASE_URL) throw new Error('Missing SUPABASE_URL');
+if (!SUPABASE_SERVICE_ROLE_KEY) throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY');
 
 // Must match the scopes used when generating the authorize URL
 const OUTLOOK_SCOPE = 'offline_access Calendars.ReadWrite';
