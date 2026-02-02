@@ -142,8 +142,19 @@ serve(async (req) => {
           const startDate = eventDate.toISOString().split('T')[0];
           const endDate = new Date(eventDate.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
+          // Determine emoji and title based on event type
+          let subject: string;
+          if (audit.type === 'certification-expiry') {
+            subject = `⚠️ [${audit.clientName}] Zertifikat läuft ab`;
+          } else {
+            // Extract days from reminder ID (e.g., "reminder-30-uuid" -> "30")
+            const daysMatch = audit.id.match(/reminder-(\d+)-/);
+            const days = daysMatch ? daysMatch[1] : '';
+            subject = `📅 [${audit.clientName}] Zertifikat-Erinnerung ${days} Tage`;
+          }
+
           eventData = {
-            subject: audit.title || `Zertifikat: ${audit.clientName}`,
+            subject,
             body: {
               contentType: 'HTML',
               content: `
@@ -161,20 +172,29 @@ serve(async (req) => {
               timeZone: 'Europe/Berlin',
             },
             isAllDay: true,
-            showAs: 'busy', // Blocker - shows as busy
+            showAs: 'busy',
             categories: ['Zertifikat'],
             importance: audit.type === 'certification-expiry' ? 'high' : 'normal',
-            reminderMinutesBeforeStart: 1440, // 1 day before
+            reminderMinutesBeforeStart: 1440,
           };
         } else {
           // Regular audit event (not all-day)
+          // Map audit type to German label
+          const auditTypeLabels: Record<string, string> = {
+            'initial': 'Erstaudit',
+            'surveillance': 'Überwachungsaudit',
+            'recertification': 'Rezertifizierung',
+            'six-month': '6-Monats-Audit',
+          };
+          const auditTypeLabel = auditTypeLabels[audit.type] || audit.type;
+
           eventData = {
-            subject: `Audit: ${audit.clientName}`,
+            subject: `📋 [${audit.clientName}] ${auditTypeLabel}`,
             body: {
               contentType: 'HTML',
               content: `
                 <p><strong>Kunde:</strong> ${audit.clientName}</p>
-                <p><strong>Typ:</strong> ${audit.type}</p>
+                <p><strong>Typ:</strong> ${auditTypeLabel}</p>
                 <p><strong>Status:</strong> ${audit.status}</p>
                 ${audit.certifications?.length ? `<p><strong>Zertifizierungen:</strong> ${audit.certifications.join(', ')}</p>` : ''}
                 ${audit.notes ? `<p><strong>Notizen:</strong> ${audit.notes}</p>` : ''}
