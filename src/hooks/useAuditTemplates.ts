@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 export type AuditTemplate = {
   id: string;
   certification_id: string;
-  audit_type: 'initial' | 'surveillance' | 'recertification' | 'six-month';
+  audit_type: 'initial' | 'surveillance' | 'recertification' | 'six-month' | 'internal';
   name: string | null;
   description: string | null;
   created_at: string;
@@ -27,7 +27,7 @@ export type AuditTemplateTask = {
 
 export type AuditTemplateInsert = {
   certification_id: string;
-  audit_type: 'initial' | 'surveillance' | 'recertification' | 'six-month';
+  audit_type: 'initial' | 'surveillance' | 'recertification' | 'six-month' | 'internal';
   name?: string | null;
   description?: string | null;
 };
@@ -62,7 +62,7 @@ export const useAuditTemplates = () => {
 // Fetch template by certification and audit type
 export const useAuditTemplateByType = (
   certificationId: string | undefined, 
-  auditType: 'initial' | 'surveillance' | 'recertification' | 'six-month' | undefined
+  auditType: 'initial' | 'surveillance' | 'recertification' | 'six-month' | 'internal' | undefined
 ) => {
   return useQuery({
     queryKey: ['audit-template', certificationId, auditType],
@@ -86,7 +86,7 @@ export const useAuditTemplateByType = (
 // Fetch template tasks directly by certification and audit type
 export const fetchTemplateTasksForAudit = async (
   certificationId: string,
-  auditType: 'initial' | 'surveillance' | 'recertification' | 'six-month'
+  auditType: 'initial' | 'surveillance' | 'recertification' | 'six-month' | 'internal'
 ): Promise<AuditTemplateTask[]> => {
   // First find the template
   const { data: template, error: templateError } = await supabase

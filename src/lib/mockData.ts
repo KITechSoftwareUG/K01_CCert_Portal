@@ -115,6 +115,29 @@ const getTasksForAuditType = (type: AuditType, auditId: string) => {
         assignedTo: 'Michael Weber',
       },
     ],
+    internal: [
+      {
+        title: 'Internes Audit vorbereiten',
+        description: 'Prüfplan erstellen und Dokumente zusammenstellen',
+        status: 'pending',
+        dueDays: -7,
+        assignedTo: 'Berater',
+      },
+      {
+        title: 'Internes Audit durchführen',
+        description: 'Interne Prüfung der Prozesse und Dokumentation durchführen',
+        status: 'pending',
+        dueDays: 0,
+        assignedTo: 'Berater',
+      },
+      {
+        title: 'Bericht erstellen',
+        description: 'Ergebnisse dokumentieren und Maßnahmenplan erstellen',
+        status: 'pending',
+        dueDays: 7,
+        assignedTo: 'Berater',
+      },
+    ],
   };
 
   return taskTemplates[type].map((task, index) => ({

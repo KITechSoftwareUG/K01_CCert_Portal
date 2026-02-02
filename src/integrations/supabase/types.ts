@@ -668,7 +668,12 @@ export type Database = {
     Enums: {
       app_role: "admin" | "berater" | "user"
       audit_status: "scheduled" | "in-progress" | "completed" | "cancelled"
-      audit_type: "initial" | "surveillance" | "recertification" | "six-month"
+      audit_type:
+        | "initial"
+        | "surveillance"
+        | "recertification"
+        | "six-month"
+        | "internal"
       certification_standard:
         | "SURE"
         | "FSC"
@@ -806,7 +811,13 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "berater", "user"],
       audit_status: ["scheduled", "in-progress", "completed", "cancelled"],
-      audit_type: ["initial", "surveillance", "recertification", "six-month"],
+      audit_type: [
+        "initial",
+        "surveillance",
+        "recertification",
+        "six-month",
+        "internal",
+      ],
       certification_standard: [
         "SURE",
         "FSC",

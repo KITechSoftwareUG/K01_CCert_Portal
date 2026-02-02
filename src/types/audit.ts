@@ -1,4 +1,4 @@
-export type AuditType = 'initial' | 'surveillance' | 'recertification' | 'six-month';
+export type AuditType = 'initial' | 'surveillance' | 'recertification' | 'six-month' | 'internal';
 
 export type CertificationStandard = 'SURE' | 'FSC' | 'PEFC' | 'ISCC' | 'ISO 9001' | 'ISO 14001';
 
