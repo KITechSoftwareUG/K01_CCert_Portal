@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -131,6 +132,7 @@ const ClientDetail = () => {
   const [country, setCountry] = useState('Deutschland');
   const [parentClientId, setParentClientId] = useState<string>('');
   const [isActive, setIsActive] = useState(true);
+  const [notes, setNotes] = useState('');
 
   // Filter certifications that client doesn't already have
   const availableCertsToAdd = useMemo(() => {
@@ -163,6 +165,7 @@ const ClientDetail = () => {
       setCountry(client.country || 'Deutschland');
       setParentClientId(client.parent_client_id || '');
       setIsActive((client as any).is_active !== false);
+      setNotes((client as any).notes || '');
     }
   }, [client]);
 
@@ -186,6 +189,7 @@ const ClientDetail = () => {
         parent_client_id: parentClientId || null,
         // Note: certifications field is intentionally omitted - managed via client_certifications table
         is_active: isActive,
+        notes: notes || null,
       });
 
       toast.success('Kunde erfolgreich aktualisiert');
@@ -194,7 +198,7 @@ const ClientDetail = () => {
       console.error('Error updating client:', error);
       toast.error('Fehler beim Aktualisieren des Kunden');
     }
-  }, [id, name, clientNumber, consultant, contactPerson, email, phone, address, country, parentClientId, isActive, updateClient]);
+  }, [id, name, clientNumber, consultant, contactPerson, email, phone, address, country, parentClientId, isActive, notes, updateClient]);
 
   const handleCancel = useCallback(() => {
     if (client) {
@@ -209,6 +213,7 @@ const ClientDetail = () => {
       setParentClientId(client.parent_client_id || '');
       // Note: Certifications are managed via client_certifications table
       setIsActive((client as any).is_active !== false);
+      setNotes((client as any).notes || '');
     }
     setIsEditing(false);
   }, [client]);
@@ -470,6 +475,16 @@ const ClientDetail = () => {
                         placeholder="Adresse"
                       />
                     </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="notes">Bemerkungen / Notizen</Label>
+                      <Textarea
+                        id="notes"
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="Interne Notizen zu diesem Kunden..."
+                        rows={4}
+                      />
+                    </div>
                   </>
                 ) : (
                   <div className="space-y-4">
@@ -513,6 +528,12 @@ const ClientDetail = () => {
                           <p className="text-sm text-muted-foreground">Adresse</p>
                           <p className="font-medium">{client.address}</p>
                         </div>
+                      </div>
+                    )}
+                    {(client as any).notes && (
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-sm text-muted-foreground mb-1">Bemerkungen</p>
+                        <p className="font-medium whitespace-pre-wrap">{(client as any).notes}</p>
                       </div>
                     )}
                   </div>

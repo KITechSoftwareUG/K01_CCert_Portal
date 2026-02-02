@@ -9,6 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
@@ -66,6 +67,7 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
   const [country, setCountry] = useState('Deutschland');
   const [customCountry, setCustomCountry] = useState(''); // For "Andere" option
   const [parentClientId, setParentClientId] = useState<string>('');
+  const [notes, setNotes] = useState('');
   const [selectedCertifications, setSelectedCertifications] = useState<CertificationSelection[]>([]);
   
   
@@ -130,6 +132,7 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
     setCountry('Deutschland');
     setCustomCountry('');
     setParentClientId('');
+    setNotes('');
     setSelectedCertifications([]);
   };
 
@@ -186,6 +189,7 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
         country: effectiveCountry,
         parent_client_id: isCompanyGroup ? null : (parentClientId || null), // Company groups have no parent
         certifications: [], // Legacy field, no longer used
+        notes: notes || null,
       });
       
 
@@ -419,6 +423,18 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
               />
             </div>
           )}
+
+          {/* Notes - for both clients and company groups */}
+          <div className="space-y-2">
+            <Label htmlFor="notes">Bemerkungen / Notizen</Label>
+            <Textarea
+              id="notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Interne Notizen..."
+              rows={3}
+            />
+          </div>
 
           {/* Certifications (New System) with Auditor Selection - only for clients */}
           {!isCompanyGroup && (

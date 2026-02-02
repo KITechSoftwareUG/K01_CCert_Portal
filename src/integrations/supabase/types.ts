@@ -477,6 +477,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          notes: string | null
           parent_client_id: string | null
           phone: string | null
           updated_at: string
@@ -495,6 +496,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          notes?: string | null
           parent_client_id?: string | null
           phone?: string | null
           updated_at?: string
@@ -513,6 +515,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          notes?: string | null
           parent_client_id?: string | null
           phone?: string | null
           updated_at?: string
