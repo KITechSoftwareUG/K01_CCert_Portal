@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { useAudits, AuditWithClient } from '@/hooks/useAudits';
 import { useAllClientCertifications } from '@/hooks/useClientCertifications';
@@ -57,6 +58,7 @@ const CalendarSkeleton = () => (
 );
 
 const Calendar = () => {
+  const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const goToPreviousMonth = useCallback(() => {
@@ -295,7 +297,7 @@ const Calendar = () => {
             ) : (
               <Card className="lg:col-span-2">
                 <CardHeader>
-                  <CardTitle>Monatsübersicht</CardTitle>
+                  <CardTitle>Monatsübersicht – {format(currentDate, 'MMMM yyyy', { locale: de })}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-7 gap-2">
@@ -316,14 +318,27 @@ const Calendar = () => {
                       const hasDangerEvent = dayCertEvents.some(e => e.variant === 'danger');
                       const hasWarningEvent = dayCertEvents.some(e => e.variant === 'warning');
                       
+                      // Handle day click - navigate to first audit or certification
+                      const handleDayClick = () => {
+                        if (dayAudits.length > 0) {
+                          navigate(`/audits/${dayAudits[0].id}`);
+                        } else if (dayCertEvents.length > 0) {
+                          const certEvent = dayCertEvents[0];
+                          if (certEvent.certificationId) {
+                            navigate(`/certifications/${certEvent.certificationId}`);
+                          }
+                        }
+                      };
+                      
                       return (
                         <div
                           key={day.toISOString()}
+                          onClick={hasEvents ? handleDayClick : undefined}
                           className={cn(
                             'min-h-24 p-2 border rounded-lg transition-colors',
-                            hasEvents ? 'bg-primary/5 border-primary/20' : 'border-border',
-                            hasDangerEvent && 'bg-destructive/10 border-destructive/30',
-                            hasWarningEvent && !hasDangerEvent && 'bg-warning/10 border-warning/30',
+                            hasEvents ? 'bg-primary/5 border-primary/20 cursor-pointer hover:bg-primary/10' : 'border-border',
+                            hasDangerEvent && 'bg-destructive/10 border-destructive/30 hover:bg-destructive/15',
+                            hasWarningEvent && !hasDangerEvent && 'bg-warning/10 border-warning/30 hover:bg-warning/15',
                             isToday && 'ring-2 ring-primary'
                           )}
                         >
