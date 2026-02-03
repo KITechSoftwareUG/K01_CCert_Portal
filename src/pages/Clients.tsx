@@ -736,16 +736,24 @@ const Clients = () => {
                                         <MoreHorizontal className="h-4 w-4" />
                                       </Button>
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                      <DropdownMenuItem onClick={(e) => {
-                                        e.stopPropagation();
-                                        navigate(`/clients/${primaryClient.id}`);
-                                      }}>
-                                        <ExternalLink className="h-4 w-4 mr-2" />
-                                        Zum Unternehmen
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
+                                                    <DropdownMenuContent align="end">
+                                                      <DropdownMenuItem onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        navigate(`/clients/${primaryClient.id}`);
+                                                      }}>
+                                                        <ExternalLink className="h-4 w-4 mr-2" />
+                                                        Zum Unternehmen
+                                                      </DropdownMenuItem>
+                                                      <DropdownMenuSeparator />
+                                                      <DropdownMenuItem onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setMoveDialogClient(primaryClient);
+                                                      }}>
+                                                        <ArrowRightLeft className="h-4 w-4 mr-2" />
+                                                        Verschieben
+                                                      </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                  </DropdownMenu>
                                 </div>
                               )}
                             </div>
@@ -814,6 +822,14 @@ const Clients = () => {
                                                 }}>
                                                   <ExternalLink className="h-4 w-4 mr-2" />
                                                   Zum Unternehmen
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setMoveDialogClient(client);
+                                                }}>
+                                                  <ArrowRightLeft className="h-4 w-4 mr-2" />
+                                                  Verschieben
                                                 </DropdownMenuItem>
                                               </DropdownMenuContent>
                                             </DropdownMenu>
