@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { NewClientDialog } from '@/components/NewClientDialog';
 import { ExcelImportDialog } from '@/components/ExcelImportDialog';
+import { MoveClientDialog } from '@/components/MoveClientDialog';
 import { useClients, DbClient } from '@/hooks/useClients';
 import { useAllClientCertifications } from '@/hooks/useClientCertifications';
 import { useContactsByClientIds } from '@/hooks/useContacts';
@@ -39,13 +40,15 @@ import {
   User,
   Globe,
   MoreHorizontal,
-  ExternalLink
+  ExternalLink,
+  ArrowRightLeft
 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
 
@@ -91,6 +94,7 @@ const Clients = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewClientDialog, setShowNewClientDialog] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
+  const [moveDialogClient, setMoveDialogClient] = useState<DbClient | null>(null);
   const [expandedCountries, setExpandedCountries] = useState<Set<string>>(new Set());
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
@@ -517,6 +521,14 @@ const Clients = () => {
                   <ExternalLink className="h-4 w-4 mr-2" />
                   Zum Unternehmen
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={(e) => {
+                  e.stopPropagation();
+                  setMoveDialogClient(client);
+                }}>
+                  <ArrowRightLeft className="h-4 w-4 mr-2" />
+                  Verschieben
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -555,6 +567,13 @@ const Clients = () => {
 
         <NewClientDialog open={showNewClientDialog} onOpenChange={setShowNewClientDialog} />
         <ExcelImportDialog open={showImportDialog} onOpenChange={setShowImportDialog} />
+        {moveDialogClient && (
+          <MoveClientDialog 
+            open={!!moveDialogClient} 
+            onOpenChange={(open) => !open && setMoveDialogClient(null)} 
+            client={moveDialogClient}
+          />
+        )}
 
         {/* Search + View Toggle + Filters */}
         <div className="flex gap-4 items-center justify-between flex-wrap">
