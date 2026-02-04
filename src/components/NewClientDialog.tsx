@@ -143,7 +143,6 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
     const effectiveCountry = country === 'Andere' && customCountry.trim() 
       ? customCountry.trim() 
       : country;
-    
     // Different validation for company groups vs clients
     if (isCompanyGroup) {
       if (!name) {
