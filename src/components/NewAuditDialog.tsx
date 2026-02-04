@@ -36,6 +36,7 @@ const auditTypeOptions: { value: AuditType; label: string }[] = [
   { value: 'surveillance', label: AUDIT_TYPE_LABELS['surveillance'] },
   { value: 'recertification', label: AUDIT_TYPE_LABELS['recertification'] },
   { value: 'six-month', label: AUDIT_TYPE_LABELS['six-month'] },
+  { value: 'internal', label: AUDIT_TYPE_LABELS['internal'] },
 ];
 
 const certificationOptions = Constants.public.Enums.certification_standard;
