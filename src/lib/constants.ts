@@ -33,6 +33,22 @@ export const AUDIT_STATUS_CONFIG = {
   },
 } as const;
 
+// Audit status labels for display
+export const AUDIT_STATUS_LABELS: Record<string, string> = {
+  scheduled: 'Geplant',
+  'in-progress': 'In Bearbeitung',
+  completed: 'Abgeschlossen',
+  cancelled: 'Abgebrochen',
+} as const;
+
+// Audit status colors for badges
+export const AUDIT_STATUS_COLORS: Record<string, string> = {
+  scheduled: 'border-muted-foreground/50 text-muted-foreground',
+  'in-progress': 'border-warning/50 bg-warning/10 text-warning',
+  completed: 'border-success/50 bg-success/10 text-success',
+  cancelled: 'border-destructive/50 bg-destructive/10 text-destructive',
+} as const;
+
 // Task status configuration
 export const TASK_STATUS_CONFIG: Record<TaskStatus, { label: string; color: string; bg: string }> = {
   pending: { label: 'Ausstehend', color: 'text-muted-foreground', bg: 'bg-secondary' },
