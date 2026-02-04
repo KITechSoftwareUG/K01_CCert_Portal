@@ -315,7 +315,7 @@ const ClientDetail = () => {
                   </>
                 )}
                 <span className="text-muted-foreground/50">•</span>
-                <span>Kunde seit {format(new Date(client.created_at), 'MMMM yyyy', { locale: de })}</span>
+                <span>Kunde seit {format(new Date(client.created_at), 'MM.yyyy', { locale: de })}</span>
               </div>
             </div>
           </div>

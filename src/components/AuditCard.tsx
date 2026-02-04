@@ -52,7 +52,7 @@ export const AuditCard = memo(({ audit, onViewDetails }: AuditCardProps) => {
           <div className="flex items-center gap-2 text-sm">
             <Calendar className="h-4 w-4 text-muted-foreground" />
             <span className="text-foreground font-medium">
-              {format(audit.scheduledDate, 'dd. MMMM yyyy', { locale: de })}
+              {format(audit.scheduledDate, 'dd.MM.yyyy', { locale: de })}
             </span>
           </div>
           <div className="flex flex-wrap gap-1">
