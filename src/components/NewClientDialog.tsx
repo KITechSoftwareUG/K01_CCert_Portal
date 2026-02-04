@@ -150,6 +150,11 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
         toast.error('Bitte geben Sie einen Namen für die Unternehmensgruppe ein');
         return;
       }
+      // Validate custom country for company groups if "Andere" is selected
+      if (country === 'Andere' && !customCountry.trim()) {
+        toast.error('Bitte geben Sie das Land ein');
+        return;
+      }
     } else {
       // Only name and consultant are mandatory for clients now
       if (!name) {
@@ -305,20 +310,35 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
 
           {/* Country - full width for company groups, half for clients */}
           {isCompanyGroup ? (
-            <div className="space-y-2">
-              <Label htmlFor="country">Land *</Label>
-              <Select value={country} onValueChange={setCountry}>
-                <SelectTrigger id="country">
-                  <SelectValue placeholder="Land auswählen" />
-                </SelectTrigger>
-                <SelectContent className="bg-background border shadow-lg z-50">
-                  {COUNTRIES.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="country">Land *</Label>
+                <Select value={country} onValueChange={setCountry}>
+                  <SelectTrigger id="country">
+                    <SelectValue placeholder="Land auswählen" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border shadow-lg z-50">
+                    {COUNTRIES.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {c}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {/* Custom country input when "Andere" is selected */}
+              {country === 'Andere' && (
+                <div className="space-y-2">
+                  <Label htmlFor="customCountryGroup">Land eingeben <span className="text-destructive">*</span></Label>
+                  <Input
+                    id="customCountryGroup"
+                    value={customCountry}
+                    onChange={(e) => setCustomCountry(e.target.value)}
+                    placeholder="z.B. Dänemark, Schweden..."
+                  />
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-4">
