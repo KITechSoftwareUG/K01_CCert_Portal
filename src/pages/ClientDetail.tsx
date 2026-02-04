@@ -4,6 +4,7 @@ import { Layout } from '@/components/Layout';
 import { useClient, useUpdateClient, useDeleteClient, useParentClients } from '@/hooks/useClients';
 import { ContactManagement } from '@/components/ContactManagement';
 import { useClientCertifications, useCreateClientCertification } from '@/hooks/useClientCertifications';
+import { ClientAuditHistory } from '@/components/ClientAuditHistory';
 import { useCertifications } from '@/hooks/useCertifications';
 import {
   Dialog,
@@ -626,6 +627,9 @@ const ClientDetail = () => {
                 )}
               </CardContent>
             </Card>
+
+            {/* Audit History Card */}
+            <ClientAuditHistory clientId={id!} limit={10} />
 
             {/* Contact Management Card */}
             <ContactManagement clientId={id!} isEditing={isEditing} />
