@@ -322,7 +322,7 @@ const AuditDetail = () => {
           <div>
             <h1 className="text-2xl font-bold text-foreground">{AUDIT_TYPE_LABELS[audit.type]}</h1>
             <p className="text-muted-foreground text-sm">
-              {format(new Date(audit.scheduled_date), 'dd. MMMM yyyy', { locale: de })}
+              {format(new Date(audit.scheduled_date), 'dd.MM.yyyy', { locale: de })}
             </p>
           </div>
           <Badge 
@@ -421,7 +421,7 @@ const AuditDetail = () => {
                   <div className="flex items-center gap-2 text-sm">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <span className="text-foreground">
-                      {format(new Date(audit.scheduled_date), 'dd. MMMM yyyy', { locale: de })}
+                      {format(new Date(audit.scheduled_date), 'dd.MM.yyyy', { locale: de })}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
@@ -462,7 +462,7 @@ const AuditDetail = () => {
                     Erstellt am
                   </p>
                   <p className="text-sm text-foreground">
-                    {format(new Date(audit.created_at), 'dd. MMMM yyyy', { locale: de })}
+                    {format(new Date(audit.created_at), 'dd.MM.yyyy', { locale: de })}
                   </p>
                 </div>
               </CardContent>

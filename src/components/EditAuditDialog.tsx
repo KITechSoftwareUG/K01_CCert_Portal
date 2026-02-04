@@ -123,7 +123,7 @@ export function EditAuditDialog({ audit, open, onOpenChange }: EditAuditDialogPr
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {scheduledDate ? (
-                    format(scheduledDate, 'dd. MMMM yyyy', { locale: de })
+                    format(scheduledDate, 'dd.MM.yyyy', { locale: de })
                   ) : (
                     <span>Datum wählen...</span>
                   )}

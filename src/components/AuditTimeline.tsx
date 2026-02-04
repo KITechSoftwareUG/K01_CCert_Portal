@@ -78,7 +78,7 @@ export const AuditTimeline = memo(({ audits }: AuditTimelineProps) => {
 
                       <div className="flex items-center justify-between text-sm">
                         <span className={cn('font-medium', config.textColor)}>
-                          {format(audit.scheduledDate, 'dd. MMMM yyyy', { locale: de })}
+                          {format(audit.scheduledDate, 'dd.MM.yyyy', { locale: de })}
                           {daysUntil >= 0 && ` (in ${daysUntil} Tagen)`}
                         </span>
                         <div className="flex items-center gap-2">
