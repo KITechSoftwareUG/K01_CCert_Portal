@@ -60,7 +60,12 @@ interface CountryGroup {
 interface CompanyGroup {
   id: string;
   name: string;
-  isGroupOnly: boolean; // True if this is just a group header (no own certifications)
+  /**
+   * True if this row represents an Unternehmensgruppe.
+   * We treat records without client_number as groups even if they have no children yet.
+   */
+  isGroupOnly: boolean;
+  headerClient: DbClient;
   children: ClientWithCerts[];
 }
 
@@ -254,24 +259,38 @@ const Clients = () => {
     parentClients.forEach(parent => {
       const children = childrenByParent[parent.id] || [];
       const parentCerts = certificationsByClient[parent.id] || [];
-      
+
+      const isExplicitGroup = parent.client_number === null; // groups have no KD-Nr.
+      const isCompanyGroup = children.length > 0 || isExplicitGroup;
+
       if (children.length > 0) {
-        // This is a group with children
+        // Unternehmensgruppe (with children)
         groups.push({
           id: parent.id,
           name: parent.name,
-          isGroupOnly: parentCerts.length === 0,
+          isGroupOnly: true,
+          headerClient: parent,
           children: children.map(child => ({
             client: child,
             certifications: certificationsByClient[child.id] || [],
           })),
         });
+      } else if (isCompanyGroup) {
+        // Unternehmensgruppe without children yet
+        groups.push({
+          id: parent.id,
+          name: parent.name,
+          isGroupOnly: true,
+          headerClient: parent,
+          children: [],
+        });
       } else {
-        // Standalone client (no children) - treat as single-client group
+        // Standalone client (no children)
         groups.push({
           id: parent.id,
           name: parent.name,
           isGroupOnly: false,
+          headerClient: parent,
           children: [{
             client: parent,
             certifications: parentCerts,
@@ -279,7 +298,7 @@ const Clients = () => {
         });
       }
     });
-    
+
     // Handle orphaned children (parent not in filtered results)
     childClients.forEach(child => {
       const parentId = child.parent_client_id!;
@@ -289,6 +308,7 @@ const Clients = () => {
           id: child.id,
           name: child.name,
           isGroupOnly: false,
+          headerClient: child,
           children: [{
             client: child,
             certifications: certificationsByClient[child.id] || [],
@@ -296,12 +316,11 @@ const Clients = () => {
         });
       }
     });
-    
+
     // Now group by country
     const byCountry: Record<string, CompanyGroup[]> = {};
     groups.forEach(group => {
-      // Get country from the first client in the group
-      const country = group.children[0]?.client.country || 'Unbekannt';
+      const country = group.headerClient.country || 'Unbekannt';
       if (!byCountry[country]) byCountry[country] = [];
       byCountry[country].push(group);
     });
@@ -669,11 +688,10 @@ const Clients = () => {
                       {countryGroup.companyGroups.map(group => {
                         const isExpanded = expandedGroups.has(group.id);
                         const totalCerts = group.children.reduce((sum, c) => sum + c.certifications.length, 0);
-                        const isMultiClient = group.children.length > 1 || group.isGroupOnly;
+                        const isMultiClient = group.isGroupOnly;
 
-                        // Get primary contact for the group (from first client)
-                        const primaryClient = group.children[0]?.client;
-                        const groupContacts = primaryClient ? contactsMap[primaryClient.id] || [] : [];
+                        const headerClient = group.headerClient;
+                        const headerContacts = contactsMap[headerClient.id] || [];
                         
                         return (
                           <div key={group.id}>
@@ -705,7 +723,7 @@ const Clients = () => {
                                     />
                                   </>
                                 ) : (
-                                  <ClientNumberBadge clientNumber={group.children[0]?.client.client_number} />
+                                  <ClientNumberBadge clientNumber={headerClient.client_number} />
                                 )}
                                 {totalCerts > 0 && (
                                   <Badge variant="secondary" className="text-xs">
@@ -713,197 +731,208 @@ const Clients = () => {
                                   </Badge>
                                 )}
                               </div>
-                              {/* Actions on the right - only for single clients, not for parent groups */}
-                              {!isMultiClient && primaryClient && (
-                                <div className="flex items-center gap-2">
+
+                              {/* Actions on the right */}
+                              <div className="flex items-center gap-2">
+                                {!isMultiClient && (
                                   <ContactPopover
-                                    legacyName={primaryClient.contact_person}
-                                    legacyPhone={primaryClient.phone}
-                                    legacyEmail={primaryClient.email}
-                                    contacts={groupContacts}
-                                    clientId={primaryClient.id}
+                                    legacyName={headerClient.contact_person}
+                                    legacyPhone={headerClient.phone}
+                                    legacyEmail={headerClient.email}
+                                    contacts={headerContacts}
+                                    clientId={headerClient.id}
                                   />
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button
-                                        variant="outline"
-                                        size="icon"
-                                        className="h-8 w-8"
-                                        title="Aktionen"
-                                        aria-label="Aktionen"
-                                        onClick={(e) => e.stopPropagation()}
-                                      >
-                                        <MoreHorizontal className="h-4 w-4" />
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                      <DropdownMenuItem onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        navigate(`/clients/${primaryClient.id}`);
-                                                      }}>
-                                                        <ExternalLink className="h-4 w-4 mr-2" />
-                                                        Zum Unternehmen
-                                                      </DropdownMenuItem>
-                                                      <DropdownMenuSeparator />
-                                                      <DropdownMenuItem onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setMoveDialogClient(primaryClient);
-                                                      }}>
-                                                        <ArrowRightLeft className="h-4 w-4 mr-2" />
-                                                        Verschieben
-                                                      </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                  </DropdownMenu>
-                                </div>
-                              )}
+                                )}
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="icon"
+                                      className="h-8 w-8"
+                                      title="Aktionen"
+                                      aria-label="Aktionen"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(`/clients/${headerClient.id}`);
+                                    }}>
+                                      <ExternalLink className="h-4 w-4 mr-2" />
+                                      Zum Unternehmen
+                                    </DropdownMenuItem>
+                                    {!isMultiClient && (
+                                      <>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem onClick={(e) => {
+                                          e.stopPropagation();
+                                          setMoveDialogClient(headerClient);
+                                        }}>
+                                          <ArrowRightLeft className="h-4 w-4 mr-2" />
+                                          Verschieben
+                                        </DropdownMenuItem>
+                                      </>
+                                    )}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
                             </div>
 
                             {/* Expanded Content - Shows clients in group */}
                             {isExpanded && (
                               <div className="bg-muted/20">
-                                {group.children.map((childWithCerts) => {
-                                  const { client, certifications } = childWithCerts;
-                                  const contacts = contactsMap[client.id] || [];
-                                  const isClientExpanded = expandedClients.has(client.id);
-                                  const clientIsActive = (client as any).is_active !== false;
-                                  
-                                  return (
-                                    <div key={client.id}>
-                                      {/* Client Row - always show for multi-client groups, clickable to expand certifications */}
-                                      {isMultiClient ? (
-                                        <div
-                                          className={`flex items-center justify-between px-4 py-2 pl-14 bg-muted/30 border-t border-border/50 cursor-pointer hover:bg-muted/50 ${!clientIsActive ? 'opacity-60' : ''}`}
-                                          onClick={() => certifications.length > 0 ? toggleClient(client.id) : navigate(`/clients/${client.id}`)}
-                                        >
-                                          <div className="flex items-center gap-3">
+                                {group.children.length === 0 ? (
+                                  <div className="py-2 text-sm text-muted-foreground italic pl-14 border-t border-border/30">
+                                    Noch keine Standorte in dieser Unternehmensgruppe.
+                                  </div>
+                                ) : (
+                                  group.children.map((childWithCerts) => {
+                                    const { client, certifications } = childWithCerts;
+                                    const contacts = contactsMap[client.id] || [];
+                                    const isClientExpanded = expandedClients.has(client.id);
+                                    const clientIsActive = (client as any).is_active !== false;
+                                    
+                                    return (
+                                      <div key={client.id}>
+                                        {/* Client Row - always show for multi-client groups, clickable to expand certifications */}
+                                        {isMultiClient ? (
+                                          <div
+                                            className={`flex items-center justify-between px-4 py-2 pl-14 bg-muted/30 border-t border-border/50 cursor-pointer hover:bg-muted/50 ${!clientIsActive ? 'opacity-60' : ''}`}
+                                            onClick={() => certifications.length > 0 ? toggleClient(client.id) : navigate(`/clients/${client.id}`)}
+                                          >
+                                            <div className="flex items-center gap-3">
+                                              {certifications.length > 0 ? (
+                                                isClientExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />
+                                              ) : (
+                                                <Building2 className="h-4 w-4 text-muted-foreground" />
+                                              )}
+                                              <span className="font-medium">{client.name}</span>
+                                              <ClientNumberBadge clientNumber={client.client_number} />
+                                              {!clientIsActive && (
+                                                <Badge variant="destructive" className="text-xs">
+                                                  Inaktiv
+                                                </Badge>
+                                              )}
+                                              {certifications.length > 0 && (
+                                                <Badge variant="secondary" className="text-xs">
+                                                  {certifications.length} Zertifikat{certifications.length !== 1 ? 'e' : ''}
+                                                </Badge>
+                                              )}
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                              <ContactPopover
+                                                legacyName={client.contact_person}
+                                                legacyPhone={client.phone}
+                                                legacyEmail={client.email}
+                                                contacts={contacts}
+                                                clientId={client.id}
+                                              />
+                                              <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                  <Button
+                                                    variant="outline"
+                                                    size="icon"
+                                                    className="h-8 w-8"
+                                                    title="Aktionen"
+                                                    aria-label="Aktionen"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                  >
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                  </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                  <DropdownMenuItem onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    navigate(`/clients/${client.id}`);
+                                                  }}>
+                                                    <ExternalLink className="h-4 w-4 mr-2" />
+                                                    Zum Unternehmen
+                                                  </DropdownMenuItem>
+                                                  <DropdownMenuSeparator />
+                                                  <DropdownMenuItem onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setMoveDialogClient(client);
+                                                  }}>
+                                                    <ArrowRightLeft className="h-4 w-4 mr-2" />
+                                                    Verschieben
+                                                  </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                              </DropdownMenu>
+                                            </div>
+                                          </div>
+                                        ) : null}
+                                        
+                                        {/* Certification Rows - only show when client is expanded (for multi) or always (for single) */}
+                                        {(!isMultiClient || isClientExpanded) && (
+                                          <>
                                             {certifications.length > 0 ? (
-                                              isClientExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />
-                                            ) : (
-                                              <Building2 className="h-4 w-4 text-muted-foreground" />
-                                            )}
-                                            <span className="font-medium">{client.name}</span>
-                                            <ClientNumberBadge clientNumber={client.client_number} />
-                                            {!clientIsActive && (
-                                              <Badge variant="destructive" className="text-xs">
-                                                Inaktiv
-                                              </Badge>
-                                            )}
-                                            {certifications.length > 0 && (
-                                              <Badge variant="secondary" className="text-xs">
-                                                {certifications.length} Zertifikat{certifications.length !== 1 ? 'e' : ''}
-                                              </Badge>
-                                            )}
-                                          </div>
-                                          <div className="flex items-center gap-2">
-                                            <ContactPopover
-                                              legacyName={client.contact_person}
-                                              legacyPhone={client.phone}
-                                              legacyEmail={client.email}
-                                              contacts={contacts}
-                                              clientId={client.id}
-                                            />
-                                            <DropdownMenu>
-                                              <DropdownMenuTrigger asChild>
-                                                <Button
-                                                  variant="outline"
-                                                  size="icon"
-                                                  className="h-8 w-8"
-                                                  title="Aktionen"
-                                                  aria-label="Aktionen"
-                                                  onClick={(e) => e.stopPropagation()}
-                                                >
-                                                  <MoreHorizontal className="h-4 w-4" />
-                                                </Button>
-                                              </DropdownMenuTrigger>
-                                              <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  navigate(`/clients/${client.id}`);
-                                                }}>
-                                                  <ExternalLink className="h-4 w-4 mr-2" />
-                                                  Zum Unternehmen
-                                                </DropdownMenuItem>
-                                                <DropdownMenuSeparator />
-                                                <DropdownMenuItem onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  setMoveDialogClient(client);
-                                                }}>
-                                                  <ArrowRightLeft className="h-4 w-4 mr-2" />
-                                                  Verschieben
-                                                </DropdownMenuItem>
-                                              </DropdownMenuContent>
-                                            </DropdownMenu>
-                                          </div>
-                                        </div>
-                                      ) : null}
-                                      
-                                      {/* Certification Rows - only show when client is expanded (for multi) or always (for single) */}
-                                      {(!isMultiClient || isClientExpanded) && (
-                                        <>
-                                          {certifications.length > 0 ? (
-                                            certifications.map((row, idx) => {
-                                              const auditorInfo = auditorsByClientCertification[row.primaryCertificationId];
-                                              
-                                              return (
-                                                <div
-                                                  key={`${row.clientId}-${idx}`}
-                                                  className={`flex items-center justify-between gap-4 px-4 py-2 text-sm border-t border-border/30 hover:bg-muted/40 cursor-pointer ${isMultiClient ? 'pl-20' : 'pl-14'}`}
-                                                  onClick={() => navigate(`/certifications/${row.primaryCertificationId}`)}
-                                                >
-                                                  <div className="flex items-center gap-4">
-                                                    <div className="flex items-center gap-2">
-                                                      {row.certifications.map((cert) => (
-                                                        <Badge key={cert.certificationId} variant="secondary" className="gap-1">
-                                                          <Award className="h-3 w-3" />
-                                                          {cert.certificationName}
+                                              certifications.map((row, idx) => {
+                                                const auditorInfo = auditorsByClientCertification[row.primaryCertificationId];
+                                                
+                                                return (
+                                                  <div
+                                                    key={`${row.clientId}-${idx}`}
+                                                    className={`flex items-center justify-between gap-4 px-4 py-2 text-sm border-t border-border/30 hover:bg-muted/40 cursor-pointer ${isMultiClient ? 'pl-20' : 'pl-14'}`}
+                                                    onClick={() => navigate(`/certifications/${row.primaryCertificationId}`)}
+                                                  >
+                                                    <div className="flex items-center gap-4">
+                                                      <div className="flex items-center gap-2">
+                                                        {row.certifications.map((cert) => (
+                                                          <Badge key={cert.certificationId} variant="secondary" className="gap-1">
+                                                            <Award className="h-3 w-3" />
+                                                            {cert.certificationName}
+                                                          </Badge>
+                                                        ))}
+                                                      </div>
+                                                      {row.certifications[0]?.certificateNumber && (
+                                                        <span className="text-muted-foreground">
+                                                          Nr. {row.certifications[0].certificateNumber}
+                                                        </span>
+                                                      )}
+                                                      {row.earliestValidUntil && (
+                                                        <span className="text-muted-foreground">
+                                                          bis {new Date(row.earliestValidUntil).toLocaleDateString('de-DE')}
+                                                        </span>
+                                                      )}
+                                                      {row.certifications.some(c => c.status && c.status !== 'active') && (
+                                                        <Badge variant={row.certifications.some(c => c.status === 'expired') ? 'destructive' : 'outline'}>
+                                                          {row.certifications.find(c => c.status !== 'active')?.status}
                                                         </Badge>
-                                                      ))}
+                                                      )}
                                                     </div>
-                                                    {row.certifications[0]?.certificateNumber && (
-                                                      <span className="text-muted-foreground">
-                                                        Nr. {row.certifications[0].certificateNumber}
-                                                      </span>
-                                                    )}
-                                                    {row.earliestValidUntil && (
-                                                      <span className="text-muted-foreground">
-                                                        bis {new Date(row.earliestValidUntil).toLocaleDateString('de-DE')}
-                                                      </span>
-                                                    )}
-                                                    {row.certifications.some(c => c.status && c.status !== 'active') && (
-                                                      <Badge variant={row.certifications.some(c => c.status === 'expired') ? 'destructive' : 'outline'}>
-                                                        {row.certifications.find(c => c.status !== 'active')?.status}
-                                                      </Badge>
+                                                    {/* Auditor on the right side - show warning if missing */}
+                                                    {auditorInfo ? (
+                                                      <AuditorPopover 
+                                                        auditor={{
+                                                          id: auditorInfo.auditorId,
+                                                          name: auditorInfo.auditorName,
+                                                          email: auditorInfo.auditorEmail,
+                                                          phone: auditorInfo.auditorPhone,
+                                                        }}
+                                                      />
+                                                    ) : (
+                                                      <div className="flex items-center gap-1.5 text-warning">
+                                                        <AlertTriangle className="h-4 w-4" />
+                                                        <span className="text-xs font-medium">Kein Auditor</span>
+                                                      </div>
                                                     )}
                                                   </div>
-                                                  {/* Auditor on the right side - show warning if missing */}
-                                                  {auditorInfo ? (
-                                                    <AuditorPopover 
-                                                      auditor={{
-                                                        id: auditorInfo.auditorId,
-                                                        name: auditorInfo.auditorName,
-                                                        email: auditorInfo.auditorEmail,
-                                                        phone: auditorInfo.auditorPhone,
-                                                      }}
-                                                    />
-                                                  ) : (
-                                                    <div className="flex items-center gap-1.5 text-warning">
-                                                      <AlertTriangle className="h-4 w-4" />
-                                                      <span className="text-xs font-medium">Kein Auditor</span>
-                                                    </div>
-                                                  )}
-                                                </div>
-                                              );
-                                            })
-                                          ) : (
-                                            <div className={`py-2 text-sm text-muted-foreground italic ${isMultiClient ? 'pl-20' : 'pl-14'} border-t border-border/30`}>
-                                              Keine Zertifizierungen
-                                            </div>
-                                          )}
-                                        </>
-                                      )}
-                                    </div>
-                                  );
-                                })}
+                                                );
+                                              })
+                                            ) : (
+                                              <div className={`py-2 text-sm text-muted-foreground italic ${isMultiClient ? 'pl-20' : 'pl-14'} border-t border-border/30`}>
+                                                Keine Zertifizierungen
+                                              </div>
+                                            )}
+                                          </>
+                                        )}
+                                      </div>
+                                    );
+                                  })
+                                )}
                               </div>
                             )}
                           </div>
