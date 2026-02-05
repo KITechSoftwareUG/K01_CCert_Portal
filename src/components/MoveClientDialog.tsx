@@ -32,7 +32,7 @@ export const MoveClientDialog = ({ open, onOpenChange, client }: MoveClientDialo
   const { data: allClients = [] } = useClients();
   const updateClient = useUpdateClient();
 
-  // Get all potential parent groups (only actual company groups = clients that have children)
+  // Get all potential parent groups
   const availableGroups = useMemo(() => {
     // Find all children of current client to exclude them
     const getDescendantIds = (clientId: string): string[] => {
@@ -46,14 +46,16 @@ export const MoveClientDialog = ({ open, onOpenChange, client }: MoveClientDialo
 
     const excludedIds = new Set([client.id, ...getDescendantIds(client.id)]);
 
-    // Check if a client has children (is a company group)
+    // A company group is either explicitly marked by missing client_number
+    // or implicitly by already having children.
     const hasChildren = (clientId: string) => allClients.some(c => c.parent_client_id === clientId);
+    const isCompanyGroup = (c: DbClient) => c.client_number === null || hasChildren(c.id);
     
-    // Only show clients that ARE company groups (have children) and are top-level
+    // Only show top-level company groups as targets
     return allClients.filter(c => 
       !excludedIds.has(c.id) && 
       c.parent_client_id === null && 
-      hasChildren(c.id) // MUST have children to be a valid group target
+      isCompanyGroup(c)
     );
   }, [allClients, client.id]);
 
