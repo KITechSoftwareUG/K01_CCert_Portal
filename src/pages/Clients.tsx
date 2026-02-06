@@ -757,15 +757,15 @@ const Clients = () => {
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={(e) => {
-                                      e.stopPropagation();
-                                      navigate(`/clients/${headerClient.id}`);
-                                    }}>
-                                      <ExternalLink className="h-4 w-4 mr-2" />
-                                      Zum Unternehmen
-                                    </DropdownMenuItem>
                                     {!isMultiClient && (
                                       <>
+                                        <DropdownMenuItem onClick={(e) => {
+                                          e.stopPropagation();
+                                          navigate(`/clients/${headerClient.id}`);
+                                        }}>
+                                          <ExternalLink className="h-4 w-4 mr-2" />
+                                          Zum Unternehmen
+                                        </DropdownMenuItem>
                                         <DropdownMenuSeparator />
                                         <DropdownMenuItem onClick={(e) => {
                                           e.stopPropagation();
@@ -775,6 +775,11 @@ const Clients = () => {
                                           Verschieben
                                         </DropdownMenuItem>
                                       </>
+                                    )}
+                                    {isMultiClient && (
+                                      <DropdownMenuItem disabled className="text-muted-foreground text-xs">
+                                        Keine Aktionen verfügbar
+                                      </DropdownMenuItem>
                                     )}
                                   </DropdownMenuContent>
                                 </DropdownMenu>
