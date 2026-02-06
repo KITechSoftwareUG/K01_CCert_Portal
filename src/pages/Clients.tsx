@@ -4,7 +4,8 @@ import { Layout } from '@/components/Layout';
 import { NewClientDialog } from '@/components/NewClientDialog';
 import { ExcelImportDialog } from '@/components/ExcelImportDialog';
 import { MoveClientDialog } from '@/components/MoveClientDialog';
-import { useClients, DbClient } from '@/hooks/useClients';
+import { useClients, useDeleteClient, DbClient } from '@/hooks/useClients';
+import { supabase } from '@/integrations/supabase/client';
 import { useAllClientCertifications } from '@/hooks/useClientCertifications';
 import { useContactsByClientIds } from '@/hooks/useContacts';
 import { useAuditorsForCertifications } from '@/hooks/useAuditorsForCertifications';
@@ -41,7 +42,8 @@ import {
   Globe,
   MoreHorizontal,
   ExternalLink,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Trash2
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -51,6 +53,17 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
 
 interface CountryGroup {
   country: string;
@@ -100,6 +113,7 @@ const Clients = () => {
   const [showNewClientDialog, setShowNewClientDialog] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [moveDialogClient, setMoveDialogClient] = useState<DbClient | null>(null);
+  const [deleteGroupClient, setDeleteGroupClient] = useState<{ client: DbClient; childCount: number } | null>(null);
   const [expandedCountries, setExpandedCountries] = useState<Set<string>>(new Set());
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
@@ -107,6 +121,7 @@ const Clients = () => {
   const [auditorFilter, setAuditorFilter] = useState<string>('all');
   
   const { data: clients = [], isLoading, error } = useClients();
+  const deleteClient = useDeleteClient();
   const { data: allCertifications = [] } = useAllClientCertifications();
   const { data: allAuditors = [] } = useAuditors();
 
@@ -777,8 +792,15 @@ const Clients = () => {
                                       </>
                                     )}
                                     {isMultiClient && (
-                                      <DropdownMenuItem disabled className="text-muted-foreground text-xs">
-                                        Keine Aktionen verfügbar
+                                      <DropdownMenuItem
+                                        className="text-destructive focus:text-destructive"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setDeleteGroupClient({ client: headerClient, childCount: group.children.length });
+                                        }}
+                                      >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Gruppe löschen
                                       </DropdownMenuItem>
                                     )}
                                   </DropdownMenuContent>
@@ -951,6 +973,56 @@ const Clients = () => {
           </div>
         )}
       </div>
+
+      {/* Delete Group Confirmation Dialog */}
+      <AlertDialog open={!!deleteGroupClient} onOpenChange={(open) => !open && setDeleteGroupClient(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unternehmensgruppe löschen</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteGroupClient && deleteGroupClient.childCount > 0 ? (
+                <>
+                  Die Unternehmensgruppe <strong>„{deleteGroupClient.client.name}"</strong> enthält noch{' '}
+                  <strong>{deleteGroupClient.childCount} Standort{deleteGroupClient.childCount > 1 ? 'e' : ''}</strong>.
+                  Beim Löschen werden alle Standorte zu eigenständigen Kunden ohne Gruppenzugehörigkeit.
+                </>
+              ) : (
+                <>
+                  Möchten Sie die leere Unternehmensgruppe <strong>„{deleteGroupClient?.client.name}"</strong> wirklich löschen?
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                if (!deleteGroupClient) return;
+                try {
+                  // First, detach all children by setting their parent_client_id to null
+                  if (deleteGroupClient.childCount > 0) {
+                    const { error: updateError } = await supabase
+                      .from('clients')
+                      .update({ parent_client_id: null })
+                      .eq('parent_client_id', deleteGroupClient.client.id);
+                    if (updateError) throw updateError;
+                  }
+                  // Then delete the group itself
+                  await deleteClient.mutateAsync(deleteGroupClient.client.id);
+                  toast.success(`Unternehmensgruppe „${deleteGroupClient.client.name}" wurde gelöscht.`);
+                } catch (err) {
+                  console.error('Error deleting group:', err);
+                  toast.error('Fehler beim Löschen der Unternehmensgruppe.');
+                }
+                setDeleteGroupClient(null);
+              }}
+            >
+              Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 };
