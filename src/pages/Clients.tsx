@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { COUNTRY_PREFIXES } from '@/lib/clientNumberUtils';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { NewClientDialog } from '@/components/NewClientDialog';
@@ -351,9 +352,15 @@ const Clients = () => {
       companyGroups,
     }));
     
+    // Sort by country prefix order (DE=0, AT=1, CH=2, etc.)
+    const prefixOrder = Object.keys(COUNTRY_PREFIXES);
     countryList.sort((a, b) => {
-      if (a.country === 'Deutschland') return -1;
-      if (b.country === 'Deutschland') return 1;
+      const idxA = prefixOrder.indexOf(a.country);
+      const idxB = prefixOrder.indexOf(b.country);
+      // Known countries first (by prefix order), unknown countries at the end alphabetically
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
       return a.country.localeCompare(b.country);
     });
     
