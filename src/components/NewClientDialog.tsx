@@ -139,10 +139,6 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Determine effective country (use customCountry if "Andere" is selected)
-    const effectiveCountry = country === 'Andere' && customCountry.trim() 
-      ? customCountry.trim() 
-      : country;
     // Different validation for company groups vs clients
     if (isCompanyGroup) {
       if (!name) {
