@@ -5,7 +5,7 @@ import { Layout } from '@/components/Layout';
 import { NewClientDialog } from '@/components/NewClientDialog';
 import { ExcelImportDialog } from '@/components/ExcelImportDialog';
 import { MoveClientDialog } from '@/components/MoveClientDialog';
-import { useClients, useDeleteClient, DbClient } from '@/hooks/useClients';
+import { useClients, useDeleteClient, useUpdateClient, DbClient } from '@/hooks/useClients';
 import { supabase } from '@/integrations/supabase/client';
 import { useAllClientCertifications } from '@/hooks/useClientCertifications';
 import { useContactsByClientIds } from '@/hooks/useContacts';
@@ -44,7 +44,8 @@ import {
   MoreHorizontal,
   ExternalLink,
   ArrowRightLeft,
-  Trash2
+  Trash2,
+  Pencil
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -115,6 +116,7 @@ const Clients = () => {
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [moveDialogClient, setMoveDialogClient] = useState<DbClient | null>(null);
   const [deleteGroupClient, setDeleteGroupClient] = useState<{ client: DbClient; childCount: number } | null>(null);
+  const [renameGroup, setRenameGroup] = useState<{ client: DbClient; newName: string } | null>(null);
   const [expandedCountries, setExpandedCountries] = useState<Set<string>>(new Set());
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
@@ -123,6 +125,7 @@ const Clients = () => {
   
   const { data: clients = [], isLoading, error } = useClients();
   const deleteClient = useDeleteClient();
+  const updateClient = useUpdateClient();
   const { data: allCertifications = [] } = useAllClientCertifications();
   const { data: allAuditors = [] } = useAuditors();
 
@@ -799,16 +802,28 @@ const Clients = () => {
                                       </>
                                     )}
                                     {isMultiClient && (
-                                      <DropdownMenuItem
-                                        className="text-destructive focus:text-destructive"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setDeleteGroupClient({ client: headerClient, childCount: group.children.length });
-                                        }}
-                                      >
-                                        <Trash2 className="h-4 w-4 mr-2" />
-                                        Gruppe löschen
-                                      </DropdownMenuItem>
+                                      <>
+                                        <DropdownMenuItem
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setRenameGroup({ client: headerClient, newName: headerClient.name });
+                                          }}
+                                        >
+                                          <Pencil className="h-4 w-4 mr-2" />
+                                          Umbenennen
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                          className="text-destructive focus:text-destructive"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setDeleteGroupClient({ client: headerClient, childCount: group.children.length });
+                                          }}
+                                        >
+                                          <Trash2 className="h-4 w-4 mr-2" />
+                                          Gruppe löschen
+                                        </DropdownMenuItem>
+                                      </>
                                     )}
                                   </DropdownMenuContent>
                                 </DropdownMenu>
@@ -1026,6 +1041,45 @@ const Clients = () => {
               }}
             >
               Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Rename Group Dialog */}
+      <AlertDialog open={!!renameGroup} onOpenChange={(open) => !open && setRenameGroup(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unternehmensgruppe umbenennen</AlertDialogTitle>
+            <AlertDialogDescription>
+              Geben Sie den neuen Namen für die Unternehmensgruppe ein.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Input
+              value={renameGroup?.newName || ''}
+              onChange={(e) => setRenameGroup(prev => prev ? { ...prev, newName: e.target.value } : null)}
+              placeholder="Neuer Name"
+              autoFocus
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!renameGroup?.newName.trim()}
+              onClick={async () => {
+                if (!renameGroup || !renameGroup.newName.trim()) return;
+                try {
+                  await updateClient.mutateAsync({ id: renameGroup.client.id, name: renameGroup.newName.trim() });
+                  toast.success(`Unternehmensgruppe umbenannt zu „${renameGroup.newName.trim()}".`);
+                } catch (err) {
+                  console.error('Error renaming group:', err);
+                  toast.error('Fehler beim Umbenennen der Unternehmensgruppe.');
+                }
+                setRenameGroup(null);
+              }}
+            >
+              Speichern
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
