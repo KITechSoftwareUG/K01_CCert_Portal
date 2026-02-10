@@ -35,18 +35,14 @@ interface NewClientDialogProps {
 const COUNTRIES = [
   'Deutschland',
   'Österreich',
-  'Schweiz',
-  // Alphabetically sorted after DE, AT, CH
-  'Belgien',
-  'Frankreich',
-  'Italien',
-  'Niederlande',
-  'Polen',
-  'Spanien',
-  'Tschechien',
-  'Vereinigtes Königreich',
-  'Ungarn',
   'Rumänien',
+  'Italien',
+  'Ungarn',
+  'Slowenien',
+  'Finnland',
+  'Litauen',
+  'Niederlande',
+  'Schweden',
   'Andere',
 ];
 

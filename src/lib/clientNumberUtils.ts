@@ -12,18 +12,14 @@
 export const COUNTRY_PREFIXES: Record<string, string> = {
   'Deutschland': '0',
   'Österreich': '1',
-  'Schweiz': '2',
-  // Alphabetically sorted after DE, AT, CH
-  'Belgien': '3',
-  'Frankreich': '4',
-  'Italien': '5',
-  'Niederlande': '6',
-  'Polen': '7',
-  'Spanien': '8',
-  'Tschechien': '9',
-  'Vereinigtes Königreich': 'A',
-  'Ungarn': 'B',
-  'Rumänien': 'C',
+  'Rumänien': '2',
+  'Italien': '3',
+  'Ungarn': '4',
+  'Slowenien': '5',
+  'Finnland': '6',
+  'Litauen': '7',
+  'Niederlande': '8',
+  'Schweden': '9',
   'Andere': 'X',
 };
 
