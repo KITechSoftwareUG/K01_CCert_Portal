@@ -14,7 +14,7 @@ import { useAuditors } from '@/hooks/useAuditors';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+
 import { Skeleton } from '@/components/ui/skeleton';
 import { ClientNumberBadge, GroupClientNumbers } from '@/components/ClientNumberBadge';
 
@@ -37,7 +37,7 @@ import {
   Building2,
   Upload,
   Eye,
-  EyeOff,
+  
   AlertTriangle,
   User,
   Globe,
@@ -54,7 +54,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { Switch } from '@/components/ui/switch';
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -120,7 +120,7 @@ const Clients = () => {
   const [expandedCountries, setExpandedCountries] = useState<Set<string>>(new Set());
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
-  const [showInactive, setShowInactive] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'active' | 'inactive' | 'all'>('active');
   const [auditorFilter, setAuditorFilter] = useState<string>('all');
   
   const { data: clients = [], isLoading, error } = useClients();
@@ -219,8 +219,10 @@ const Clients = () => {
     let result = clients;
     
     // Filter by active status
-    if (!showInactive) {
+    if (statusFilter === 'active') {
       result = result.filter(client => client.is_active !== false);
+    } else if (statusFilter === 'inactive') {
+      result = result.filter(client => client.is_active === false);
     }
     
     // Filter by search query
@@ -259,7 +261,7 @@ const Clients = () => {
     }
     
     return result;
-  }, [searchQuery, clients, showInactive, auditorFilter, certificationsByClient, auditorsByClientCertification]);
+  }, [searchQuery, clients, statusFilter, auditorFilter, certificationsByClient, auditorsByClientCertification]);
 
   // Group clients by country, then by parent company
   const countryGroups = useMemo(() => {
@@ -657,15 +659,17 @@ const Clients = () => {
             </div>
 
             <div className="flex items-center gap-2">
-              <Switch
-                id="show-inactive"
-                checked={showInactive}
-                onCheckedChange={setShowInactive}
-              />
-              <Label htmlFor="show-inactive" className="text-sm text-muted-foreground flex items-center gap-1 cursor-pointer">
-                {showInactive ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                Inaktive anzeigen
-              </Label>
+              <Eye className="h-4 w-4 text-muted-foreground" />
+              <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val as 'active' | 'inactive' | 'all')}>
+                <SelectTrigger className="w-[180px] h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-background border shadow-lg z-50">
+                  <SelectItem value="all">Alle Kunden</SelectItem>
+                  <SelectItem value="active">Nur aktive Kunden</SelectItem>
+                  <SelectItem value="inactive">Nur inaktive Kunden</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>

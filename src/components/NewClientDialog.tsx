@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -66,6 +67,7 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
   const [parentClientId, setParentClientId] = useState<string>('');
   const [notes, setNotes] = useState('');
   const [selectedCertifications, setSelectedCertifications] = useState<CertificationSelection[]>([]);
+  const [isActive, setIsActive] = useState(true);
   
   
   const createClient = useCreateClient();
@@ -131,6 +133,7 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
     setParentClientId('');
     setNotes('');
     setSelectedCertifications([]);
+    setIsActive(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -187,6 +190,7 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
         parent_client_id: isCompanyGroup ? null : (parentClientId || null), // Company groups have no parent
         certifications: [], // Legacy field, no longer used
         notes: notes || null,
+        is_active: isActive,
       });
       
 
@@ -244,7 +248,22 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
               >
                 Unternehmensgruppe
               </Button>
+          </div>
+
+          {/* Active/Inactive Toggle */}
+          <div className="flex items-center justify-between p-3 border rounded-lg">
+            <div>
+              <Label htmlFor="is-active" className="text-sm font-medium cursor-pointer">Status</Label>
+              <p className="text-xs text-muted-foreground">
+                {isActive ? 'Kunde ist aktiv' : 'Kunde ist inaktiv'}
+              </p>
             </div>
+            <Switch
+              id="is-active"
+              checked={isActive}
+              onCheckedChange={setIsActive}
+            />
+          </div>
           </div>
 
           {/* Parent Company Selection - only for clients */}
