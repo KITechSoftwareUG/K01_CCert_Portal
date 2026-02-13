@@ -56,7 +56,9 @@ const Dashboard = () => {
   const { data: tasks = [], isLoading: tasksLoading } = useAuditTasks();
 
   const audits = useMemo(() => 
-    dbAudits.map(audit => transformAuditToLocal(audit, tasks)),
+    dbAudits
+      .filter(audit => audit.clients?.is_active !== false)
+      .map(audit => transformAuditToLocal(audit, tasks)),
     [dbAudits, tasks]
   );
 
