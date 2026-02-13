@@ -338,7 +338,7 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
 
       {/* Chat Dialog */}
       <Dialog open={chatOpen} onOpenChange={setChatOpen}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] sm:max-h-[80vh] p-0 gap-0 rounded-none sm:rounded-2xl overflow-hidden w-full h-full sm:h-auto sm:w-auto fixed inset-0 sm:inset-auto sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%]">
+        <DialogContent className="sm:max-w-2xl p-0 gap-0 rounded-none sm:rounded-2xl overflow-hidden w-full h-full sm:h-[80vh] sm:w-auto fixed inset-0 sm:inset-auto sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] flex flex-col">
           {/* Header */}
           <div className="flex items-center gap-2.5 sm:gap-3 px-4 sm:px-5 py-3 sm:py-4 border-b border-border/50 bg-gradient-to-r from-primary/[0.04] to-transparent">
             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -356,7 +356,7 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
           </div>
 
           {/* Messages */}
-          <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 sm:px-5 py-3 sm:py-4 space-y-3 sm:space-y-4" style={{ maxHeight: 'calc(90vh - 130px)', minHeight: '250px' }}>
+          <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 sm:px-5 py-3 sm:py-4 space-y-3 sm:space-y-4 min-h-0">
             {conversationHistory.map((msg, i) => (
               <div key={i} className={cn("flex gap-3", msg.role === 'user' ? 'justify-end' : 'justify-start')}>
                 {msg.role === 'assistant' && (
@@ -418,7 +418,7 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
           </div>
 
           {/* Input */}
-          <div className="px-3 sm:px-5 py-3 sm:py-4 border-t border-border/50 bg-background safe-area-bottom">
+          <div className="shrink-0 px-3 sm:px-5 py-3 sm:py-4 border-t border-border/50 bg-background safe-area-bottom">
             <div className="flex gap-2 items-center">
               <Input
                 ref={dialogInputRef}
