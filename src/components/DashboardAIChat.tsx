@@ -282,15 +282,15 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
         <div className="rounded-2xl border border-primary/10 bg-gradient-to-br from-primary/[0.02] via-card to-accent/[0.02] shadow-sm overflow-hidden">
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
           
-          <div className="px-6 py-6 sm:px-10 sm:py-8">
+          <div className="px-4 py-4 sm:px-10 sm:py-8">
             {/* Greeting */}
-            <div className="flex items-center gap-3 mb-5 justify-center">
-              <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Sparkles className="h-5 w-5 text-primary" />
+            <div className="flex items-start sm:items-center gap-2.5 sm:gap-3 mb-4 sm:mb-5 justify-center">
+              <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
               </div>
-              <div className="min-h-[1.5rem]">
+              <div className="min-h-[1.5rem] flex-1">
                 {greeting ? (
-                  <p className="text-sm text-foreground/80 leading-relaxed animate-fade-in">
+                  <p className="text-xs sm:text-sm text-foreground/80 leading-relaxed animate-fade-in">
                     {greeting}
                   </p>
                 ) : (
@@ -311,23 +311,23 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
                 className="relative cursor-text group/input"
                 onClick={handleHeroInputFocus}
               >
-                <MessageCircle className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/30 group-hover/input:text-primary/50 transition-colors" />
+                <MessageCircle className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground/30 group-hover/input:text-primary/50 transition-colors" />
                 <Input
                   value={input}
                   onChange={handleHeroInputChange}
                   onFocus={handleHeroInputFocus}
-                  placeholder="Stelle eine Frage zu deinen Audits, Kunden oder Aufgaben..."
-                  className="pl-12 pr-14 h-14 bg-background border-border/60 rounded-2xl text-base shadow-sm hover:shadow-md hover:border-primary/30 focus:shadow-md focus:border-primary/40 transition-all placeholder:text-muted-foreground/40"
+                  placeholder="Frag mich etwas..."
+                  className="pl-10 sm:pl-12 pr-12 sm:pr-14 h-12 sm:h-14 bg-background border-border/60 rounded-2xl text-sm sm:text-base shadow-sm hover:shadow-md hover:border-primary/30 focus:shadow-md focus:border-primary/40 transition-all placeholder:text-muted-foreground/40"
                   readOnly
                 />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <div className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2">
                   <Button 
                     size="icon"
                     variant="ghost"
-                    className="h-9 w-9 rounded-xl text-muted-foreground/40 hover:text-primary hover:bg-primary/10"
+                    className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl text-muted-foreground/40 hover:text-primary hover:bg-primary/10"
                     tabIndex={-1}
                   >
-                    <Send className="h-4 w-4" />
+                    <Send className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   </Button>
                 </div>
               </div>
@@ -338,25 +338,25 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
 
       {/* Chat Dialog */}
       <Dialog open={chatOpen} onOpenChange={setChatOpen}>
-        <DialogContent className="sm:max-w-2xl max-h-[80vh] p-0 gap-0 rounded-2xl overflow-hidden">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] sm:max-h-[80vh] p-0 gap-0 rounded-none sm:rounded-2xl overflow-hidden w-full h-full sm:h-auto sm:w-auto fixed inset-0 sm:inset-auto sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%]">
           {/* Header */}
-          <div className="flex items-center gap-3 px-5 py-4 border-b border-border/50 bg-gradient-to-r from-primary/[0.04] to-transparent">
-            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Sparkles className="h-4.5 w-4.5 text-primary" />
+          <div className="flex items-center gap-2.5 sm:gap-3 px-4 sm:px-5 py-3 sm:py-4 border-b border-border/50 bg-gradient-to-r from-primary/[0.04] to-transparent">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Sparkles className="h-4 w-4 text-primary" />
             </div>
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <h3 className="text-sm font-semibold text-foreground">KI-Assistent</h3>
-              <p className="text-xs text-muted-foreground">Frag mich alles zu Audits, Kunden & Zertifikaten</p>
+              <p className="text-xs text-muted-foreground truncate">Audits, Kunden & Zertifikate</p>
             </div>
             {conversationHistory.length > 1 && (
-              <Button variant="ghost" size="sm" onClick={handleReset} className="text-xs text-muted-foreground hover:text-foreground">
+              <Button variant="ghost" size="sm" onClick={handleReset} className="text-xs text-muted-foreground hover:text-foreground shrink-0">
                 Zurücksetzen
               </Button>
             )}
           </div>
 
           {/* Messages */}
-          <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-4" style={{ maxHeight: 'calc(80vh - 140px)', minHeight: '300px' }}>
+          <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 sm:px-5 py-3 sm:py-4 space-y-3 sm:space-y-4" style={{ maxHeight: 'calc(90vh - 130px)', minHeight: '250px' }}>
             {conversationHistory.map((msg, i) => (
               <div key={i} className={cn("flex gap-3", msg.role === 'user' ? 'justify-end' : 'justify-start')}>
                 {msg.role === 'assistant' && (
@@ -418,7 +418,7 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
           </div>
 
           {/* Input */}
-          <div className="px-5 py-4 border-t border-border/50 bg-background">
+          <div className="px-3 sm:px-5 py-3 sm:py-4 border-t border-border/50 bg-background safe-area-bottom">
             <div className="flex gap-2 items-center">
               <Input
                 ref={dialogInputRef}
@@ -426,14 +426,14 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
                 onChange={(e) => setDialogInput(e.target.value)}
                 onKeyDown={handleDialogKeyPress}
                 placeholder="Nachricht eingeben..."
-                className="flex-1 h-11 rounded-xl bg-muted/30 border-border/50 focus:border-primary/40 text-sm"
+                className="flex-1 h-10 sm:h-11 rounded-xl bg-muted/30 border-border/50 focus:border-primary/40 text-sm"
                 disabled={isLoading}
               />
               <Button
                 onClick={handleDialogSend}
                 size="icon"
                 disabled={!dialogInput.trim() || isLoading}
-                className="h-11 w-11 rounded-xl shadow-sm"
+                className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl shadow-sm"
               >
                 {isLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
