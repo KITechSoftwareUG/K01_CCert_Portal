@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Sparkles, Loader2, MessageCircle, X } from 'lucide-react';
+import { Send, Sparkles, Loader2, MessageCircle, X, Bot, User } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -120,12 +122,15 @@ async function streamChat({
 export const DashboardAIChat = ({ className }: DashboardAIChatProps) => {
   const { user } = useAuth();
   const [input, setInput] = useState('');
+  const [dialogInput, setDialogInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [conversationHistory, setConversationHistory] = useState<Message[]>([]);
   const [currentResponse, setCurrentResponse] = useState<string | null>(null);
   const [greeting, setGreeting] = useState<string | null>(null);
   const [greetingLoaded, setGreetingLoaded] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [chatOpen, setChatOpen] = useState(false);
+  const dialogInputRef = useRef<HTMLInputElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const getUserName = useCallback(() => {
     if (user?.user_metadata?.full_name) {
@@ -167,7 +172,7 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
           }
         },
         onError: () => {
-          const fallbackGreeting = `Hey ${userName}, willkommen zurück! 👋`;
+          const fallbackGreeting = `Hey ${getUserName()}, willkommen zurück! 👋`;
           setGreeting(fallbackGreeting);
           setGreetingLoaded(true);
           setConversationHistory([{ role: 'assistant', content: fallbackGreeting }]);
@@ -179,13 +184,19 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
     return () => clearTimeout(timer);
   }, [getUserName, greetingLoaded]);
 
-  const handleSend = useCallback(async () => {
-    if (!input.trim() || isLoading) return;
+  // Scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [conversationHistory, currentResponse]);
 
-    const userQuery = input.trim();
+  const handleSend = useCallback(async (text: string) => {
+    if (!text.trim() || isLoading) return;
+
+    const userQuery = text.trim();
     const userMessage: Message = { role: 'user', content: userQuery };
     
-    setInput('');
     setIsLoading(true);
     setCurrentResponse('');
 
@@ -202,6 +213,7 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
       },
       onDone: () => {
         setIsLoading(false);
+        setCurrentResponse(null);
         if (responseContent) {
           setConversationHistory(prev => [...prev, { role: 'assistant', content: responseContent }]);
         }
@@ -213,107 +225,227 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
         setConversationHistory(conversationHistory);
       },
     });
-  }, [input, isLoading, conversationHistory]);
+  }, [isLoading, conversationHistory]);
 
-  const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
+  // When user types in the hero input, open dialog and transfer text
+  const handleHeroInputFocus = () => {
+    setChatOpen(true);
+    setTimeout(() => {
+      if (dialogInputRef.current) {
+        dialogInputRef.current.focus();
+        if (input.trim()) {
+          setDialogInput(input);
+          setInput('');
+        }
+      }
+    }, 100);
+  };
+
+  const handleHeroInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInput(e.target.value);
+    if (e.target.value.length === 1) {
+      setChatOpen(true);
+      setTimeout(() => {
+        if (dialogInputRef.current) {
+          setDialogInput(e.target.value);
+          setInput('');
+          dialogInputRef.current.focus();
+        }
+      }, 100);
+    }
+  };
+
+  const handleDialogSend = () => {
+    if (!dialogInput.trim()) return;
+    handleSend(dialogInput);
+    setDialogInput('');
+  };
+
+  const handleDialogKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      handleDialogSend();
     }
-  }, [handleSend]);
+  };
 
-  const clearResponse = useCallback(() => {
+  const handleReset = () => {
+    setConversationHistory([]);
     setCurrentResponse(null);
-    inputRef.current?.focus();
-  }, []);
-
-  const displayResponse = currentResponse || 
-    (conversationHistory.length > 1 
-      ? conversationHistory.slice(-1)[0]?.role === 'assistant' 
-        ? conversationHistory.slice(-1)[0]?.content 
-        : null 
-      : null);
+    setGreetingLoaded(false);
+    setGreeting(null);
+  };
 
   return (
-    <div className={cn("relative group", className)}>
-      {/* Main container with refined glass effect */}
-      <div className="relative rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/[0.03] via-card to-accent/[0.02] shadow-sm overflow-hidden transition-shadow duration-300 hover:shadow-md">
-        {/* Top accent */}
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
-
-        <div className="p-4 sm:p-5">
-          {/* Greeting row */}
-          <div className="flex items-center gap-3 mb-3">
-            <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Sparkles className="h-4 w-4 text-primary" />
-            </div>
-            
-            <div className="flex-1 min-h-[1.5rem]">
-              {greeting ? (
-                <p className="text-sm text-foreground/80 leading-relaxed animate-fade-in">
-                  {greeting}
-                </p>
-              ) : (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <div className="flex gap-1">
-                    <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
-                    <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
-                    <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+    <>
+      {/* Hero-style centered input */}
+      <div className={cn("relative", className)}>
+        <div className="rounded-2xl border border-primary/10 bg-gradient-to-br from-primary/[0.02] via-card to-accent/[0.02] shadow-sm overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+          
+          <div className="px-6 py-6 sm:px-10 sm:py-8">
+            {/* Greeting */}
+            <div className="flex items-center gap-3 mb-5 justify-center">
+              <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Sparkles className="h-5 w-5 text-primary" />
+              </div>
+              <div className="min-h-[1.5rem]">
+                {greeting ? (
+                  <p className="text-sm text-foreground/80 leading-relaxed animate-fade-in">
+                    {greeting}
+                  </p>
+                ) : (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <div className="flex gap-1">
+                      <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
+                      <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
+                      <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* Input row */}
-          <div className="flex gap-2 items-center">
-            <div className="relative flex-1">
-              <MessageCircle className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/40" />
-              <Input
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyPress}
-                placeholder="Frag mich etwas..."
-                className="pl-9 pr-4 h-10 bg-background/70 border-border/50 rounded-xl text-sm focus:bg-background focus:border-primary/40 transition-all placeholder:text-muted-foreground/40"
-                disabled={isLoading}
-              />
-            </div>
-            <Button 
-              onClick={handleSend} 
-              size="icon"
-              disabled={!input.trim() || isLoading}
-              className="h-10 w-10 rounded-xl shadow-sm transition-all hover:shadow active:scale-95"
-            >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-3.5 w-3.5" />
-              )}
-            </Button>
-          </div>
-
-          {/* Response Area */}
-          {displayResponse && (
-            <div className="mt-3 animate-slide-up">
-              <div className="relative bg-muted/40 rounded-xl p-3.5 border border-border/30">
-                <button
-                  onClick={clearResponse}
-                  className="absolute top-2 right-2 p-1 rounded-md text-muted-foreground/40 hover:text-foreground hover:bg-background/60 transition-colors"
-                  aria-label="Schließen"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-
-                <div className="pr-7 prose prose-sm max-w-none text-foreground/85 prose-headings:text-foreground prose-strong:text-foreground prose-p:text-foreground/85 prose-li:text-foreground/85 prose-p:my-1 prose-ul:my-1 prose-ol:my-1 text-sm leading-relaxed">
-                  <ReactMarkdown>{displayResponse}</ReactMarkdown>
+            {/* Centered large input */}
+            <div className="max-w-xl mx-auto">
+              <div 
+                className="relative cursor-text group/input"
+                onClick={handleHeroInputFocus}
+              >
+                <MessageCircle className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/30 group-hover/input:text-primary/50 transition-colors" />
+                <Input
+                  value={input}
+                  onChange={handleHeroInputChange}
+                  onFocus={handleHeroInputFocus}
+                  placeholder="Stelle eine Frage zu deinen Audits, Kunden oder Aufgaben..."
+                  className="pl-12 pr-14 h-14 bg-background border-border/60 rounded-2xl text-base shadow-sm hover:shadow-md hover:border-primary/30 focus:shadow-md focus:border-primary/40 transition-all placeholder:text-muted-foreground/40"
+                  readOnly
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <Button 
+                    size="icon"
+                    variant="ghost"
+                    className="h-9 w-9 rounded-xl text-muted-foreground/40 hover:text-primary hover:bg-primary/10"
+                    tabIndex={-1}
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             </div>
-          )}
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Chat Dialog */}
+      <Dialog open={chatOpen} onOpenChange={setChatOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[80vh] p-0 gap-0 rounded-2xl overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-border/50 bg-gradient-to-r from-primary/[0.04] to-transparent">
+            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Sparkles className="h-4.5 w-4.5 text-primary" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-foreground">KI-Assistent</h3>
+              <p className="text-xs text-muted-foreground">Frag mich alles zu Audits, Kunden & Zertifikaten</p>
+            </div>
+            {conversationHistory.length > 1 && (
+              <Button variant="ghost" size="sm" onClick={handleReset} className="text-xs text-muted-foreground hover:text-foreground">
+                Zurücksetzen
+              </Button>
+            )}
+          </div>
+
+          {/* Messages */}
+          <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-4" style={{ maxHeight: 'calc(80vh - 140px)', minHeight: '300px' }}>
+            {conversationHistory.map((msg, i) => (
+              <div key={i} className={cn("flex gap-3", msg.role === 'user' ? 'justify-end' : 'justify-start')}>
+                {msg.role === 'assistant' && (
+                  <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center mt-0.5">
+                    <Bot className="h-3.5 w-3.5 text-primary" />
+                  </div>
+                )}
+                <div className={cn(
+                  "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm",
+                  msg.role === 'user' 
+                    ? 'bg-primary text-primary-foreground rounded-br-md' 
+                    : 'bg-muted/60 text-foreground rounded-bl-md'
+                )}>
+                  {msg.role === 'assistant' ? (
+                    <div className="prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 leading-relaxed">
+                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    </div>
+                  ) : (
+                    <p className="leading-relaxed">{msg.content}</p>
+                  )}
+                </div>
+                {msg.role === 'user' && (
+                  <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-primary/80 flex items-center justify-center mt-0.5">
+                    <User className="h-3.5 w-3.5 text-primary-foreground" />
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {/* Streaming response */}
+            {currentResponse && (
+              <div className="flex gap-3 justify-start">
+                <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center mt-0.5">
+                  <Bot className="h-3.5 w-3.5 text-primary" />
+                </div>
+                <div className="max-w-[80%] rounded-2xl rounded-bl-md bg-muted/60 px-4 py-2.5 text-sm">
+                  <div className="prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 leading-relaxed">
+                    <ReactMarkdown>{currentResponse}</ReactMarkdown>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Loading indicator */}
+            {isLoading && !currentResponse && (
+              <div className="flex gap-3 justify-start">
+                <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Bot className="h-3.5 w-3.5 text-primary" />
+                </div>
+                <div className="rounded-2xl rounded-bl-md bg-muted/60 px-4 py-3">
+                  <div className="flex gap-1.5">
+                    <span className="w-2 h-2 bg-primary/40 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
+                    <span className="w-2 h-2 bg-primary/40 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
+                    <span className="w-2 h-2 bg-primary/40 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Input */}
+          <div className="px-5 py-4 border-t border-border/50 bg-background">
+            <div className="flex gap-2 items-center">
+              <Input
+                ref={dialogInputRef}
+                value={dialogInput}
+                onChange={(e) => setDialogInput(e.target.value)}
+                onKeyDown={handleDialogKeyPress}
+                placeholder="Nachricht eingeben..."
+                className="flex-1 h-11 rounded-xl bg-muted/30 border-border/50 focus:border-primary/40 text-sm"
+                disabled={isLoading}
+              />
+              <Button
+                onClick={handleDialogSend}
+                size="icon"
+                disabled={!dialogInput.trim() || isLoading}
+                className="h-11 w-11 rounded-xl shadow-sm"
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
