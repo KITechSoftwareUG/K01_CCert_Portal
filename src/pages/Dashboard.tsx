@@ -91,7 +91,7 @@ const Dashboard = () => {
 
   return (
     <Layout>
-      <div className="p-6 space-y-6 animate-fade-in">
+      <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 animate-fade-in">
         {/* AI Chat - Hero Section */}
         <DashboardAIChat />
 
@@ -107,7 +107,7 @@ const Dashboard = () => {
         {!isLoading && <MissingAuditorsWarning />}
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-4">
           {isLoading ? (
             <>
               <StatCardSkeleton />
