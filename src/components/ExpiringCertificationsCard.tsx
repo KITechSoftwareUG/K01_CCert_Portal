@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AlertTriangle, Calendar, ChevronRight, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { useAllClientCertifications } from '@/hooks/useClientCertifications';
@@ -32,7 +31,6 @@ export const ExpiringCertificationsCard = () => {
       const validUntil = new Date(cert.valid_until);
       const daysUntilExpiry = differenceInDays(validUntil, new Date());
       
-      // Only show certs expiring within 90 days or already expired
       if (daysUntilExpiry > 90) continue;
 
       let status: ExpiringCertification['status'] = 'ok';
@@ -55,7 +53,6 @@ export const ExpiringCertificationsCard = () => {
       });
     }
 
-    // Sort by urgency (expired first, then by days until expiry)
     return result.sort((a, b) => {
       if (a.status === 'expired' && b.status !== 'expired') return -1;
       if (b.status === 'expired' && a.status !== 'expired') return 1;
@@ -70,42 +67,41 @@ export const ExpiringCertificationsCard = () => {
   }), [expiringCertifications]);
 
   const formatValidUntil = (date: Date) => {
-    // Ensure the year is displayed correctly (fix for dates showing wrong century)
     const day = date.getDate().toString().padStart(2, '0');
     const month = format(date, 'MMM', { locale: de });
     const year = date.getFullYear();
     return `${day}. ${month} ${year}`;
   };
 
-  const getStatusBadge = (status: ExpiringCertification['status'], days: number) => {
+  const getStatusIndicator = (status: ExpiringCertification['status'], days: number) => {
     switch (status) {
       case 'expired':
         return (
-          <Badge variant="destructive" className="gap-1">
-            <ShieldAlert className="h-3 w-3" />
+          <span className="inline-flex items-center gap-1 text-xs font-semibold text-destructive">
+            <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" />
             Abgelaufen
-          </Badge>
+          </span>
         );
       case 'critical':
         return (
-          <Badge className="bg-destructive/80 hover:bg-destructive/90 gap-1">
-            <AlertTriangle className="h-3 w-3" />
+          <span className="inline-flex items-center gap-1 text-xs font-semibold text-destructive">
+            <span className="w-1.5 h-1.5 rounded-full bg-destructive" />
             {days} Tag{days !== 1 ? 'e' : ''}
-          </Badge>
+          </span>
         );
       case 'warning':
         return (
-          <Badge variant="outline" className="border-amber-500 text-amber-600 gap-1">
-            <Calendar className="h-3 w-3" />
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
             {days} Tage
-          </Badge>
+          </span>
         );
       default:
         return (
-          <Badge variant="secondary" className="gap-1">
-            <ShieldCheck className="h-3 w-3" />
+          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+            <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40" />
             {days} Tage
-          </Badge>
+          </span>
         );
     }
   };
@@ -113,9 +109,9 @@ export const ExpiringCertificationsCard = () => {
   if (isLoading) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ShieldAlert className="h-5 w-5 text-amber-500" />
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <ShieldAlert className="h-4 w-4 text-amber-500" />
             Ablaufende Zertifikate
           </CardTitle>
         </CardHeader>
@@ -127,81 +123,69 @@ export const ExpiringCertificationsCard = () => {
   }
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center justify-between">
+    <Card className="border-amber-500/20">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center justify-between text-base">
           <div className="flex items-center gap-2">
-            <ShieldAlert className="h-5 w-5 text-amber-500" />
+            <ShieldAlert className="h-4 w-4 text-amber-500" />
             Ablaufende Zertifikate
           </div>
-          {(stats.expired > 0 || stats.critical > 0) && (
-            <div className="flex gap-2">
-              {stats.expired > 0 && (
-                <Badge variant="destructive" className="text-xs">
-                  {stats.expired} abgelaufen
-                </Badge>
-              )}
-              {stats.critical > 0 && (
-                <Badge className="bg-destructive/80 text-xs">
-                  {stats.critical} kritisch
-                </Badge>
-              )}
-            </div>
-          )}
+          <div className="flex gap-1.5">
+            {stats.expired > 0 && (
+              <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                {stats.expired}
+              </Badge>
+            )}
+            {stats.critical > 0 && (
+              <Badge className="bg-destructive/70 text-[10px] px-1.5 py-0">
+                {stats.critical}
+              </Badge>
+            )}
+            {stats.warning > 0 && (
+              <Badge variant="outline" className="border-amber-500/50 text-amber-600 text-[10px] px-1.5 py-0">
+                {stats.warning}
+              </Badge>
+            )}
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
         {expiringCertifications.length === 0 ? (
-          <div className="text-center py-8">
-            <ShieldCheck className="h-12 w-12 mx-auto text-success mb-3 opacity-50" />
+          <div className="text-center py-6">
+            <ShieldCheck className="h-10 w-10 mx-auto text-success/40 mb-2" />
             <p className="text-sm text-muted-foreground">
               Keine Zertifikate laufen in den nächsten 90 Tagen ab
             </p>
           </div>
         ) : (
-          <ScrollArea className="h-[260px] pr-4">
-            <div className="space-y-3">
+          <ScrollArea className="h-[320px] pr-3">
+            <div className="space-y-1.5">
               {expiringCertifications.map((cert) => (
                 <div
                   key={cert.id}
-                  className={`p-3 rounded-lg border transition-colors cursor-pointer hover:bg-muted/50 ${
+                  className={`group/item flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-all hover:bg-muted/60 ${
                     cert.status === 'expired' 
-                      ? 'border-destructive/50 bg-destructive/5' 
+                      ? 'bg-destructive/[0.04]' 
                       : cert.status === 'critical'
-                      ? 'border-destructive/30 bg-destructive/5'
-                      : cert.status === 'warning'
-                      ? 'border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20'
-                      : 'border-border'
+                      ? 'bg-destructive/[0.03]'
+                      : ''
                   }`}
                   onClick={() => navigate(`/certifications/${cert.id}`)}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-sm truncate">
-                          {cert.certificationName}
-                        </span>
-                        {getStatusBadge(cert.status, cert.daysUntilExpiry)}
-                      </div>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {cert.clientName}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Gültig bis: {formatValidUntil(cert.validUntil)}
-                      </p>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2 mb-0.5">
+                      <span className="font-medium text-sm truncate">
+                        {cert.certificationName}
+                      </span>
+                      {getStatusIndicator(cert.status, cert.daysUntilExpiry)}
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="shrink-0 h-8 w-8"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/certifications/${cert.id}`);
-                      }}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <span className="truncate">{cert.clientName}</span>
+                      <span className="text-muted-foreground/30">·</span>
+                      <span className="shrink-0">{formatValidUntil(cert.validUntil)}</span>
+                    </div>
                   </div>
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover/item:text-muted-foreground transition-colors shrink-0" />
                 </div>
               ))}
             </div>

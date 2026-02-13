@@ -127,7 +127,6 @@ export const DashboardAIChat = ({ className }: DashboardAIChatProps) => {
   const [greetingLoaded, setGreetingLoaded] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Get user's first name from email or metadata
   const getUserName = useCallback(() => {
     if (user?.user_metadata?.full_name) {
       return user.user_metadata.full_name.split(' ')[0];
@@ -139,7 +138,6 @@ export const DashboardAIChat = ({ className }: DashboardAIChatProps) => {
     return 'Du';
   }, [user]);
 
-  // Load personalized greeting on mount and store in conversation history
   useEffect(() => {
     if (greetingLoaded) return;
     
@@ -164,7 +162,6 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
         },
         onDone: () => {
           setGreetingLoaded(true);
-          // Store the greeting in conversation history so follow-ups can reference it
           if (greetingContent) {
             setConversationHistory([{ role: 'assistant', content: greetingContent }]);
           }
@@ -192,14 +189,12 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
     setIsLoading(true);
     setCurrentResponse('');
 
-    // Add user message to history
     const updatedHistory = [...conversationHistory, userMessage];
     setConversationHistory(updatedHistory);
 
     let responseContent = "";
 
     await streamChat({
-      // Send full conversation history so AI can reference previous messages
       messages: updatedHistory,
       onDelta: (chunk) => {
         responseContent += chunk;
@@ -207,7 +202,6 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
       },
       onDone: () => {
         setIsLoading(false);
-        // Add assistant response to history
         if (responseContent) {
           setConversationHistory(prev => [...prev, { role: 'assistant', content: responseContent }]);
         }
@@ -216,7 +210,6 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
         toast.error(error);
         setCurrentResponse(null);
         setIsLoading(false);
-        // Remove the user message on error
         setConversationHistory(conversationHistory);
       },
     });
@@ -234,14 +227,6 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
     inputRef.current?.focus();
   }, []);
 
-  // Get the last assistant response (excluding the greeting)
-  const lastAssistantResponse = currentResponse || 
-    (conversationHistory.length > 1 
-      ? conversationHistory.filter(m => m.role === 'assistant').slice(-1)[0]?.content 
-      : null);
-
-  // Only show response area if there's a response after a user question
-  const showResponseArea = currentResponse !== null || conversationHistory.filter(m => m.role === 'user').length > 0;
   const displayResponse = currentResponse || 
     (conversationHistory.length > 1 
       ? conversationHistory.slice(-1)[0]?.role === 'assistant' 
@@ -250,54 +235,47 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
       : null);
 
   return (
-    <div className={cn("relative", className)}>
-      {/* Decorative background elements */}
-      <div className="absolute inset-0 overflow-hidden rounded-2xl">
-        <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-accent/10 rounded-full blur-2xl" />
-      </div>
+    <div className={cn("relative group", className)}>
+      {/* Main container with refined glass effect */}
+      <div className="relative rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/[0.03] via-card to-accent/[0.02] shadow-sm overflow-hidden transition-shadow duration-300 hover:shadow-md">
+        {/* Top accent */}
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
 
-      {/* Main container */}
-      <div className="relative backdrop-blur-sm bg-gradient-to-br from-card/80 via-card/60 to-card/40 rounded-2xl border border-border/50 shadow-lg overflow-hidden">
-        {/* Header accent line */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-accent to-primary/50" />
-
-        <div className="p-5 space-y-4">
-          {/* AI Icon and Greeting */}
-          <div className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-md">
-              <Sparkles className="h-5 w-5 text-primary-foreground" />
+        <div className="p-4 sm:p-5">
+          {/* Greeting row */}
+          <div className="flex items-center gap-3 mb-3">
+            <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Sparkles className="h-4 w-4 text-primary" />
             </div>
             
-            <div className="flex-1 min-h-[2.5rem] pt-1">
+            <div className="flex-1 min-h-[1.5rem]">
               {greeting ? (
-                <p className="text-base text-foreground/90 leading-relaxed animate-fade-in">
+                <p className="text-sm text-foreground/80 leading-relaxed animate-fade-in">
                   {greeting}
                 </p>
               ) : (
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <div className="flex gap-1">
-                    <span className="w-2 h-2 bg-primary/60 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
-                    <span className="w-2 h-2 bg-primary/60 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
-                    <span className="w-2 h-2 bg-primary/60 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+                    <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
+                    <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
+                    <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
                   </div>
-                  <span className="text-sm">Einen Moment...</span>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Chat Input */}
+          {/* Input row */}
           <div className="flex gap-2 items-center">
             <div className="relative flex-1">
-              <MessageCircle className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+              <MessageCircle className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/40" />
               <Input
                 ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyPress}
-                placeholder="Frag nach – ich beziehe mich auf alles Gesagte..."
-                className="pl-10 pr-4 h-11 bg-background/60 border-border/40 rounded-xl focus:bg-background focus:border-primary/50 transition-all placeholder:text-muted-foreground/50"
+                placeholder="Frag mich etwas..."
+                className="pl-9 pr-4 h-10 bg-background/70 border-border/50 rounded-xl text-sm focus:bg-background focus:border-primary/40 transition-all placeholder:text-muted-foreground/40"
                 disabled={isLoading}
               />
             </div>
@@ -305,30 +283,29 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
               onClick={handleSend} 
               size="icon"
               disabled={!input.trim() || isLoading}
-              className="h-11 w-11 rounded-xl bg-primary hover:bg-primary/90 shadow-md transition-all hover:shadow-lg hover:scale-105 active:scale-95"
+              className="h-10 w-10 rounded-xl shadow-sm transition-all hover:shadow active:scale-95"
             >
               {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Send className="h-4 w-4" />
+                <Send className="h-3.5 w-3.5" />
               )}
             </Button>
           </div>
 
           {/* Response Area */}
           {displayResponse && (
-            <div className="animate-slide-up">
-              <div className="relative bg-gradient-to-br from-muted/60 via-muted/40 to-muted/20 rounded-xl p-4 border border-border/30 shadow-inner">
-                {/* Close button */}
+            <div className="mt-3 animate-slide-up">
+              <div className="relative bg-muted/40 rounded-xl p-3.5 border border-border/30">
                 <button
                   onClick={clearResponse}
-                  className="absolute top-2 right-2 p-1.5 rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-background/50 transition-colors"
+                  className="absolute top-2 right-2 p-1 rounded-md text-muted-foreground/40 hover:text-foreground hover:bg-background/60 transition-colors"
                   aria-label="Schließen"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-3.5 w-3.5" />
                 </button>
 
-                <div className="pr-8 prose prose-sm max-w-none text-foreground/90 prose-headings:text-foreground prose-strong:text-foreground prose-p:text-foreground/90 prose-li:text-foreground/90 prose-p:my-1 prose-ul:my-1 prose-ol:my-1">
+                <div className="pr-7 prose prose-sm max-w-none text-foreground/85 prose-headings:text-foreground prose-strong:text-foreground prose-p:text-foreground/85 prose-li:text-foreground/85 prose-p:my-1 prose-ul:my-1 prose-ol:my-1 text-sm leading-relaxed">
                   <ReactMarkdown>{displayResponse}</ReactMarkdown>
                 </div>
               </div>
