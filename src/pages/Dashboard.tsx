@@ -91,13 +91,13 @@ const Dashboard = () => {
 
   return (
     <Layout>
-      <div className="p-6 space-y-5 animate-fade-in">
-        {/* AI Chat Section */}
+      <div className="p-6 space-y-6 animate-fade-in">
+        {/* AI Chat - Hero Section */}
         <DashboardAIChat />
 
-        {/* Critical Alerts - Compact */}
+        {/* Critical Alerts Banner */}
         {!isLoading && stats.overdueTasks > 0 && (
-          <div className="bg-destructive/10 border border-destructive/30 rounded-lg px-4 py-2 flex items-center gap-2">
+          <div className="bg-destructive/10 border border-destructive/30 rounded-xl px-4 py-2.5 flex items-center gap-2.5">
             <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
             <p className="text-sm font-medium text-destructive">
               {stats.overdueTasks} überfällige Aufgabe{stats.overdueTasks > 1 ? 'n' : ''} – bitte umgehend bearbeiten
@@ -106,7 +106,7 @@ const Dashboard = () => {
         )}
         {!isLoading && <MissingAuditorsWarning />}
 
-        {/* Stats Grid - Compact */}
+        {/* Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {isLoading ? (
             <>
@@ -149,20 +149,20 @@ const Dashboard = () => {
           )}
         </div>
 
-        {/* Main Content Grid - More Compact */}
+        {/* Main Content - Prioritized Layout */}
         {!isLoading && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Left Column */}
-            <div className="lg:col-span-2 space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            {/* Left: Expiring Certs + Alerts (most critical info first) */}
+            <div className="lg:col-span-5 space-y-5">
+              <ExpiringCertificationsCard />
+              <DataQualityWarningsCard />
+            </div>
+
+            {/* Right: Tasks + Suggested Audits (actionable items) */}
+            <div className="lg:col-span-7 space-y-5">
               <AlertsCard audits={audits} />
               <UpcomingTasksCard audits={audits} />
               <SuggestedAuditsCard />
-            </div>
-
-            {/* Right Column */}
-            <div className="space-y-4">
-              <ExpiringCertificationsCard />
-              <DataQualityWarningsCard />
             </div>
           </div>
         )}
