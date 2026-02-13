@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Sparkles, Loader2, MessageCircle, X } from 'lucide-react';
+import { Send, Sparkles, Loader2, X, Bot } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -235,71 +235,69 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
       : null);
 
   return (
-    <div className={cn("relative group", className)}>
-      {/* Main container with refined glass effect */}
-      <div className="relative rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/[0.03] via-card to-accent/[0.02] shadow-sm overflow-hidden transition-shadow duration-300 hover:shadow-md">
-        {/* Top accent */}
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+    <div className={cn("relative", className)}>
+      <div className="relative rounded-2xl border border-border/60 bg-card overflow-hidden shadow-sm">
+        {/* Subtle gradient accent bar */}
+        <div className="h-1 bg-gradient-to-r from-primary/60 via-primary to-primary/60" />
 
-        <div className="p-4 sm:p-5">
-          {/* Greeting row */}
-          <div className="flex items-center gap-3 mb-3">
-            <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Sparkles className="h-4 w-4 text-primary" />
+        <div className="px-5 pt-4 pb-5 space-y-4">
+          {/* Greeting with avatar */}
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mt-0.5">
+              <Bot className="h-4 w-4 text-primary" />
             </div>
-            
-            <div className="flex-1 min-h-[1.5rem]">
+            <div className="flex-1 min-h-[1.5rem] pt-1">
               {greeting ? (
                 <p className="text-sm text-foreground/80 leading-relaxed animate-fade-in">
                   {greeting}
                 </p>
               ) : (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <div className="flex gap-1">
-                    <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
-                    <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
-                    <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
-                  </div>
+                <div className="flex items-center gap-1.5 pt-1">
+                  <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
+                  <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
+                  <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
                 </div>
               )}
             </div>
           </div>
 
-          {/* Input row */}
-          <div className="flex gap-2 items-center">
-            <div className="relative flex-1">
-              <MessageCircle className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/40" />
-              <Input
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyPress}
-                placeholder="Frag mich etwas..."
-                className="pl-9 pr-4 h-10 bg-background/70 border-border/50 rounded-xl text-sm focus:bg-background focus:border-primary/40 transition-all placeholder:text-muted-foreground/40"
-                disabled={isLoading}
-              />
+          {/* Centered input area */}
+          <div className="max-w-2xl mx-auto">
+            <div className="relative flex items-center gap-2">
+              <div className="relative flex-1">
+                <Sparkles className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/40" />
+                <Input
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyPress}
+                  placeholder="Stell eine Frage zu deinen Audits, Kunden oder Zertifizierungen..."
+                  className="pl-10 pr-4 h-11 bg-muted/40 border-border/40 rounded-xl text-sm focus:bg-background focus:border-primary/50 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/50"
+                  disabled={isLoading}
+                />
+              </div>
+              <Button 
+                onClick={handleSend} 
+                size="icon"
+                disabled={!input.trim() || isLoading}
+                className="h-11 w-11 rounded-xl shadow-sm transition-all hover:shadow-md active:scale-95 shrink-0"
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </Button>
             </div>
-            <Button 
-              onClick={handleSend} 
-              size="icon"
-              disabled={!input.trim() || isLoading}
-              className="h-10 w-10 rounded-xl shadow-sm transition-all hover:shadow active:scale-95"
-            >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-3.5 w-3.5" />
-              )}
-            </Button>
           </div>
 
           {/* Response Area */}
           {displayResponse && (
-            <div className="mt-3 animate-slide-up">
-              <div className="relative bg-muted/40 rounded-xl p-3.5 border border-border/30">
+            <div className="max-w-2xl mx-auto animate-fade-in">
+              <div className="relative bg-muted/30 rounded-xl p-4 border border-border/30">
                 <button
                   onClick={clearResponse}
-                  className="absolute top-2 right-2 p-1 rounded-md text-muted-foreground/40 hover:text-foreground hover:bg-background/60 transition-colors"
+                  className="absolute top-2.5 right-2.5 p-1 rounded-md text-muted-foreground/40 hover:text-foreground hover:bg-background/80 transition-colors"
                   aria-label="Schließen"
                 >
                   <X className="h-3.5 w-3.5" />
