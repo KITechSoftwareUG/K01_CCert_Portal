@@ -138,9 +138,9 @@ export const DataQualityWarningsCard = () => {
           )}
         </div>
 
-        <ScrollArea className="h-[180px] pr-4">
+        <ScrollArea className="h-[300px] pr-4">
           <div className="space-y-2">
-            {issues.slice(0, 10).map((issue) => (
+            {issues.map((issue) => (
               <div
                 key={issue.id}
                 className={`p-3 rounded-lg border transition-colors cursor-pointer hover:bg-muted/50 ${
@@ -172,11 +172,6 @@ export const DataQualityWarningsCard = () => {
                 </div>
               </div>
             ))}
-            {issues.length > 10 && (
-              <p className="text-xs text-muted-foreground text-center py-2">
-                ... und {issues.length - 10} weitere
-              </p>
-            )}
           </div>
         </ScrollArea>
       </CardContent>

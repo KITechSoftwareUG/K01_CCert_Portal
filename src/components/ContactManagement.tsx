@@ -292,7 +292,7 @@ export const ContactManagement = ({ clientId, isEditing = false }: ContactManage
                       )}
                     </div>
                     {contact.notes && (
-                      <p className="text-sm text-muted-foreground mt-1 truncate">
+                      <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">
                         {contact.notes}
                       </p>
                     )}

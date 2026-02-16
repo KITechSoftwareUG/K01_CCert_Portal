@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -54,6 +55,7 @@ interface CertificationSelection {
 }
 
 export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) => {
+  const navigate = useNavigate();
   const [isCompanyGroup, setIsCompanyGroup] = useState(false);
   const [name, setName] = useState('');
   const [clientNumber, setClientNumber] = useState('0'); // Pre-filled with country prefix
@@ -183,7 +185,7 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
         client_number: isCompanyGroup ? null : clientNumber, // Only clients get numbers
         consultant: consultant || null,
         contact_person: contactPerson || '-', // Optional, default placeholder
-        email: email || `${name.toLowerCase().replace(/\s+/g, '-')}@placeholder.local`, // Optional, with fallback
+        email: email || null, // Optional, allow null
         phone: phone || null,
         address: address || null,
         country: effectiveCountry,
@@ -208,6 +210,8 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
       toast.success(isCompanyGroup ? 'Unternehmensgruppe erfolgreich erstellt' : 'Kunde erfolgreich erstellt');
       onOpenChange(false);
       resetForm();
+      // Navigate to the newly created client
+      navigate(`/clients/${client.id}`);
     } catch (error) {
       console.error('Error creating client:', error);
       toast.error('Fehler beim Erstellen des Kunden');

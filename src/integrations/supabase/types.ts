@@ -473,7 +473,7 @@ export type Database = {
           contact_person: string
           country: string | null
           created_at: string
-          email: string
+          email: string | null
           id: string
           is_active: boolean
           name: string
@@ -492,7 +492,7 @@ export type Database = {
           contact_person: string
           country?: string | null
           created_at?: string
-          email: string
+          email?: string | null
           id?: string
           is_active?: boolean
           name: string
@@ -511,7 +511,7 @@ export type Database = {
           contact_person?: string
           country?: string | null
           created_at?: string
-          email?: string
+          email?: string | null
           id?: string
           is_active?: boolean
           name?: string
