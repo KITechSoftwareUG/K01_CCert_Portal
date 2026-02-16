@@ -67,15 +67,14 @@ import {
 const COUNTRIES = [
   'Deutschland',
   'Österreich',
-  'Schweiz',
-  'Niederlande',
-  'Belgien',
-  'Frankreich',
-  'Polen',
-  'Tschechien',
+  'Rumänien',
   'Italien',
-  'Spanien',
-  'Vereinigtes Königreich',
+  'Ungarn',
+  'Slowenien',
+  'Finnland',
+  'Litauen',
+  'Niederlande',
+  'Schweden',
   'Andere',
 ];
 
@@ -315,7 +314,7 @@ const ClientDetail = () => {
                   </>
                 )}
                 <span className="text-muted-foreground/50">•</span>
-                <span>Kunde seit {format(new Date(client.created_at), 'MM.yyyy', { locale: de })}</span>
+                <span>Angelegt am {format(new Date(client.created_at), 'dd.MM.yyyy', { locale: de })}</span>
               </div>
             </div>
           </div>

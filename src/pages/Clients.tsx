@@ -117,9 +117,24 @@ const Clients = () => {
   const [moveDialogClient, setMoveDialogClient] = useState<DbClient | null>(null);
   const [deleteGroupClient, setDeleteGroupClient] = useState<{ client: DbClient; childCount: number } | null>(null);
   const [renameGroup, setRenameGroup] = useState<{ client: DbClient; newName: string } | null>(null);
-  const [expandedCountries, setExpandedCountries] = useState<Set<string>>(new Set());
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-  const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
+  const [expandedCountries, setExpandedCountries] = useState<Set<string>>(() => {
+    try {
+      const saved = sessionStorage.getItem('clients-expanded-countries');
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch { return new Set(); }
+  });
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
+    try {
+      const saved = sessionStorage.getItem('clients-expanded-groups');
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch { return new Set(); }
+  });
+  const [expandedClients, setExpandedClients] = useState<Set<string>>(() => {
+    try {
+      const saved = sessionStorage.getItem('clients-expanded-clients');
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch { return new Set(); }
+  });
   const [statusFilter, setStatusFilter] = useState<'active' | 'inactive' | 'all'>('active');
   const [auditorFilter, setAuditorFilter] = useState<string>('all');
   
@@ -222,7 +237,7 @@ const Clients = () => {
     if (statusFilter === 'active') {
       result = result.filter(client => client.is_active !== false);
     } else if (statusFilter === 'inactive') {
-      result = result.filter(client => client.is_active === false);
+      result = result.filter(client => client.is_active === false && client.is_active !== null);
     }
     
     // Filter by search query
@@ -375,7 +390,9 @@ const Clients = () => {
   // Initialize expanded countries on first load
   useMemo(() => {
     if (expandedCountries.size === 0 && countryGroups.length > 0) {
-      setExpandedCountries(new Set(countryGroups.map(cg => cg.country)));
+      const allCountries = new Set(countryGroups.map(cg => cg.country));
+      setExpandedCountries(allCountries);
+      sessionStorage.setItem('clients-expanded-countries', JSON.stringify([...allCountries]));
     }
   }, [countryGroups]);
 
@@ -384,6 +401,7 @@ const Clients = () => {
       const next = new Set(prev);
       if (next.has(country)) next.delete(country);
       else next.add(country);
+      sessionStorage.setItem('clients-expanded-countries', JSON.stringify([...next]));
       return next;
     });
   };
@@ -393,6 +411,7 @@ const Clients = () => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
+      sessionStorage.setItem('clients-expanded-groups', JSON.stringify([...next]));
       return next;
     });
   };
@@ -402,6 +421,7 @@ const Clients = () => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
+      sessionStorage.setItem('clients-expanded-clients', JSON.stringify([...next]));
       return next;
     });
   };
@@ -516,7 +536,7 @@ const Clients = () => {
     return (
       <div key={client.id}>
         <div
-          className={`flex items-center justify-between px-4 py-3 hover:bg-muted/50 cursor-pointer border-t border-border/50 ${indent ? 'pl-10 bg-muted/20' : ''} ${!clientIsActive ? 'opacity-60' : ''}`}
+          className={`flex items-center justify-between px-4 py-3 hover:bg-muted/50 cursor-pointer border-t border-border/50 ${indent ? 'pl-10 bg-muted/20' : ''} ${!clientIsActive ? 'opacity-60' : ''} ${isExpanded ? 'bg-primary/5 border-l-4 border-l-primary' : ''}`}
           onClick={() => hasCerts ? toggleClient(client.id) : navigate(`/clients/${client.id}`)}
         >
           <div className="flex items-center gap-3">

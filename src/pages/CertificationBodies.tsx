@@ -145,7 +145,7 @@ const CertificationBodies = () => {
     }
   };
 
-  const FormFields = ({ autoFocusName = false }: { autoFocusName?: boolean }) => (
+  const renderFormFields = (autoFocusName = false) => (
     <div className="grid gap-3 md:grid-cols-2">
       <div className="space-y-1">
         <label className="text-xs font-medium flex items-center gap-1.5">
@@ -153,7 +153,7 @@ const CertificationBodies = () => {
         </label>
         <Input
           value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
           placeholder="z.B. TÜV SÜD"
           className="h-8 text-sm"
           autoFocus={autoFocusName}
@@ -163,7 +163,7 @@ const CertificationBodies = () => {
         <label className="text-xs font-medium">Kurzname</label>
         <Input
           value={formData.short_name}
-          onChange={(e) => setFormData({ ...formData, short_name: e.target.value })}
+          onChange={(e) => setFormData(prev => ({ ...prev, short_name: e.target.value }))}
           placeholder="z.B. TÜV"
           className="h-8 text-sm"
         />
@@ -174,7 +174,7 @@ const CertificationBodies = () => {
         </label>
         <Input
           value={formData.contact_person}
-          onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
+          onChange={(e) => setFormData(prev => ({ ...prev, contact_person: e.target.value }))}
           placeholder="Max Mustermann"
           className="h-8 text-sm"
         />
@@ -186,7 +186,7 @@ const CertificationBodies = () => {
         <Input
           type="email"
           value={formData.email}
-          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+          onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
           placeholder="kontakt@beispiel.de"
           className="h-8 text-sm"
         />
@@ -197,7 +197,7 @@ const CertificationBodies = () => {
         </label>
         <Input
           value={formData.phone}
-          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+          onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
           placeholder="+49 123 456789"
           className="h-8 text-sm"
         />
@@ -208,7 +208,7 @@ const CertificationBodies = () => {
         </label>
         <Input
           value={formData.website}
-          onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+          onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
           placeholder="https://www.beispiel.de"
           className="h-8 text-sm"
         />
@@ -219,7 +219,7 @@ const CertificationBodies = () => {
         </label>
         <Input
           value={formData.address}
-          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+          onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
           placeholder="Musterstraße 1, 12345 Musterstadt"
           className="h-8 text-sm"
         />
@@ -230,7 +230,7 @@ const CertificationBodies = () => {
         </label>
         <Textarea
           value={formData.notes}
-          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+          onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
           placeholder="Weitere Informationen..."
           rows={2}
           className="text-sm"
@@ -272,7 +272,7 @@ const CertificationBodies = () => {
             <CardTitle className="text-base">Neue Zertifizierungsgesellschaft</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 pb-4">
-            <FormFields autoFocusName={true} />
+            {renderFormFields(true)}
             <div className="flex gap-2 pt-1">
               <Button size="sm" onClick={handleSave} disabled={createBody.isPending}>
                 <Check className="h-3 w-3 mr-1" />
@@ -293,7 +293,7 @@ const CertificationBodies = () => {
           <Card key={body.id} className={editingId === body.id ? 'border-primary/50' : ''}>
             {editingId === body.id ? (
               <CardContent className="pt-4 pb-4 space-y-3">
-                <FormFields autoFocusName={true} />
+                {renderFormFields(true)}
                 <div className="flex gap-2 pt-1">
                   <Button size="sm" onClick={handleSave} disabled={updateBody.isPending}>
                     <Check className="h-3 w-3 mr-1" />
