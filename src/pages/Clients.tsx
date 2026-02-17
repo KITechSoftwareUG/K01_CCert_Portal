@@ -610,23 +610,23 @@ const Clients = () => {
 
   return (
     <Layout>
-      <div className="p-8 space-y-6">
+      <div className="p-4 sm:p-8 space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold">Kunden</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-2xl sm:text-3xl font-bold">Kunden</h1>
+            <p className="text-muted-foreground text-sm">
               {countryGroups.reduce((sum, cg) => sum + cg.companyGroups.length, 0)} Unternehmen • {clients.length} Standorte
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setShowImportDialog(true)}>
-              <Upload className="h-4 w-4 mr-2" />
-              Excel-Import
+            <Button variant="outline" size="sm" className="sm:size-default" onClick={() => setShowImportDialog(true)}>
+              <Upload className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Excel-Import</span>
             </Button>
-            <Button onClick={() => setShowNewClientDialog(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Neuer Kunde
+            <Button size="sm" className="sm:size-default" onClick={() => setShowNewClientDialog(true)}>
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Neuer Kunde</span>
             </Button>
           </div>
         </div>
@@ -642,8 +642,8 @@ const Clients = () => {
         )}
 
         {/* Search + View Toggle + Filters */}
-        <div className="flex gap-4 items-center justify-between flex-wrap">
-          <div className="relative max-w-md flex-1 min-w-[200px]">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:items-center sm:justify-between">
+          <div className="relative flex-1 min-w-0 sm:max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Suchen..."
@@ -653,44 +653,40 @@ const Clients = () => {
             />
           </div>
           
-          <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
             {/* Auditor Filter */}
-            <div className="flex items-center gap-2">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <Select value={auditorFilter} onValueChange={setAuditorFilter}>
-                <SelectTrigger className="w-[180px] h-9">
-                  <SelectValue placeholder="Alle Auditoren" />
-                </SelectTrigger>
-                <SelectContent className="bg-background border shadow-lg z-50">
-                  <SelectItem value="all">Alle Auditoren</SelectItem>
-                  <SelectItem value="none">
-                    <span className="flex items-center gap-1.5 text-warning">
-                      <AlertTriangle className="h-3 w-3" />
-                      Ohne Auditor
-                    </span>
+            <Select value={auditorFilter} onValueChange={setAuditorFilter}>
+              <SelectTrigger className="w-[140px] sm:w-[180px] h-9">
+                <User className="h-4 w-4 text-muted-foreground mr-1 sm:mr-2 shrink-0" />
+                <SelectValue placeholder="Alle Auditoren" />
+              </SelectTrigger>
+              <SelectContent className="bg-background border shadow-lg z-50">
+                <SelectItem value="all">Alle Auditoren</SelectItem>
+                <SelectItem value="none">
+                  <span className="flex items-center gap-1.5 text-warning">
+                    <AlertTriangle className="h-3 w-3" />
+                    Ohne Auditor
+                  </span>
+                </SelectItem>
+                {allAuditors.map((auditor) => (
+                  <SelectItem key={auditor.id} value={auditor.id}>
+                    {auditor.name}
                   </SelectItem>
-                  {allAuditors.map((auditor) => (
-                    <SelectItem key={auditor.id} value={auditor.id}>
-                      {auditor.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                ))}
+              </SelectContent>
+            </Select>
 
-            <div className="flex items-center gap-2">
-              <Eye className="h-4 w-4 text-muted-foreground" />
-              <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val as 'active' | 'inactive' | 'all')}>
-                <SelectTrigger className="w-[180px] h-9">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-background border shadow-lg z-50">
-                  <SelectItem value="all">Alle Kunden</SelectItem>
-                  <SelectItem value="active">Nur aktive Kunden</SelectItem>
-                  <SelectItem value="inactive">Nur inaktive Kunden</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val as 'active' | 'inactive' | 'all')}>
+              <SelectTrigger className="w-[140px] sm:w-[180px] h-9">
+                <Eye className="h-4 w-4 text-muted-foreground mr-1 sm:mr-2 shrink-0" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-background border shadow-lg z-50">
+                <SelectItem value="all">Alle Kunden</SelectItem>
+                <SelectItem value="active">Nur aktive</SelectItem>
+                <SelectItem value="inactive">Nur inaktive</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
