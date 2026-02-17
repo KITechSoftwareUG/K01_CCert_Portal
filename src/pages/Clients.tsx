@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
 import { COUNTRY_PREFIXES } from '@/lib/clientNumberUtils';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useNavigate } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 import { Layout } from '@/components/Layout';
 import { NewClientDialog } from '@/components/NewClientDialog';
 import { ExcelImportDialog } from '@/components/ExcelImportDialog';
@@ -111,6 +113,7 @@ interface CertificationRow {
 
 const Clients = () => {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewClientDialog, setShowNewClientDialog] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
@@ -536,42 +539,65 @@ const Clients = () => {
     return (
       <div key={client.id}>
         <div
-          className={`flex items-center justify-between px-4 py-3 hover:bg-muted/50 cursor-pointer border-t border-border/50 ${indent ? 'pl-10 bg-muted/20' : ''} ${!clientIsActive ? 'opacity-60' : ''} ${isExpanded ? 'bg-primary/5 border-l-4 border-l-primary' : ''}`}
+          className={cn(
+            'flex items-start sm:items-center justify-between px-3 sm:px-4 py-3 hover:bg-muted/50 cursor-pointer border-t border-border/50',
+            indent ? 'pl-6 sm:pl-10 bg-muted/20' : '',
+            !clientIsActive ? 'opacity-60' : '',
+            isExpanded ? 'bg-primary/5 border-l-4 border-l-primary' : ''
+          )}
           onClick={() => hasCerts ? toggleClient(client.id) : navigate(`/clients/${client.id}`)}
         >
-          <div className="flex items-center gap-3">
-            {hasCerts ? (
-              isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />
-            ) : (
-              <Building2 className="h-4 w-4 text-muted-foreground" />
-            )}
-            <span className={indent ? '' : 'font-medium'}>{client.name}</span>
-            <ClientNumberBadge clientNumber={client.client_number} />
-            {!clientIsActive && (
-              <Badge variant="destructive" className="text-xs">
-                Inaktiv
-              </Badge>
-            )}
-            {hasCerts && (
-              <Badge variant={legacyCerts.length > 0 && certs.length === 0 ? 'outline' : 'secondary'} className={`text-xs ${legacyCerts.length > 0 && certs.length === 0 ? 'border-warning text-warning' : ''}`}>
-                {certs.length > 0 ? `${certs.length} Zertifikat${certs.length !== 1 ? 'e' : ''}` : `${legacyCerts.length} (Migration)`}
-              </Badge>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              {hasCerts ? (
+                isExpanded ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />
+              ) : (
+                <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+              )}
+              <span className={cn('truncate', indent ? '' : 'font-medium')}>{client.name}</span>
+              <ClientNumberBadge clientNumber={client.client_number} />
+            </div>
+            {/* Mobile: show badges below name */}
+            {isMobile && (
+              <div className="flex items-center gap-2 mt-1 ml-6 flex-wrap">
+                {!clientIsActive && (
+                  <Badge variant="destructive" className="text-xs">Inaktiv</Badge>
+                )}
+                {hasCerts && (
+                  <Badge variant={legacyCerts.length > 0 && certs.length === 0 ? 'outline' : 'secondary'} className={`text-xs ${legacyCerts.length > 0 && certs.length === 0 ? 'border-warning text-warning' : ''}`}>
+                    {certs.length > 0 ? `${certs.length} Zert.` : `${legacyCerts.length} (Migr.)`}
+                  </Badge>
+                )}
+              </div>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <ContactPopover
-              legacyName={client.contact_person}
-              legacyPhone={client.phone}
-              legacyEmail={client.email}
-              contacts={contacts}
-              clientId={client.id}
-            />
+          {/* Desktop: inline badges + actions */}
+          <div className="flex items-center gap-2 shrink-0">
+            {!isMobile && (
+              <>
+                {!clientIsActive && (
+                  <Badge variant="destructive" className="text-xs">Inaktiv</Badge>
+                )}
+                {hasCerts && (
+                  <Badge variant={legacyCerts.length > 0 && certs.length === 0 ? 'outline' : 'secondary'} className={`text-xs ${legacyCerts.length > 0 && certs.length === 0 ? 'border-warning text-warning' : ''}`}>
+                    {certs.length > 0 ? `${certs.length} Zertifikat${certs.length !== 1 ? 'e' : ''}` : `${legacyCerts.length} (Migration)`}
+                  </Badge>
+                )}
+                <ContactPopover
+                  legacyName={client.contact_person}
+                  legacyPhone={client.phone}
+                  legacyEmail={client.email}
+                  contacts={contacts}
+                  clientId={client.id}
+                />
+              </>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-8 w-8"
+                  className="h-7 w-7 sm:h-8 sm:w-8"
                   title="Aktionen"
                   aria-label="Aktionen"
                   onClick={(e) => e.stopPropagation()}
@@ -710,19 +736,19 @@ const Clients = () => {
                 <div key={countryGroup.country} className="border rounded-lg overflow-hidden">
                   {/* Country Header */}
                   <div
-                    className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-muted/50 bg-primary/5"
+                    className="flex items-center justify-between px-3 sm:px-4 py-3 cursor-pointer hover:bg-muted/50 bg-primary/5"
                     onClick={() => toggleCountry(countryGroup.country)}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3">
                       {isCountryExpanded ? (
-                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                        <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
                       ) : (
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                       )}
-                      <Globe className="h-4 w-4 text-primary" />
-                      <span className="font-bold text-lg">{countryGroup.country}</span>
+                      <Globe className="h-4 w-4 text-primary shrink-0" />
+                      <span className="font-bold text-base sm:text-lg">{countryGroup.country}</span>
                       <Badge variant="outline" className="text-xs">
-                        {totalCompanies} Unternehmen
+                        {totalCompanies}
                       </Badge>
                     </div>
                   </div>
@@ -742,44 +768,62 @@ const Clients = () => {
                           <div key={group.id}>
                             {/* Group Header */}
                             <div
-                              className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-muted/50 bg-card pl-8"
+                              className="flex items-start sm:items-center justify-between px-3 sm:px-4 py-3 cursor-pointer hover:bg-muted/50 bg-card pl-5 sm:pl-8"
                               onClick={() => toggleGroup(group.id)}
                             >
-                              <div className="flex items-center gap-3">
-                                {isExpanded ? (
-                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                ) : (
-                                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                                )}
-                                {isMultiClient ? (
-                                  <FolderTree className="h-4 w-4 text-primary" />
-                                ) : (
-                                  <Building2 className="h-4 w-4 text-muted-foreground" />
-                                )}
-                                <span className="font-semibold">{group.name}</span>
-                                {isMultiClient ? (
-                                  <>
-                                    <Badge variant="outline" className="text-xs">
-                                      Gruppe
-                                    </Badge>
-                                    {/* Show child client numbers in group row */}
-                                    <GroupClientNumbers 
-                                      clientNumbers={group.children.map(c => c.client.client_number)} 
-                                    />
-                                  </>
-                                ) : (
-                                  <ClientNumberBadge clientNumber={headerClient.client_number} />
-                                )}
-                                {totalCerts > 0 && (
-                                  <Badge variant="secondary" className="text-xs">
-                                    {totalCerts} Zertifikat{totalCerts !== 1 ? 'e' : ''}
-                                  </Badge>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  {isExpanded ? (
+                                    <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                                  ) : (
+                                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                                  )}
+                                  {isMultiClient ? (
+                                    <FolderTree className="h-4 w-4 text-primary shrink-0" />
+                                  ) : (
+                                    <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                                  )}
+                                  <span className="font-semibold truncate">{group.name}</span>
+                                  {!isMobile && (
+                                    <>
+                                      {isMultiClient ? (
+                                        <>
+                                          <Badge variant="outline" className="text-xs">Gruppe</Badge>
+                                          <GroupClientNumbers 
+                                            clientNumbers={group.children.map(c => c.client.client_number)} 
+                                          />
+                                        </>
+                                      ) : (
+                                        <ClientNumberBadge clientNumber={headerClient.client_number} />
+                                      )}
+                                      {totalCerts > 0 && (
+                                        <Badge variant="secondary" className="text-xs">
+                                          {totalCerts} Zertifikat{totalCerts !== 1 ? 'e' : ''}
+                                        </Badge>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
+                                {isMobile && (
+                                  <div className="flex items-center gap-2 mt-1 ml-6 flex-wrap">
+                                    {isMultiClient && (
+                                      <Badge variant="outline" className="text-xs">Gruppe</Badge>
+                                    )}
+                                    {!isMultiClient && (
+                                      <ClientNumberBadge clientNumber={headerClient.client_number} />
+                                    )}
+                                    {totalCerts > 0 && (
+                                      <Badge variant="secondary" className="text-xs">
+                                        {totalCerts} Zert.
+                                      </Badge>
+                                    )}
+                                  </div>
                                 )}
                               </div>
 
                               {/* Actions on the right */}
-                              <div className="flex items-center gap-2">
-                                {!isMultiClient && (
+                              <div className="flex items-center gap-2 shrink-0">
+                                {!isMultiClient && !isMobile && (
                                   <ContactPopover
                                     legacyName={headerClient.contact_person}
                                     legacyPhone={headerClient.phone}
@@ -793,7 +837,7 @@ const Clients = () => {
                                     <Button
                                       variant="outline"
                                       size="icon"
-                                      className="h-8 w-8"
+                                      className="h-7 w-7 sm:h-8 sm:w-8"
                                       title="Aktionen"
                                       aria-label="Aktionen"
                                       onClick={(e) => e.stopPropagation()}
@@ -854,7 +898,7 @@ const Clients = () => {
                             {isExpanded && (
                               <div className="bg-muted/20">
                                 {group.children.length === 0 ? (
-                                  <div className="py-2 text-sm text-muted-foreground italic pl-14 border-t border-border/30">
+                                  <div className="py-2 text-sm text-muted-foreground italic pl-8 sm:pl-14 border-t border-border/30">
                                     Noch keine Standorte in dieser Unternehmensgruppe.
                                   </div>
                                 ) : (
@@ -866,45 +910,64 @@ const Clients = () => {
                                     
                                     return (
                                       <div key={client.id}>
-                                        {/* Client Row - always show for multi-client groups, clickable to expand certifications */}
+                                        {/* Client Row */}
                                         {isMultiClient ? (
                                           <div
-                                            className={`flex items-center justify-between px-4 py-2 pl-14 bg-muted/30 border-t border-border/50 cursor-pointer hover:bg-muted/50 ${!clientIsActive ? 'opacity-60' : ''}`}
+                                            className={cn(
+                                              'flex items-start sm:items-center justify-between px-3 sm:px-4 py-2 pl-8 sm:pl-14 bg-muted/30 border-t border-border/50 cursor-pointer hover:bg-muted/50',
+                                              !clientIsActive ? 'opacity-60' : ''
+                                            )}
                                             onClick={() => certifications.length > 0 ? toggleClient(client.id) : navigate(`/clients/${client.id}`)}
                                           >
-                                            <div className="flex items-center gap-3">
-                                              {certifications.length > 0 ? (
-                                                isClientExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />
-                                              ) : (
-                                                <Building2 className="h-4 w-4 text-muted-foreground" />
-                                              )}
-                                              <span className="font-medium">{client.name}</span>
-                                              <ClientNumberBadge clientNumber={client.client_number} />
-                                              {!clientIsActive && (
-                                                <Badge variant="destructive" className="text-xs">
-                                                  Inaktiv
-                                                </Badge>
-                                              )}
-                                              {certifications.length > 0 && (
-                                                <Badge variant="secondary" className="text-xs">
-                                                  {certifications.length} Zertifikat{certifications.length !== 1 ? 'e' : ''}
-                                                </Badge>
+                                            <div className="flex-1 min-w-0">
+                                              <div className="flex items-center gap-2">
+                                                {certifications.length > 0 ? (
+                                                  isClientExpanded ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />
+                                                ) : (
+                                                  <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                )}
+                                                <span className="font-medium truncate">{client.name}</span>
+                                                <ClientNumberBadge clientNumber={client.client_number} />
+                                              </div>
+                                              {isMobile && (
+                                                <div className="flex items-center gap-2 mt-1 ml-6 flex-wrap">
+                                                  {!clientIsActive && (
+                                                    <Badge variant="destructive" className="text-xs">Inaktiv</Badge>
+                                                  )}
+                                                  {certifications.length > 0 && (
+                                                    <Badge variant="secondary" className="text-xs">
+                                                      {certifications.length} Zert.
+                                                    </Badge>
+                                                  )}
+                                                </div>
                                               )}
                                             </div>
-                                            <div className="flex items-center gap-2">
-                                              <ContactPopover
-                                                legacyName={client.contact_person}
-                                                legacyPhone={client.phone}
-                                                legacyEmail={client.email}
-                                                contacts={contacts}
-                                                clientId={client.id}
-                                              />
+                                            <div className="flex items-center gap-2 shrink-0">
+                                              {!isMobile && (
+                                                <>
+                                                  {!clientIsActive && (
+                                                    <Badge variant="destructive" className="text-xs">Inaktiv</Badge>
+                                                  )}
+                                                  {certifications.length > 0 && (
+                                                    <Badge variant="secondary" className="text-xs">
+                                                      {certifications.length} Zertifikat{certifications.length !== 1 ? 'e' : ''}
+                                                    </Badge>
+                                                  )}
+                                                  <ContactPopover
+                                                    legacyName={client.contact_person}
+                                                    legacyPhone={client.phone}
+                                                    legacyEmail={client.email}
+                                                    contacts={contacts}
+                                                    clientId={client.id}
+                                                  />
+                                                </>
+                                              )}
                                               <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
                                                   <Button
                                                     variant="outline"
                                                     size="icon"
-                                                    className="h-8 w-8"
+                                                    className="h-7 w-7 sm:h-8 sm:w-8"
                                                     title="Aktionen"
                                                     aria-label="Aktionen"
                                                     onClick={(e) => e.stopPropagation()}
@@ -934,7 +997,7 @@ const Clients = () => {
                                           </div>
                                         ) : null}
                                         
-                                        {/* Certification Rows - only show when client is expanded (for multi) or always (for single) */}
+                                        {/* Certification Rows */}
                                         {(!isMultiClient || isClientExpanded) && (
                                           <>
                                             {certifications.length > 0 ? (
@@ -944,55 +1007,60 @@ const Clients = () => {
                                                 return (
                                                   <div
                                                     key={`${row.clientId}-${idx}`}
-                                                    className={`flex items-center justify-between gap-4 px-4 py-2 text-sm border-t border-border/30 hover:bg-muted/40 cursor-pointer ${isMultiClient ? 'pl-20' : 'pl-14'}`}
+                                                    className={cn(
+                                                      'flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-4 px-3 sm:px-4 py-2 text-sm border-t border-border/30 hover:bg-muted/40 cursor-pointer',
+                                                      isMultiClient ? 'pl-10 sm:pl-20' : 'pl-8 sm:pl-14'
+                                                    )}
                                                     onClick={() => navigate(`/certifications/${row.primaryCertificationId}`)}
                                                   >
-                                                    <div className="flex items-center gap-4">
-                                                      <div className="flex items-center gap-2">
-                                                        {row.certifications.map((cert) => (
-                                                          <Badge key={cert.certificationId} variant="secondary" className="gap-1">
-                                                            <Award className="h-3 w-3" />
-                                                            {cert.certificationName}
-                                                          </Badge>
-                                                        ))}
-                                                      </div>
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                      {row.certifications.map((cert) => (
+                                                        <Badge key={cert.certificationId} variant="secondary" className="gap-1 text-xs">
+                                                          <Award className="h-3 w-3" />
+                                                          {cert.certificationName}
+                                                        </Badge>
+                                                      ))}
                                                       {row.certifications[0]?.certificateNumber && (
-                                                        <span className="text-muted-foreground">
+                                                        <span className="text-muted-foreground text-xs">
                                                           Nr. {row.certifications[0].certificateNumber}
                                                         </span>
                                                       )}
                                                       {row.earliestValidUntil && (
-                                                        <span className="text-muted-foreground">
+                                                        <span className="text-muted-foreground text-xs">
                                                           bis {new Date(row.earliestValidUntil).toLocaleDateString('de-DE')}
                                                         </span>
                                                       )}
                                                       {row.certifications.some(c => c.status && c.status !== 'active') && (
-                                                        <Badge variant={row.certifications.some(c => c.status === 'expired') ? 'destructive' : 'outline'}>
+                                                        <Badge variant={row.certifications.some(c => c.status === 'expired') ? 'destructive' : 'outline'} className="text-xs">
                                                           {row.certifications.find(c => c.status !== 'active')?.status}
                                                         </Badge>
                                                       )}
                                                     </div>
-                                                    {/* Auditor on the right side - show warning if missing */}
-                                                    {auditorInfo ? (
-                                                      <AuditorPopover 
-                                                        auditor={{
-                                                          id: auditorInfo.auditorId,
-                                                          name: auditorInfo.auditorName,
-                                                          email: auditorInfo.auditorEmail,
-                                                          phone: auditorInfo.auditorPhone,
-                                                        }}
-                                                      />
-                                                    ) : (
-                                                      <div className="flex items-center gap-1.5 text-warning">
-                                                        <AlertTriangle className="h-4 w-4" />
-                                                        <span className="text-xs font-medium">Kein Auditor</span>
-                                                      </div>
-                                                    )}
+                                                    <div className="shrink-0">
+                                                      {auditorInfo ? (
+                                                        <AuditorPopover 
+                                                          auditor={{
+                                                            id: auditorInfo.auditorId,
+                                                            name: auditorInfo.auditorName,
+                                                            email: auditorInfo.auditorEmail,
+                                                            phone: auditorInfo.auditorPhone,
+                                                          }}
+                                                        />
+                                                      ) : (
+                                                        <div className="flex items-center gap-1.5 text-warning">
+                                                          <AlertTriangle className="h-3.5 w-3.5" />
+                                                          <span className="text-xs font-medium">Kein Auditor</span>
+                                                        </div>
+                                                      )}
+                                                    </div>
                                                   </div>
                                                 );
                                               })
                                             ) : (
-                                              <div className={`py-2 text-sm text-muted-foreground italic ${isMultiClient ? 'pl-20' : 'pl-14'} border-t border-border/30`}>
+                                              <div className={cn(
+                                                'py-2 text-sm text-muted-foreground italic border-t border-border/30',
+                                                isMultiClient ? 'pl-10 sm:pl-20' : 'pl-8 sm:pl-14'
+                                              )}>
                                                 Keine Zertifizierungen
                                               </div>
                                             )}
