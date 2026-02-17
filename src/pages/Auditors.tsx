@@ -147,21 +147,21 @@ const Auditors = () => {
 
   return (
     <Layout>
-      <div className="p-8 space-y-6">
+      <div className="p-4 sm:p-8 space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold">Auditoren</h1>
-            <p className="text-muted-foreground">{auditors.length} Einträge</p>
+            <h1 className="text-2xl sm:text-3xl font-bold">Auditoren</h1>
+            <p className="text-muted-foreground text-sm">{auditors.length} Einträge</p>
           </div>
-          <Button onClick={openCreateDialog}>
-            <Plus className="h-4 w-4 mr-2" />
-            Neuer Auditor
+          <Button size="sm" className="sm:size-default" onClick={openCreateDialog}>
+            <Plus className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Neuer Auditor</span>
           </Button>
         </div>
 
         {/* Search */}
-        <div className="relative max-w-md">
+        <div className="relative sm:max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Suchen..."

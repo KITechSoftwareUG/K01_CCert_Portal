@@ -642,16 +642,16 @@ export default function AuditTemplates() {
 
   return (
     <Layout>
-      <div className="p-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Audit-Vorlagen</h1>
+      <div className="p-4 sm:p-8">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Audit-Vorlagen</h1>
           <p className="text-muted-foreground mt-1">
             Definieren Sie Aufgaben-Vorlagen für verschiedene Audit-Typen pro Zertifizierung
           </p>
         </div>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 space-y-0 pb-4">
             <div>
               <CardTitle className="flex items-center gap-2">
                 <ListChecks className="h-5 w-5" />
@@ -661,9 +661,9 @@ export default function AuditTemplates() {
                 Automatische Task-Generierung bei Audit-Erstellung
               </CardDescription>
             </div>
-            <Button onClick={() => setIsCreateDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Neue Vorlage
+            <Button size="sm" className="sm:size-default self-start sm:self-auto" onClick={() => setIsCreateDialogOpen(true)}>
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Neue Vorlage</span>
             </Button>
           </CardHeader>
           <CardContent>

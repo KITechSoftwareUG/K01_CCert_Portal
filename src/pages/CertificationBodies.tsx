@@ -251,10 +251,10 @@ const CertificationBodies = () => {
 
   return (
     <Layout>
-      <div className="p-8 space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="p-4 sm:p-8 space-y-4">
+      <div className="flex justify-between items-center gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Zertifizierungsgesellschaften</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Zertifizierungsgesellschaften</h1>
           <p className="text-sm text-muted-foreground">Verwalten Sie Ihre Zertifizierungspartner</p>
         </div>
         {!isAdding && !editingId && (

@@ -237,40 +237,37 @@ const Calendar = () => {
 
   return (
     <Layout>
-      <div className="p-8 space-y-8 animate-fade-in">
+      <div className="p-4 sm:p-8 space-y-4 sm:space-y-8 animate-fade-in">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Kalender</h1>
-            <p className="text-muted-foreground">Übersicht aller geplanten Audits, Zertifikatsabläufe und Erinnerungen</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-1 sm:mb-2">Kalender</h1>
+            <p className="text-sm text-muted-foreground">Übersicht aller geplanten Audits und Zertifikatsabläufe</p>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" onClick={goToPreviousMonth}>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+            <div className="flex items-center gap-1 sm:gap-2">
+              <Button variant="outline" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={goToPreviousMonth}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <Button variant="outline" onClick={goToToday} className="px-3">
+              <Button variant="outline" onClick={goToToday} className="px-2 sm:px-3 h-8 sm:h-9 text-sm">
                 Heute
               </Button>
-              <Button variant="outline" size="icon" onClick={goToNextMonth}>
+              <Button variant="outline" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={goToNextMonth}>
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
-            <div className="flex items-center gap-2">
-              <CalendarIcon className="h-5 w-5 text-muted-foreground" />
-              <span className="text-lg font-medium text-foreground min-w-[140px]">
-                {format(currentDate, 'MMMM yyyy', { locale: de })}
-              </span>
-            </div>
-            <Button onClick={handleExportAll} disabled={audits.length === 0}>
-              <Download className="h-4 w-4 mr-2" />
-              Alle zu Outlook exportieren
+            <span className="text-sm sm:text-lg font-medium text-foreground">
+              {format(currentDate, 'MMMM yyyy', { locale: de })}
+            </span>
+            <Button size="sm" className="ml-auto" onClick={handleExportAll} disabled={audits.length === 0}>
+              <Download className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Alle exportieren</span>
             </Button>
           </div>
         </div>
 
         {/* Legend */}
-        <div className="flex items-center gap-6 text-sm">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-sm">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-primary" />
             <span className="text-muted-foreground">Audit</span>
@@ -290,7 +287,7 @@ const Calendar = () => {
             <p className="text-destructive">Fehler beim Laden der Daten</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
             {/* Calendar Grid */}
             {isLoading ? (
               <CalendarSkeleton />

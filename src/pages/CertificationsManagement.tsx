@@ -140,9 +140,9 @@ export default function CertificationsManagement() {
 
   return (
     <Layout>
-      <div className="p-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Zertifizierungen</h1>
+      <div className="p-4 sm:p-8">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Zertifizierungen</h1>
           <p className="text-muted-foreground mt-1">
             Verwalten Sie die verfügbaren Zertifizierungsstandards
           </p>

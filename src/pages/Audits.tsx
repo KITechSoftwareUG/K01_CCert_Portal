@@ -209,24 +209,24 @@ const Audits = () => {
 
   return (
     <Layout>
-      <div className="p-6 space-y-6 animate-fade-in">
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 animate-fade-in">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-foreground mb-1">Audits</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground mb-1">Audits</h1>
             <p className="text-sm text-muted-foreground">
               {filteredAudits.length} Audit{filteredAudits.length !== 1 ? 's' : ''} gefunden
             </p>
           </div>
-          <Button className="gap-2" onClick={() => setShowNewAuditDialog(true)}>
+          <Button className="gap-2 self-start sm:self-auto" onClick={() => setShowNewAuditDialog(true)}>
             <Plus className="h-4 w-4" />
             Neues Audit
           </Button>
         </div>
 
         {/* Filters Row */}
-        <div className="flex flex-wrap gap-3 items-center">
-          <div className="relative flex-1 min-w-[200px] max-w-md">
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+          <div className="relative flex-1 min-w-0 sm:max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Kunde suchen..."
@@ -237,7 +237,7 @@ const Audits = () => {
           </div>
           
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Gruppieren:</span>
+            <span className="text-sm text-muted-foreground hidden sm:inline">Gruppieren:</span>
             <Select value={groupBy} onValueChange={(v) => setGroupBy(v as GroupBy)}>
               <SelectTrigger className="w-[160px]">
                 <SelectValue />

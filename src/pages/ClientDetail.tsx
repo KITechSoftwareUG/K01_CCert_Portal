@@ -275,41 +275,41 @@ const ClientDetail = () => {
 
   return (
     <Layout>
-      <div className="p-8 space-y-6 animate-fade-in">
+      <div className="p-4 sm:p-8 space-y-4 sm:space-y-6 animate-fade-in">
         {/* Header */}
-        <div className="flex items-center gap-4">
-          <Button 
-            variant="outline" 
-            size="icon"
-            onClick={() => navigate('/clients')}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div className="flex items-center gap-3 flex-1">
-            <div className="p-2 bg-primary/10 rounded-lg">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <Button 
+              variant="outline" 
+              size="icon"
+              className="shrink-0"
+              onClick={() => navigate('/clients')}
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div className="hidden sm:block p-2 bg-primary/10 rounded-lg shrink-0">
               <Building2 className="h-8 w-8 text-primary" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
                 {client.client_number && (
-                  <Badge variant="outline" className="font-mono text-sm">
+                  <Badge variant="outline" className="font-mono text-xs sm:text-sm">
                     KD-Nr. {client.client_number}
                   </Badge>
                 )}
-                <h1 className="text-3xl font-bold text-foreground">{client.name}</h1>
+                <h1 className="text-xl sm:text-3xl font-bold text-foreground truncate">{client.name}</h1>
                 {(client as any).is_active === false && (
-                  <Badge variant="destructive" className="text-sm">
+                  <Badge variant="destructive" className="text-xs sm:text-sm">
                     Inaktiv
                   </Badge>
                 )}
               </div>
-              <div className="flex items-center gap-2 text-muted-foreground mt-1">
-                <Globe className="h-4 w-4" />
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground mt-1 text-xs sm:text-sm">
+                <Globe className="h-3.5 w-3.5" />
                 <span>{client.country || 'Nicht zugeordnet'}</span>
                 {client.consultant && (
                   <>
                     <span className="text-muted-foreground/50">•</span>
-                    <UserCheck className="h-4 w-4" />
                     <span>Berater: {client.consultant}</span>
                   </>
                 )}
@@ -318,23 +318,25 @@ const ClientDetail = () => {
               </div>
             </div>
           </div>
-          {!isEditing ? (
-            <Button onClick={() => setIsEditing(true)} className="gap-2">
-              <Pencil className="h-4 w-4" />
-              Bearbeiten
-            </Button>
-          ) : (
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={handleCancel} className="gap-2">
-                <X className="h-4 w-4" />
-                Abbrechen
+          <div className="flex gap-2 self-start sm:self-auto shrink-0">
+            {!isEditing ? (
+              <Button size="sm" className="sm:size-default gap-2" onClick={() => setIsEditing(true)}>
+                <Pencil className="h-4 w-4" />
+                <span className="hidden sm:inline">Bearbeiten</span>
               </Button>
-              <Button onClick={handleSave} disabled={updateClient.isPending} className="gap-2">
-                <Save className="h-4 w-4" />
-                {updateClient.isPending ? 'Speichert...' : 'Speichern'}
-              </Button>
-            </div>
-          )}
+            ) : (
+              <>
+                <Button variant="outline" size="sm" className="sm:size-default gap-2" onClick={handleCancel}>
+                  <X className="h-4 w-4" />
+                  <span className="hidden sm:inline">Abbrechen</span>
+                </Button>
+                <Button size="sm" className="sm:size-default gap-2" onClick={handleSave} disabled={updateClient.isPending}>
+                  <Save className="h-4 w-4" />
+                  <span className="hidden sm:inline">{updateClient.isPending ? 'Speichert...' : 'Speichern'}</span>
+                </Button>
+              </>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
