@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Layout } from '@/components/Layout';
 import { NewClientDialog } from '@/components/NewClientDialog';
-import { ExcelImportDialog } from '@/components/ExcelImportDialog';
+
 import { MoveClientDialog } from '@/components/MoveClientDialog';
 import { useClients, useDeleteClient, useUpdateClient, DbClient } from '@/hooks/useClients';
 import { supabase } from '@/integrations/supabase/client';
@@ -37,7 +37,7 @@ import {
   FolderTree, 
   Award,
   Building2,
-  Upload,
+  
   Eye,
   
   AlertTriangle,
@@ -116,7 +116,7 @@ const Clients = () => {
   const isMobile = useIsMobile();
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewClientDialog, setShowNewClientDialog] = useState(false);
-  const [showImportDialog, setShowImportDialog] = useState(false);
+  
   const [moveDialogClient, setMoveDialogClient] = useState<DbClient | null>(null);
   const [deleteGroupClient, setDeleteGroupClient] = useState<{ client: DbClient; childCount: number } | null>(null);
   const [renameGroup, setRenameGroup] = useState<{ client: DbClient; newName: string } | null>(null);
@@ -646,10 +646,6 @@ const Clients = () => {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="sm:size-default" onClick={() => setShowImportDialog(true)}>
-              <Upload className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Excel-Import</span>
-            </Button>
             <Button size="sm" className="sm:size-default" onClick={() => setShowNewClientDialog(true)}>
               <Plus className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Neuer Kunde</span>
@@ -658,7 +654,7 @@ const Clients = () => {
         </div>
 
         <NewClientDialog open={showNewClientDialog} onOpenChange={setShowNewClientDialog} />
-        <ExcelImportDialog open={showImportDialog} onOpenChange={setShowImportDialog} />
+        
         {moveDialogClient && (
           <MoveClientDialog 
             open={!!moveDialogClient} 
