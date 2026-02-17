@@ -339,9 +339,9 @@ const ClientDetail = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4 sm:space-y-6">
             {/* Contact Info Card */}
             <Card>
               <CardHeader>
@@ -607,19 +607,19 @@ const ClientDetail = () => {
                       <div 
                         key={cc.id}
                         onClick={() => navigate(`/certifications/${cc.id}`)}
-                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-primary/10 cursor-pointer transition-colors group"
+                        className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-primary/10 cursor-pointer transition-colors group gap-1"
                       >
-                        <div className="flex items-center gap-3">
-                          <Badge variant="secondary" className="text-sm px-3 py-1">
+                        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                          <Badge variant="secondary" className="text-xs sm:text-sm px-2 sm:px-3 py-1">
                             {cc.certifications?.name || 'Unbekannt'}
                           </Badge>
                           {cc.valid_until && (
                             <span className="text-xs text-muted-foreground">
-                              gültig bis {format(new Date(cc.valid_until), 'dd.MM.yyyy', { locale: de })}
+                              bis {format(new Date(cc.valid_until), 'dd.MM.yyyy', { locale: de })}
                             </span>
                           )}
                         </div>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                        <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0 hidden sm:block" />
                       </div>
                     ))}
                   </div>
@@ -638,7 +638,7 @@ const ClientDetail = () => {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {/* Info Card */}
             <Card>
               <CardHeader>
