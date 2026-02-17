@@ -163,7 +163,7 @@ export const ExpiringCertificationsCard = () => {
               {expiringCertifications.map((cert) => (
                 <div
                   key={cert.id}
-                  className={`group/item flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-all hover:bg-muted/60 ${
+                  className={`group/item flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 p-2.5 rounded-lg cursor-pointer transition-all hover:bg-muted/60 ${
                     cert.status === 'expired' 
                       ? 'bg-destructive/[0.04]' 
                       : cert.status === 'critical'
