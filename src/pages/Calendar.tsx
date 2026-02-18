@@ -2,13 +2,12 @@ import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { useAudits, AuditWithClient } from '@/hooks/useAudits';
-import { useAllClientCertifications } from '@/hooks/useClientCertifications';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Calendar as CalendarIcon, Clock, Download, Award, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, addDays, differenceInDays, addMonths, subMonths } from 'date-fns';
+import { Clock, Download, ChevronLeft, ChevronRight } from 'lucide-react';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, addMonths, subMonths, isAfter, isBefore } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { exportAllAuditsToCalendar } from '@/lib/calendarExport';
@@ -16,7 +15,6 @@ import { toast } from '@/hooks/use-toast';
 import { OutlookIntegration } from '@/components/OutlookIntegration';
 import { Audit } from '@/types/audit';
 
-// Transform database audit to local Audit type
 const transformAuditToLocal = (dbAudit: AuditWithClient): Audit => ({
   id: dbAudit.id,
   clientId: dbAudit.client_id,
@@ -29,18 +27,6 @@ const transformAuditToLocal = (dbAudit: AuditWithClient): Audit => ({
   notes: dbAudit.notes || undefined,
   createdAt: new Date(dbAudit.created_at),
 });
-
-// Calendar event types
-interface CalendarEvent {
-  id: string;
-  title: string;
-  date: Date;
-  type: 'audit' | 'certification-expiry' | 'certification-reminder';
-  isAllDay: boolean;
-  variant: 'default' | 'warning' | 'danger';
-  certificationId?: string;
-  clientName?: string;
-}
 
 const CalendarSkeleton = () => (
   <Card className="lg:col-span-2">
@@ -72,106 +58,20 @@ const Calendar = () => {
   const goToToday = useCallback(() => {
     setCurrentDate(new Date());
   }, []);
-  const { data: dbAudits = [], isLoading: auditsLoading, error: auditsError } = useAudits();
-  const { data: clientCertifications = [], isLoading: certsLoading } = useAllClientCertifications();
 
-  const isLoading = auditsLoading || certsLoading;
-  const error = auditsError;
+  const { data: dbAudits = [], isLoading, error } = useAudits();
 
   const audits = useMemo(() => 
     dbAudits.map(audit => transformAuditToLocal(audit)),
     [dbAudits]
   );
 
-  // Generate certification expiry events and reminders
-  const certificationEvents = useMemo(() => {
-    const events: CalendarEvent[] = [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    clientCertifications.forEach((cert: any) => {
-      if (!cert.valid_until) return;
-
-      const expiryDate = new Date(cert.valid_until);
-      expiryDate.setHours(0, 0, 0, 0);
-      
-      const certName = cert.certifications?.name || 'Zertifikat';
-      const clientName = cert.clients?.name || 'Unbekannt';
-      const daysUntilExpiry = differenceInDays(expiryDate, today);
-
-      // Only show events for next 90 days and past 30 days
-      if (daysUntilExpiry < -30 || daysUntilExpiry > 90) return;
-
-      // Expiry date event (blocker)
-      events.push({
-        id: `expiry-${cert.id}`,
-        title: `⚠️ ${certName} läuft ab - ${clientName}`,
-        date: expiryDate,
-        type: 'certification-expiry',
-        isAllDay: true,
-        variant: daysUntilExpiry <= 0 ? 'danger' : daysUntilExpiry <= 14 ? 'warning' : 'default',
-        certificationId: cert.id,
-        clientName,
-      });
-
-      // 30 days reminder
-      const reminder30 = addDays(expiryDate, -30);
-      if (differenceInDays(reminder30, today) >= 0 && differenceInDays(reminder30, today) <= 90) {
-        events.push({
-          id: `reminder-30-${cert.id}`,
-          title: `📅 30 Tage: ${certName} - ${clientName}`,
-          date: reminder30,
-          type: 'certification-reminder',
-          isAllDay: true,
-          variant: 'default',
-          certificationId: cert.id,
-          clientName,
-        });
-      }
-
-      // 14 days reminder
-      const reminder14 = addDays(expiryDate, -14);
-      if (differenceInDays(reminder14, today) >= 0 && differenceInDays(reminder14, today) <= 90) {
-        events.push({
-          id: `reminder-14-${cert.id}`,
-          title: `⏰ 14 Tage: ${certName} - ${clientName}`,
-          date: reminder14,
-          type: 'certification-reminder',
-          isAllDay: true,
-          variant: 'warning',
-          certificationId: cert.id,
-          clientName,
-        });
-      }
-
-      // 7 days reminder
-      const reminder7 = addDays(expiryDate, -7);
-      if (differenceInDays(reminder7, today) >= 0 && differenceInDays(reminder7, today) <= 90) {
-        events.push({
-          id: `reminder-7-${cert.id}`,
-          title: `🚨 7 Tage: ${certName} - ${clientName}`,
-          date: reminder7,
-          type: 'certification-reminder',
-          isAllDay: true,
-          variant: 'danger',
-          certificationId: cert.id,
-          clientName,
-        });
-      }
-    });
-
-    return events;
-  }, [clientCertifications]);
-  
-  const { daysInMonth, monthStart, startDayOffset } = useMemo(() => {
+  const { daysInMonth, startDayOffset } = useMemo(() => {
     const start = startOfMonth(currentDate);
     const end = endOfMonth(currentDate);
-    // getDay() returns 0 for Sunday, we need Monday = 0
-    // So: Monday=0, Tuesday=1, ... Sunday=6
     const dayOfWeek = start.getDay();
     const offset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
     return {
-      monthStart: start,
       daysInMonth: eachDayOfInterval({ start, end }),
       startDayOffset: offset,
     };
@@ -181,22 +81,24 @@ const Calendar = () => {
     return audits.filter(audit => isSameDay(audit.scheduledDate, day));
   }, [audits]);
 
-  const getCertEventsForDay = useCallback((day: Date) => {
-    return certificationEvents.filter(event => isSameDay(event.date, day));
-  }, [certificationEvents]);
-
   const handleExportAll = useCallback(() => {
     exportAllAuditsToCalendar(audits);
     toast({
       title: "Alle Audits exportiert",
-      description: "ICS-Datei wurde heruntergeladen. Öffnen Sie diese, um alle Termine in Outlook zu importieren.",
+      description: "ICS-Datei wurde heruntergeladen.",
     });
   }, [audits]);
 
-  const activeAudits = useMemo(
-    () => audits.filter(a => a.status === 'scheduled' || a.status === 'in-progress'),
-    [audits]
-  );
+  // Active audits within the next 12 months for Outlook sync
+  const activeAudits = useMemo(() => {
+    const now = new Date();
+    const in12Months = addMonths(now, 12);
+    return audits.filter(a =>
+      (a.status === 'scheduled' || a.status === 'in-progress') &&
+      isAfter(a.scheduledDate, now) &&
+      isBefore(a.scheduledDate, in12Months)
+    );
+  }, [audits]);
 
   const upcomingAudits = useMemo(
     () => activeAudits
@@ -205,9 +107,9 @@ const Calendar = () => {
     [activeAudits]
   );
 
-  // Prepare all events for Outlook sync (audits + certification events)
+  // Outlook events: only audits, next 12 months
   const outlookEvents = useMemo(() => {
-    const auditEvents = activeAudits.map(audit => ({
+    return activeAudits.map(audit => ({
       id: audit.id,
       clientName: audit.clientName,
       type: audit.type,
@@ -218,22 +120,7 @@ const Calendar = () => {
       eventType: 'audit' as const,
       isAllDay: false,
     }));
-
-    const certEvents = certificationEvents.map(event => ({
-      id: event.id,
-      clientName: event.clientName || '',
-      type: event.type,
-      status: 'scheduled',
-      scheduledDate: event.date.toISOString(),
-      certifications: [],
-      notes: event.title,
-      eventType: 'certification' as const,
-      isAllDay: true,
-      title: event.title,
-    }));
-
-    return [...auditEvents, ...certEvents];
-  }, [activeAudits, certificationEvents]);
+  }, [activeAudits]);
 
   return (
     <Layout>
@@ -242,7 +129,7 @@ const Calendar = () => {
         <div className="flex flex-col gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-1 sm:mb-2">Kalender</h1>
-            <p className="text-sm text-muted-foreground">Übersicht aller geplanten Audits und Zertifikatsabläufe</p>
+            <p className="text-sm text-muted-foreground">Übersicht aller geplanten Audits</p>
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:gap-4">
             <div className="flex items-center gap-1 sm:gap-2">
@@ -263,22 +150,6 @@ const Calendar = () => {
               <Download className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Alle exportieren</span>
             </Button>
-          </div>
-        </div>
-
-        {/* Legend */}
-        <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-primary" />
-            <span className="text-muted-foreground">Audit</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-amber-500" />
-            <span className="text-muted-foreground">Zertifikat-Erinnerung</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-destructive" />
-            <span className="text-muted-foreground">Zertifikat läuft ab</span>
           </div>
         </div>
 
@@ -303,30 +174,20 @@ const Calendar = () => {
                         {day}
                       </div>
                     ))}
-                    {/* Empty cells for days before the first of the month */}
                     {Array.from({ length: startDayOffset }).map((_, i) => (
                       <div key={`empty-${i}`} className="min-h-24 p-2" />
                     ))}
                     {daysInMonth.map((day) => {
                       const dayAudits = getAuditsForDay(day);
-                      const dayCertEvents = getCertEventsForDay(day);
-                      const hasEvents = dayAudits.length > 0 || dayCertEvents.length > 0;
+                      const hasEvents = dayAudits.length > 0;
                       const isToday = isSameDay(day, new Date());
-                      const hasDangerEvent = dayCertEvents.some(e => e.variant === 'danger');
-                      const hasWarningEvent = dayCertEvents.some(e => e.variant === 'warning');
-                      
-                      // Handle day click - navigate to first audit or certification
+
                       const handleDayClick = () => {
                         if (dayAudits.length > 0) {
                           navigate(`/audits/${dayAudits[0].id}`);
-                        } else if (dayCertEvents.length > 0) {
-                          const certEvent = dayCertEvents[0];
-                          if (certEvent.certificationId) {
-                            navigate(`/certifications/${certEvent.certificationId}`);
-                          }
                         }
                       };
-                      
+
                       return (
                         <div
                           key={day.toISOString()}
@@ -334,8 +195,6 @@ const Calendar = () => {
                           className={cn(
                             'min-h-24 p-2 border rounded-lg transition-colors',
                             hasEvents ? 'bg-primary/5 border-primary/20 cursor-pointer hover:bg-primary/10' : 'border-border',
-                            hasDangerEvent && 'bg-destructive/10 border-destructive/30 hover:bg-destructive/15',
-                            hasWarningEvent && !hasDangerEvent && 'bg-warning/10 border-warning/30 hover:bg-warning/15',
                             isToday && 'ring-2 ring-primary'
                           )}
                         >
@@ -354,30 +213,6 @@ const Calendar = () => {
                               {audit.clientName}
                             </div>
                           ))}
-                          {dayCertEvents.map((event) => (
-                            <div
-                              key={event.id}
-                              className={cn(
-                                "text-xs px-2 py-1 rounded mb-1 truncate",
-                                event.variant === 'danger' && 'bg-destructive/20 text-destructive',
-                                event.variant === 'warning' && 'bg-warning/20 text-warning-foreground',
-                                event.variant === 'default' && 'bg-muted text-muted-foreground'
-                              )}
-                              title={event.title}
-                            >
-                              {event.type === 'certification-expiry' ? (
-                                <span className="flex items-center gap-1">
-                                  <AlertTriangle className="h-3 w-3" />
-                                  {event.clientName}
-                                </span>
-                              ) : (
-                                <span className="flex items-center gap-1">
-                                  <Award className="h-3 w-3" />
-                                  {event.clientName}
-                                </span>
-                              )}
-                            </div>
-                          ))}
                         </div>
                       );
                     })}
@@ -389,15 +224,15 @@ const Calendar = () => {
             {/* Sidebar */}
             <div className="space-y-6">
               {/* Outlook Integration */}
-              <OutlookIntegration 
-                auditCount={activeAudits.length + certificationEvents.length} 
-                audits={outlookEvents} 
+              <OutlookIntegration
+                auditCount={activeAudits.length}
+                audits={outlookEvents}
               />
 
-              {/* Upcoming Events */}
+              {/* Upcoming Audits */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Anstehende Termine</CardTitle>
+                  <CardTitle>Anstehende Audits</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {isLoading ? (
@@ -408,7 +243,7 @@ const Calendar = () => {
                     </div>
                   ) : upcomingAudits.length === 0 ? (
                     <p className="text-muted-foreground text-center py-4">
-                      Keine anstehenden Termine
+                      Keine anstehenden Audits
                     </p>
                   ) : (
                     upcomingAudits.map((audit) => (
@@ -429,50 +264,6 @@ const Calendar = () => {
                         </div>
                       </div>
                     ))
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Upcoming Certification Events */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Award className="h-5 w-5" />
-                    Zertifikats-Termine
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {isLoading ? (
-                    <div className="space-y-4">
-                      {[1, 2, 3].map((i) => (
-                        <Skeleton key={i} className="h-12 w-full" />
-                      ))}
-                    </div>
-                  ) : certificationEvents.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-4">
-                      Keine Zertifikats-Termine
-                    </p>
-                  ) : (
-                    certificationEvents
-                      .filter(e => e.date >= new Date())
-                      .sort((a, b) => a.date.getTime() - b.date.getTime())
-                      .slice(0, 5)
-                      .map((event) => (
-                        <div key={event.id} className="space-y-1 pb-3 border-b last:border-0">
-                          <p className={cn(
-                            "font-medium text-sm",
-                            event.variant === 'danger' && 'text-destructive',
-                            event.variant === 'warning' && 'text-amber-600 dark:text-amber-400',
-                            event.variant === 'default' && 'text-foreground'
-                          )}>
-                            {event.title}
-                          </p>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <CalendarIcon className="h-3 w-3" />
-                            {format(event.date, 'dd. MMM yyyy', { locale: de })}
-                          </div>
-                        </div>
-                      ))
                   )}
                 </CardContent>
               </Card>
