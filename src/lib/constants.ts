@@ -129,13 +129,17 @@ export const ALERT_SEVERITY_CONFIG = {
   },
 } as const;
 
-// ChatBot dummy responses
-export const CHATBOT_RESPONSES: Record<string, string> = {
-  audit: 'Ich kann Ihnen bei der Vorbereitung Ihres nächsten Audits helfen. Welche Zertifizierung benötigen Sie? (SURE, FSC, PEFC, ISCC, ISO 9001, ISO 14001)',
-  dokument: 'Für die Dokumentenvorbereitung empfehle ich, zuerst die Checkliste im Audit-Detail zu prüfen. Soll ich Ihnen die offenen Dokumente für ein bestimmtes Audit anzeigen?',
-  termin: 'Ich kann Ihnen helfen, einen Audit-Termin zu planen. Geben Sie mir bitte den gewünschten Zeitraum und die Zertifizierungsart an.',
-  erinnerung: 'Ich habe eine Erinnerung für Sie erstellt. Sie werden rechtzeitig vor dem Termin benachrichtigt.',
-  checkliste: 'Die Vorbereitungs-Checkliste für Ihr Audit umfasst: 1) Dokumentenprüfung, 2) Schulungsnachweis, 3) Interne Prüfung, 4) Maßnahmenplan. Welchen Punkt möchten Sie bearbeiten?',
-  status: 'Aktueller Status Ihrer Audits:\n• 2 Audits in Vorbereitung\n• 1 Audit überfällig\n• 3 Audits diesen Monat geplant\n\nMöchten Sie Details zu einem bestimmten Audit?',
-  hilfe: 'Ich kann Ihnen bei folgenden Aufgaben helfen:\n• Audit-Vorbereitung\n• Dokumentenmanagement\n• Terminplanung\n• Checklisten-Verwaltung\n• Status-Übersicht\n\nWas möchten Sie tun?',
-} as const;
+// Countries list used across client forms
+export const COUNTRIES = [
+  'Deutschland',
+  'Österreich',
+  'Rumänien',
+  'Italien',
+  'Ungarn',
+  'Slowenien',
+  'Finnland',
+  'Litauen',
+  'Niederlande',
+  'Schweden',
+  'Andere',
+] as const;

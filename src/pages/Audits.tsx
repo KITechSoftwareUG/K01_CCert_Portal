@@ -2,8 +2,9 @@ import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { NewAuditDialog } from '@/components/NewAuditDialog';
-import { useAudits, AuditWithClient } from '@/hooks/useAudits';
+import { useAudits } from '@/hooks/useAudits';
 import { useAuditTasks } from '@/hooks/useAuditTasks';
+import { transformAuditToLocal } from '@/lib/auditUtils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -33,30 +34,6 @@ import { cn } from '@/lib/utils';
 
 type StatusFilter = 'all' | 'scheduled' | 'in-progress' | 'completed';
 type GroupBy = 'client' | 'type' | 'none';
-
-// Transform database audit to local Audit type
-const transformAuditToLocal = (dbAudit: AuditWithClient, tasks: any[]): Audit => ({
-  id: dbAudit.id,
-  clientId: dbAudit.client_id,
-  clientName: dbAudit.clients?.name || 'Unbekannt',
-  type: dbAudit.type,
-  certifications: (dbAudit.certifications || []) as any,
-  scheduledDate: new Date(dbAudit.scheduled_date),
-  status: dbAudit.status,
-  tasks: tasks
-    .filter(t => t.audit_id === dbAudit.id)
-    .map(t => ({
-      id: t.id,
-      title: t.title,
-      description: t.description || '',
-      status: t.status,
-      dueDate: new Date(t.due_date),
-      assignedTo: t.assigned_to || undefined,
-      completedAt: t.completed_at ? new Date(t.completed_at) : undefined,
-    })),
-  notes: dbAudit.notes || undefined,
-  createdAt: new Date(dbAudit.created_at),
-});
 
 const TableRowSkeleton = () => (
   <TableRow>

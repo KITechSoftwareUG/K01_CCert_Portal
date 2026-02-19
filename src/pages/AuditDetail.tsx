@@ -1,4 +1,4 @@
-import { useState, useCallback, memo, useMemo } from 'react';
+import { useState, useCallback, useEffect, memo, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { useAudit, useUpdateAudit, useDeleteAudit } from '@/hooks/useAudits';
@@ -163,7 +163,8 @@ const AuditDetail = () => {
   const [showEditDialog, setShowEditDialog] = useState(false);
 
   // Update notes when audit loads
-  useMemo(() => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
     if (audit?.notes) {
       setNotes(audit.notes);
     }
