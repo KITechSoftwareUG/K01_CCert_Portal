@@ -29,7 +29,7 @@ import { cn } from '@/lib/utils';
 import { useUpdateAudit, AuditWithClient } from '@/hooks/useAudits';
 import { useAuditors } from '@/hooks/useAuditors';
 import { formatAuditorName, sortAuditorsByLastName } from '@/lib/auditorUtils';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { AUDIT_STATUS_CONFIG } from '@/lib/constants';
 
 interface EditAuditDialogProps {
@@ -66,11 +66,7 @@ export function EditAuditDialog({ audit, open, onOpenChange }: EditAuditDialogPr
 
   const handleSave = async () => {
     if (!audit || !scheduledDate) {
-      toast({
-        title: "Fehler",
-        description: "Bitte wählen Sie ein Datum.",
-        variant: "destructive",
-      });
+      toast.error('Bitte wählen Sie ein Datum.');
       return;
     }
 
@@ -82,17 +78,10 @@ export function EditAuditDialog({ audit, open, onOpenChange }: EditAuditDialogPr
         auditor_id: auditorId === '__none__' ? null : auditorId,
       });
       
-      toast({
-        title: "Gespeichert",
-        description: "Audit wurde erfolgreich aktualisiert.",
-      });
+      toast.success('Audit wurde erfolgreich aktualisiert.');
       onOpenChange(false);
     } catch (error) {
-      toast({
-        title: "Fehler",
-        description: "Audit konnte nicht aktualisiert werden.",
-        variant: "destructive",
-      });
+      toast.error('Audit konnte nicht aktualisiert werden.');
     }
   };
 

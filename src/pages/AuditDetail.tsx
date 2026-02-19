@@ -36,7 +36,7 @@ import {
   XCircle
 } from 'lucide-react';
 import { exportAuditToCalendar } from '@/lib/calendarExport';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -194,10 +194,7 @@ const AuditDetail = () => {
         createdAt: new Date(audit.created_at),
       };
       exportAuditToCalendar(localAudit);
-      toast({
-        title: "Kalenderexport",
-        description: "ICS-Datei wurde heruntergeladen. Öffnen Sie diese, um den Termin in Outlook zu importieren.",
-      });
+      toast.success('ICS-Datei wurde heruntergeladen. Öffnen Sie diese, um den Termin in Outlook zu importieren.');
     }
   }, [audit]);
 
@@ -205,16 +202,9 @@ const AuditDetail = () => {
     if (audit && id) {
       try {
         await updateAudit.mutateAsync({ id, notes });
-        toast({
-          title: "Gespeichert",
-          description: "Notizen wurden aktualisiert.",
-        });
+        toast.success('Notizen wurden aktualisiert.');
       } catch (error) {
-        toast({
-          title: "Fehler",
-          description: "Notizen konnten nicht gespeichert werden.",
-          variant: "destructive",
-        });
+        toast.error('Notizen konnten nicht gespeichert werden.');
       }
     }
   }, [audit, id, notes, updateAudit]);
@@ -223,16 +213,9 @@ const AuditDetail = () => {
     if (audit && id) {
       try {
         await updateAudit.mutateAsync({ id, status: 'cancelled' });
-        toast({
-          title: "Audit abgebrochen",
-          description: "Das Audit wurde als abgebrochen markiert.",
-        });
+        toast.success('Das Audit wurde als abgebrochen markiert.');
       } catch (error) {
-        toast({
-          title: "Fehler",
-          description: "Audit konnte nicht abgebrochen werden.",
-          variant: "destructive",
-        });
+        toast.error('Audit konnte nicht abgebrochen werden.');
       }
     }
   }, [audit, id, updateAudit]);
@@ -495,10 +478,7 @@ const AuditDetail = () => {
                 <Button 
                   variant="outline" 
                   className="w-full justify-start"
-                  onClick={() => toast({
-                    title: "In Entwicklung",
-                    description: "Die Berichtfunktion wird bald verfügbar sein.",
-                  })}
+                  onClick={() => toast.info('Die Berichtfunktion wird bald verfügbar sein.')}
                 >
                   <FileText className="h-4 w-4 mr-2" />
                   Bericht generieren
