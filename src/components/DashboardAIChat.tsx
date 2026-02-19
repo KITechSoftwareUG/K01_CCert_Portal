@@ -67,15 +67,11 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
         },
         onDone: () => {
           setGreetingLoaded(true);
-          if (greetingContent) {
-            setConversationHistory([{ role: 'assistant', content: greetingContent }]);
-          }
         },
         onError: () => {
           const fallbackGreeting = `Hey ${getUserName()}, willkommen zurück! 👋`;
           setGreeting(fallbackGreeting);
           setGreetingLoaded(true);
-          setConversationHistory([{ role: 'assistant', content: fallbackGreeting }]);
         },
       });
     };
@@ -257,6 +253,19 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
 
           {/* Messages */}
           <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 sm:px-5 py-3 sm:py-4 space-y-3 sm:space-y-4 min-h-0">
+            {/* Greeting (display only, not in API history) */}
+            {greeting && conversationHistory.length === 0 && (
+              <div className="flex gap-3 justify-start">
+                <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center mt-0.5">
+                  <Bot className="h-3.5 w-3.5 text-primary" />
+                </div>
+                <div className="max-w-[80%] rounded-2xl rounded-bl-md bg-muted/60 px-4 py-2.5 text-sm">
+                  <div className="prose prose-sm max-w-none prose-p:my-1 leading-relaxed">
+                    <ReactMarkdown>{greeting}</ReactMarkdown>
+                  </div>
+                </div>
+              </div>
+            )}
             {conversationHistory.map((msg, i) => (
               <div key={i} className={cn("flex gap-3", msg.role === 'user' ? 'justify-end' : 'justify-start')}>
                 {msg.role === 'assistant' && (
