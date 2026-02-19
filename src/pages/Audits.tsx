@@ -33,7 +33,7 @@ import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
 type StatusFilter = 'all' | 'scheduled' | 'in-progress' | 'completed';
-type GroupBy = 'client' | 'type' | 'none';
+type GroupBy = 'month' | 'client' | 'type' | 'none';
 
 const TableRowSkeleton = () => (
   <TableRow>
@@ -64,7 +64,7 @@ const AuditRow = ({ audit, onClick, showClient = true, showType = true }: AuditR
       onClick={onClick}
     >
       {showClient && (
-        <TableCell className="font-medium">{audit.clientName}</TableCell>
+        <TableCell className="font-medium text-left">{audit.clientName}</TableCell>
       )}
       {showType && (
         <TableCell>
@@ -126,7 +126,7 @@ const Audits = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [groupBy, setGroupBy] = useState<GroupBy>('client');
+  const [groupBy, setGroupBy] = useState<GroupBy>('month');
   const [showNewAuditDialog, setShowNewAuditDialog] = useState(false);
 
   const { data: dbAudits = [], isLoading: auditsLoading, error: auditsError } = useAudits();
@@ -157,29 +157,36 @@ const Audits = () => {
       return [{ key: 'all', title: 'Alle Audits', audits: filteredAudits }];
     }
 
-    const groups = new Map<string, { title: string; audits: Audit[] }>();
+    const groups = new Map<string, { title: string; audits: Audit[]; sortKey: string }>();
 
     filteredAudits.forEach(audit => {
       let key: string;
       let title: string;
+      let sortKey: string;
 
-      if (groupBy === 'client') {
+      if (groupBy === 'month') {
+        key = format(audit.scheduledDate, 'yyyy-MM');
+        title = format(audit.scheduledDate, 'MMMM yyyy', { locale: de });
+        sortKey = key;
+      } else if (groupBy === 'client') {
         key = audit.clientId;
         title = audit.clientName;
+        sortKey = title;
       } else {
         key = audit.type;
         title = AUDIT_TYPE_LABELS[audit.type];
+        sortKey = title;
       }
 
       if (!groups.has(key)) {
-        groups.set(key, { title, audits: [] });
+        groups.set(key, { title, audits: [], sortKey });
       }
       groups.get(key)!.audits.push(audit);
     });
 
     return Array.from(groups.entries())
       .map(([key, value]) => ({ key, ...value }))
-      .sort((a, b) => a.title.localeCompare(b.title, 'de'));
+      .sort((a, b) => groupBy === 'month' ? a.sortKey.localeCompare(b.sortKey) : a.title.localeCompare(b.title, 'de'));
   }, [filteredAudits, groupBy]);
 
   const isLoading = auditsLoading || tasksLoading;
@@ -220,6 +227,12 @@ const Audits = () => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="month">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Nach Monat
+                  </div>
+                </SelectItem>
                 <SelectItem value="client">
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4" />
@@ -290,32 +303,32 @@ const Audits = () => {
                 )}
               </div>
             ) : (
-              <div className="border rounded-lg overflow-hidden bg-card">
+              <div className="space-y-6">
                 {groupedAudits.map((group) => (
-                  <div key={group.key}>
+                  <div key={group.key} className="border rounded-lg overflow-hidden bg-card">
                     {groupBy !== 'none' && (
                       <GroupHeader 
                         title={group.title} 
                         count={group.audits.length}
-                        icon={groupBy === 'client' 
-                          ? <Users className="h-4 w-4 text-primary" />
-                          : <ClipboardCheck className="h-4 w-4 text-primary" />
+                        icon={groupBy === 'month'
+                          ? <Calendar className="h-4 w-4 text-primary" />
+                          : groupBy === 'client' 
+                            ? <Users className="h-4 w-4 text-primary" />
+                            : <ClipboardCheck className="h-4 w-4 text-primary" />
                         }
                       />
                     )}
                     <Table>
-                      {groupBy === 'none' && (
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Kunde</TableHead>
-                            <TableHead>Auditart</TableHead>
-                            <TableHead>Termin</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Aufgaben</TableHead>
-                            <TableHead className="w-12"></TableHead>
-                          </TableRow>
-                        </TableHeader>
-                      )}
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-left">Kunde</TableHead>
+                          <TableHead className="text-left">Auditart</TableHead>
+                          <TableHead className="text-left">Termin</TableHead>
+                          <TableHead className="text-left">Status</TableHead>
+                          <TableHead className="text-left">Aufgaben</TableHead>
+                          <TableHead className="w-12"></TableHead>
+                        </TableRow>
+                      </TableHeader>
                       <TableBody>
                         {group.audits.map((audit) => (
                           <AuditRow
