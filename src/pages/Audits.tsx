@@ -272,15 +272,15 @@ const Audits = () => {
               </div>
             ) : isLoading ? (
               <div className="border rounded-lg overflow-hidden">
-                <Table>
+                <Table className="table-fixed w-full">
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Kunde</TableHead>
-                      <TableHead>Auditart</TableHead>
-                      <TableHead>Termin</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Aufgaben</TableHead>
-                      <TableHead className="w-12"></TableHead>
+                      <TableHead className="w-[35%]">Kunde</TableHead>
+                      <TableHead className="w-[18%]">Auditart</TableHead>
+                      <TableHead className="w-[18%]">Termin</TableHead>
+                      <TableHead className="w-[12%]">Status</TableHead>
+                      <TableHead className="w-[12%]">Aufgaben</TableHead>
+                      <TableHead className="w-[5%]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -318,15 +318,15 @@ const Audits = () => {
                         }
                       />
                     )}
-                    <Table>
+                    <Table className="table-fixed w-full">
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="text-left">Kunde</TableHead>
-                          <TableHead className="text-left">Auditart</TableHead>
-                          <TableHead className="text-left">Termin</TableHead>
-                          <TableHead className="text-left">Status</TableHead>
-                          <TableHead className="text-left">Aufgaben</TableHead>
-                          <TableHead className="w-12"></TableHead>
+                          <TableHead className="text-left w-[35%]">Kunde</TableHead>
+                          <TableHead className="text-left w-[18%]">Auditart</TableHead>
+                          <TableHead className="text-left w-[18%]">Termin</TableHead>
+                          <TableHead className="text-left w-[12%]">Status</TableHead>
+                          <TableHead className="text-left w-[12%]">Aufgaben</TableHead>
+                          <TableHead className="w-[5%]"></TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
