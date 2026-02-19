@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Mail, Lock, User, Smartphone, Loader2 } from 'lucide-react';
-import certConsultingLogo from '@/assets/cert-consulting-logo.png';
+import certConsultingLogo from '@/assets/logo-navy.jpg';
 import AuthBackground from '@/components/AuthBackground';
 import { z } from 'zod';
 const emailSchema = z.string().email('Ungültige E-Mail-Adresse');
