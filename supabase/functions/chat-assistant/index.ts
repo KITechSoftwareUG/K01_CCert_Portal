@@ -25,16 +25,17 @@ serve(async (req) => {
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
     // Fetch context data from database
-    const [clientsRes, auditsRes, tasksRes, certificationsRes] = await Promise.all([
+    const [clientsRes, auditsRes, tasksRes, certificationsRes, auditorsRes] = await Promise.all([
       supabase.from("clients").select("id, name, client_number, contact_person, email, country, is_active"),
       supabase.from("audits").select(`
         id, type, status, scheduled_date, notes,
         clients (id, name, client_number),
+        auditors (id, name),
         client_certifications (
           id,
           certifications (name)
         )
-      `).order("scheduled_date", { ascending: false }).limit(50),
+      `).order("scheduled_date", { ascending: false }).limit(100),
       supabase.from("audit_tasks").select(`
         id, title, description, status, due_date, assigned_to,
         audits (
@@ -43,10 +44,12 @@ serve(async (req) => {
         )
       `).order("due_date", { ascending: true }).limit(100),
       supabase.from("client_certifications").select(`
-        id, status, valid_from, valid_until, certificate_number,
+        id, status, valid_from, valid_until, certificate_number, scope,
         clients (id, name, client_number),
-        certifications (name)
-      `).limit(50),
+        certifications (name),
+        auditors (id, name)
+      `).limit(100),
+      supabase.from("auditors").select("id, name, email, phone, certification_bodies (name)"),
     ]);
 
     // Build context string
@@ -54,7 +57,7 @@ serve(async (req) => {
     const audits = auditsRes.data || [];
     const tasks = tasksRes.data || [];
     const certifications = certificationsRes.data || [];
-
+    const auditors = auditorsRes.data || [];
     // Filter open tasks
     const openTasks = tasks.filter((t: any) => t.status === "pending" || t.status === "in-progress");
     
@@ -80,20 +83,39 @@ serve(async (req) => {
       a.status === "scheduled" && new Date(a.scheduled_date) >= new Date()
     );
     contextParts.push(`\n=== ANSTEHENDE AUDITS (${upcomingAudits.length}) ===`);
-    upcomingAudits.slice(0, 15).forEach((a: any) => {
+    upcomingAudits.slice(0, 30).forEach((a: any) => {
       const clientName = a.clients?.name || "Unbekannt";
       const certName = a.client_certifications?.certifications?.name || "N/A";
+      const auditorName = a.auditors?.name || "Kein Auditor";
       const date = new Date(a.scheduled_date).toLocaleDateString("de-DE");
-      contextParts.push(`- ${a.type} bei ${clientName} (${certName}) am ${date}`);
+      contextParts.push(`- ${a.type} bei ${clientName} (${certName}) am ${date}, Auditor: ${auditorName}`);
     });
 
     // Certifications overview
     contextParts.push(`\n=== ZERTIFIZIERUNGEN (${certifications.length}) ===`);
-    certifications.slice(0, 20).forEach((c: any) => {
+    certifications.slice(0, 30).forEach((c: any) => {
       const clientName = c.clients?.name || "Unbekannt";
       const certName = c.certifications?.name || "N/A";
+      const auditorName = c.auditors?.name || "Kein Auditor";
       const validUntil = c.valid_until ? new Date(c.valid_until).toLocaleDateString("de-DE") : "Unbefristet";
-      contextParts.push(`- ${clientName}: ${certName} (Gültig bis: ${validUntil}, Status: ${c.status || "aktiv"})`);
+      contextParts.push(`- ${clientName}: ${certName} (Gültig bis: ${validUntil}, Status: ${c.status || "aktiv"}, Auditor: ${auditorName})`);
+    });
+
+    // Auditors overview
+    contextParts.push(`\n=== AUDITOREN (${auditors.length}) ===`);
+    auditors.forEach((a: any) => {
+      const cbName = a.certification_bodies?.name || "Keine ZS";
+      contextParts.push(`- ${a.name} (E-Mail: ${a.email || "N/A"}, Tel: ${a.phone || "N/A"}, Zertifizierungsstelle: ${cbName})`);
+    });
+
+    // All audits (not just upcoming)
+    contextParts.push(`\n=== ALLE AUDITS (${audits.length}) ===`);
+    audits.slice(0, 50).forEach((a: any) => {
+      const clientName = a.clients?.name || "Unbekannt";
+      const certName = a.client_certifications?.certifications?.name || "N/A";
+      const auditorName = a.auditors?.name || "Kein Auditor";
+      const date = new Date(a.scheduled_date).toLocaleDateString("de-DE");
+      contextParts.push(`- ${a.type} bei ${clientName} (${certName}) am ${date}, Status: ${a.status}, Auditor: ${auditorName}`);
     });
 
     const databaseContext = contextParts.join("\n");
