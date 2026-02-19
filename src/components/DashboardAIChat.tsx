@@ -2,13 +2,14 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Sparkles, Loader2, MessageCircle, X, Bot, User } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import ReactMarkdown from 'react-markdown';
 import { streamChat } from '@/lib/chatUtils';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 
 interface DashboardAIChatProps {
   className?: string;
@@ -18,6 +19,13 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
 }
+
+const EXAMPLE_PROMPTS = [
+  "Welche Zertifikate laufen in den nächsten 3 Monaten ab?",
+  "Zeige alle Audits von Carsten Sellmann",
+  "Welche Aufgaben sind überfällig?",
+  "Erstelle eine Übersicht aller Kunden in Mecklenburg-Vorpommern",
+];
 
 export const DashboardAIChat = ({ className }: DashboardAIChatProps) => {
   const { user } = useAuth();
@@ -123,7 +131,6 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
     });
   }, [isLoading, conversationHistory]);
 
-  // When user types in the hero input, open dialog and transfer text
   const handleHeroInputFocus = () => {
     setChatOpen(true);
     setTimeout(() => {
@@ -169,6 +176,10 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
     setCurrentResponse(null);
     setGreetingLoaded(false);
     setGreeting(null);
+  };
+
+  const handleExampleClick = (prompt: string) => {
+    handleSend(prompt);
   };
 
   return (
@@ -234,7 +245,14 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
 
       {/* Chat Dialog */}
       <Dialog open={chatOpen} onOpenChange={setChatOpen}>
-        <DialogContent className="sm:max-w-2xl p-0 gap-0 rounded-none sm:rounded-2xl overflow-hidden w-full h-full sm:h-[80vh] sm:w-auto fixed inset-0 sm:inset-auto sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] flex flex-col">
+        <DialogContent 
+          className="sm:max-w-2xl p-0 gap-0 rounded-none sm:rounded-2xl overflow-hidden w-full h-full sm:h-[80vh] sm:w-auto fixed inset-0 sm:inset-auto sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] flex flex-col"
+          aria-describedby={undefined}
+        >
+          <VisuallyHidden>
+            <DialogTitle>KI-Assistent</DialogTitle>
+          </VisuallyHidden>
+          
           {/* Header */}
           <div className="flex items-center gap-2.5 sm:gap-3 px-4 sm:px-5 py-3 sm:py-4 border-b border-border/50 bg-gradient-to-r from-primary/[0.04] to-transparent">
             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -244,7 +262,7 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
               <h3 className="text-sm font-semibold text-foreground">KI-Assistent</h3>
               <p className="text-xs text-muted-foreground truncate">Audits, Kunden & Zertifikate</p>
             </div>
-            {conversationHistory.length > 1 && (
+            {conversationHistory.length > 0 && (
               <Button variant="ghost" size="sm" onClick={handleReset} className="text-xs text-muted-foreground hover:text-foreground shrink-0">
                 Zurücksetzen
               </Button>
@@ -254,7 +272,7 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
           {/* Messages */}
           <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 sm:px-5 py-3 sm:py-4 space-y-3 sm:space-y-4 min-h-0">
             {/* Greeting (display only, not in API history) */}
-            {greeting && conversationHistory.length === 0 && (
+            {greeting && (
               <div className="flex gap-3 justify-start">
                 <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center mt-0.5">
                   <Bot className="h-3.5 w-3.5 text-primary" />
@@ -266,6 +284,22 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
                 </div>
               </div>
             )}
+
+            {/* Example prompts when no conversation yet */}
+            {conversationHistory.length === 0 && !isLoading && greetingLoaded && (
+              <div className="flex flex-wrap gap-2 pt-2">
+                {EXAMPLE_PROMPTS.map((prompt, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleExampleClick(prompt)}
+                    className="text-xs px-3 py-1.5 rounded-full border border-border/60 bg-muted/30 text-muted-foreground hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-all"
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {conversationHistory.map((msg, i) => (
               <div key={i} className={cn("flex gap-3", msg.role === 'user' ? 'justify-end' : 'justify-start')}>
                 {msg.role === 'assistant' && (
@@ -280,7 +314,7 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
                     : 'bg-muted/60 text-foreground rounded-bl-md'
                 )}>
                   {msg.role === 'assistant' ? (
-                    <div className="prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 leading-relaxed">
+                    <div className="prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 leading-relaxed">
                       <ReactMarkdown>{msg.content}</ReactMarkdown>
                     </div>
                   ) : (
@@ -302,7 +336,7 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
                   <Bot className="h-3.5 w-3.5 text-primary" />
                 </div>
                 <div className="max-w-[80%] rounded-2xl rounded-bl-md bg-muted/60 px-4 py-2.5 text-sm">
-                  <div className="prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 leading-relaxed">
+                  <div className="prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 leading-relaxed">
                     <ReactMarkdown>{currentResponse}</ReactMarkdown>
                   </div>
                 </div>
