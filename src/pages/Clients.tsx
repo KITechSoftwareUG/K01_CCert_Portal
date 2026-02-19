@@ -1,10 +1,10 @@
-import { useState, useMemo } from 'react';
-import { COUNTRY_PREFIXES } from '@/lib/clientNumberUtils';
+import { useState, useMemo, useEffect } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Layout } from '@/components/Layout';
 import { NewClientDialog } from '@/components/NewClientDialog';
+import { useCertificationsByClient, useCountryGroups } from '@/hooks/useClientGroups';
 
 import { MoveClientDialog } from '@/components/MoveClientDialog';
 import { useClients, useDeleteClient, useUpdateClient, DbClient } from '@/hooks/useClients';
@@ -69,47 +69,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 
-interface CountryGroup {
-  country: string;
-  companyGroups: CompanyGroup[];
-}
-
-interface CompanyGroup {
-  id: string;
-  name: string;
-  /**
-   * True if this row represents an Unternehmensgruppe.
-   * We treat records without client_number as groups even if they have no children yet.
-   */
-  isGroupOnly: boolean;
-  headerClient: DbClient;
-  children: ClientWithCerts[];
-}
-
-interface ClientWithCerts {
-  client: DbClient;
-  certifications: CertificationRow[];
-}
-
-interface CertificationInfo {
-  id: string; // client_certification_id for navigation
-  certificationId: string;
-  certificationName: string;
-  certificateNumber: string | null;
-  validUntil: string | null;
-  status: string | null;
-}
-
-interface CertificationRow {
-  clientId: string;
-  clientName: string;
-  clientNumber: string | null;
-  certifications: CertificationInfo[];
-  // Use earliest validUntil for sorting/display
-  earliestValidUntil: string | null;
-  // Primary certification ID for navigation (first one in group)
-  primaryCertificationId: string;
-}
 
 const Clients = () => {
   const navigate = useNavigate();
@@ -153,84 +112,8 @@ const Clients = () => {
   
   // Get auditors for all certifications
   const { data: auditorsByClientCertification = {} } = useAuditorsForCertifications();
-  // Create a map of client certifications by client ID, grouped by certificate_number
-  const certificationsByClient = useMemo(() => {
-    const map: Record<string, CertificationRow[]> = {};
-    
-    // First, collect all certifications per client
-    const rawCertsByClient: Record<string, CertificationInfo[]> = {};
-    const clientInfoMap: Record<string, { name: string; number: string | null }> = {};
-    
-    allCertifications.forEach((cc: any) => {
-      if (!cc.clients || !cc.certifications) return;
-      const clientId = cc.client_id;
-      
-      if (!rawCertsByClient[clientId]) rawCertsByClient[clientId] = [];
-      if (!clientInfoMap[clientId]) {
-        clientInfoMap[clientId] = {
-          name: cc.clients.name,
-          number: cc.clients.client_number,
-        };
-      }
-      
-      rawCertsByClient[clientId].push({
-        id: cc.id, // client_certification_id
-        certificationId: cc.certification_id,
-        certificationName: cc.certifications.name,
-        certificateNumber: cc.certificate_number,
-        validUntil: cc.valid_until,
-        status: cc.status,
-      });
-    });
-    
-    // Group certifications by certificate_number (same number = same row)
-    Object.entries(rawCertsByClient).forEach(([clientId, certs]) => {
-      const grouped: Record<string, CertificationInfo[]> = {};
-      const noNumber: CertificationInfo[] = [];
-      
-      certs.forEach(cert => {
-        if (cert.certificateNumber) {
-          if (!grouped[cert.certificateNumber]) grouped[cert.certificateNumber] = [];
-          grouped[cert.certificateNumber].push(cert);
-        } else {
-          noNumber.push(cert);
-        }
-      });
-      
-      map[clientId] = [];
-      
-      // Add grouped certifications (those with same certificate number)
-      Object.entries(grouped).forEach(([certNum, groupedCerts]) => {
-        const earliestDate = groupedCerts
-          .map(c => c.validUntil)
-          .filter(Boolean)
-          .sort()[0] || null;
-          
-        map[clientId].push({
-          clientId,
-          clientName: clientInfoMap[clientId].name,
-          clientNumber: clientInfoMap[clientId].number,
-          certifications: groupedCerts,
-          earliestValidUntil: earliestDate,
-          primaryCertificationId: groupedCerts[0].id,
-        });
-      });
-      
-      // Add certifications without certificate number as individual rows
-      noNumber.forEach(cert => {
-        map[clientId].push({
-          clientId,
-          clientName: clientInfoMap[clientId].name,
-          clientNumber: clientInfoMap[clientId].number,
-          certifications: [cert],
-          earliestValidUntil: cert.validUntil,
-          primaryCertificationId: cert.id,
-        });
-      });
-    });
-    
-    return map;
-  }, [allCertifications]);
+  // Client certifications grouped by certificate_number
+  const certificationsByClient = useCertificationsByClient(allCertifications);
 
   // Filter clients by active status, search, and auditor
   const filteredClients = useMemo(() => {
@@ -281,123 +164,17 @@ const Clients = () => {
     return result;
   }, [searchQuery, clients, statusFilter, auditorFilter, certificationsByClient, auditorsByClientCertification]);
 
-  // Group clients by country, then by parent company
-  const countryGroups = useMemo(() => {
-    const groups: CompanyGroup[] = [];
-    const parentClients = filteredClients.filter(c => !c.parent_client_id);
-    const childClients = filteredClients.filter(c => c.parent_client_id);
-    
-    // Build map of children by parent
-    const childrenByParent: Record<string, DbClient[]> = {};
-    childClients.forEach(child => {
-      const parentId = child.parent_client_id!;
-      if (!childrenByParent[parentId]) childrenByParent[parentId] = [];
-      childrenByParent[parentId].push(child);
-    });
-    
-    parentClients.forEach(parent => {
-      const children = childrenByParent[parent.id] || [];
-      const parentCerts = certificationsByClient[parent.id] || [];
-
-      const isExplicitGroup = parent.client_number === null; // groups have no KD-Nr.
-      const isCompanyGroup = children.length > 0 || isExplicitGroup;
-
-      if (children.length > 0) {
-        // Unternehmensgruppe (with children)
-        groups.push({
-          id: parent.id,
-          name: parent.name,
-          isGroupOnly: true,
-          headerClient: parent,
-          children: children.map(child => ({
-            client: child,
-            certifications: certificationsByClient[child.id] || [],
-          })),
-        });
-      } else if (isCompanyGroup) {
-        // Unternehmensgruppe without children yet
-        groups.push({
-          id: parent.id,
-          name: parent.name,
-          isGroupOnly: true,
-          headerClient: parent,
-          children: [],
-        });
-      } else {
-        // Standalone client (no children)
-        groups.push({
-          id: parent.id,
-          name: parent.name,
-          isGroupOnly: false,
-          headerClient: parent,
-          children: [{
-            client: parent,
-            certifications: parentCerts,
-          }],
-        });
-      }
-    });
-
-    // Handle orphaned children (parent not in filtered results)
-    childClients.forEach(child => {
-      const parentId = child.parent_client_id!;
-      const parentExists = parentClients.some(p => p.id === parentId);
-      if (!parentExists) {
-        groups.push({
-          id: child.id,
-          name: child.name,
-          isGroupOnly: false,
-          headerClient: child,
-          children: [{
-            client: child,
-            certifications: certificationsByClient[child.id] || [],
-          }],
-        });
-      }
-    });
-
-    // Now group by country
-    const byCountry: Record<string, CompanyGroup[]> = {};
-    groups.forEach(group => {
-      const country = group.headerClient.country || 'Unbekannt';
-      if (!byCountry[country]) byCountry[country] = [];
-      byCountry[country].push(group);
-    });
-    
-    // Sort groups within each country
-    Object.values(byCountry).forEach(countryGroups => {
-      countryGroups.sort((a, b) => a.name.localeCompare(b.name));
-    });
-    
-    // Create country groups array, sorted with Deutschland first
-    const countryList: CountryGroup[] = Object.entries(byCountry).map(([country, companyGroups]) => ({
-      country,
-      companyGroups,
-    }));
-    
-    // Sort by country prefix order (DE=0, AT=1, CH=2, etc.)
-    const prefixOrder = Object.keys(COUNTRY_PREFIXES);
-    countryList.sort((a, b) => {
-      const idxA = prefixOrder.indexOf(a.country);
-      const idxB = prefixOrder.indexOf(b.country);
-      // Known countries first (by prefix order), unknown countries at the end alphabetically
-      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-      if (idxA !== -1) return -1;
-      if (idxB !== -1) return 1;
-      return a.country.localeCompare(b.country);
-    });
-    
-    return countryList;
-  }, [filteredClients, certificationsByClient]);
+  // Group clients by country → company groups
+  const countryGroups = useCountryGroups(filteredClients, certificationsByClient);
 
   // Initialize expanded countries on first load
-  useMemo(() => {
+  useEffect(() => {
     if (expandedCountries.size === 0 && countryGroups.length > 0) {
       const allCountries = new Set(countryGroups.map(cg => cg.country));
       setExpandedCountries(allCountries);
       sessionStorage.setItem('clients-expanded-countries', JSON.stringify([...allCountries]));
     }
-  }, [countryGroups]);
+  }, [countryGroups.length]); // only re-run when number of countries changes
 
   const toggleCountry = (country: string) => {
     setExpandedCountries(prev => {

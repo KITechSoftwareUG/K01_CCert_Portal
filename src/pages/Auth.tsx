@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { Mail, Lock, User, Smartphone, Loader2 } from 'lucide-react';
 import certConsultingLogo from '@/assets/cert-consulting-logo.png';
 import AuthBackground from '@/components/AuthBackground';
@@ -15,9 +15,6 @@ const emailSchema = z.string().email('Ungültige E-Mail-Adresse');
 const passwordSchema = z.string().min(6, 'Passwort muss mindestens 6 Zeichen haben');
 export default function Auth() {
   const navigate = useNavigate();
-  const {
-    toast
-  } = useToast();
   const [checkingSession, setCheckingSession] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -71,17 +68,9 @@ export default function Auth() {
       return true;
     } catch (error) {
       if (error instanceof z.ZodError) {
-        toast({
-          title: 'Validierungsfehler',
-          description: error.errors[0].message,
-          variant: 'destructive'
-        });
+        toast.error(error.errors[0].message);
       } else if (error instanceof Error) {
-        toast({
-          title: 'Validierungsfehler',
-          description: error.message,
-          variant: 'destructive'
-        });
+        toast.error(error.message);
       }
       return false;
     }
@@ -108,16 +97,9 @@ export default function Auth() {
       if (error.message.includes('already registered')) {
         message = 'Diese E-Mail-Adresse ist bereits registriert.';
       }
-      toast({
-        title: 'Registrierung fehlgeschlagen',
-        description: message,
-        variant: 'destructive'
-      });
+      toast.error(message);
     } else {
-      toast({
-        title: 'Registrierung erfolgreich',
-        description: 'Sie können sich jetzt anmelden.'
-      });
+      toast.success('Registrierung erfolgreich – Sie können sich jetzt anmelden.');
     }
     setLoading(false);
   };
@@ -138,11 +120,7 @@ export default function Auth() {
         setMfaRequired(true);
         setMfaFactorId(data?.session?.user?.factors?.[0]?.id || '');
       } else {
-        toast({
-          title: 'Anmeldung fehlgeschlagen',
-          description: 'Ungültige Anmeldedaten. Bitte überprüfen Sie E-Mail und Passwort.',
-          variant: 'destructive'
-        });
+        toast.error('Ungültige Anmeldedaten. Bitte überprüfen Sie E-Mail und Passwort.');
       }
     }
     setLoading(false);
@@ -157,11 +135,7 @@ export default function Auth() {
       code: mfaCode
     });
     if (error) {
-      toast({
-        title: 'MFA-Verifizierung fehlgeschlagen',
-        description: 'Ungültiger Code. Bitte versuchen Sie es erneut.',
-        variant: 'destructive'
-      });
+      toast.error('Ungültiger Code. Bitte versuchen Sie es erneut.');
     }
     setLoading(false);
   };
@@ -175,11 +149,7 @@ export default function Auth() {
       friendlyName: 'Authenticator App'
     });
     if (error) {
-      toast({
-        title: 'MFA-Setup fehlgeschlagen',
-        description: error.message,
-        variant: 'destructive'
-      });
+      toast.error('MFA-Setup fehlgeschlagen: ' + error.message);
     } else if (data) {
       setMfaQr(data.totp.qr_code);
       setMfaFactorId(data.id);
@@ -197,16 +167,9 @@ export default function Auth() {
       code: mfaCode
     });
     if (error) {
-      toast({
-        title: 'MFA-Verifizierung fehlgeschlagen',
-        description: 'Ungültiger Code. Bitte versuchen Sie es erneut.',
-        variant: 'destructive'
-      });
+      toast.error('Ungültiger Code. Bitte versuchen Sie es erneut.');
     } else {
-      toast({
-        title: 'MFA aktiviert',
-        description: 'Zwei-Faktor-Authentifizierung wurde erfolgreich eingerichtet.'
-      });
+      toast.success('Zwei-Faktor-Authentifizierung wurde erfolgreich eingerichtet.');
       setMfaSetup(false);
       setMfaQr('');
       setMfaCode('');

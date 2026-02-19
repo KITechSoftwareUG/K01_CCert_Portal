@@ -12,7 +12,7 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameM
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { exportAllAuditsToCalendar } from '@/lib/calendarExport';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { OutlookIntegration } from '@/components/OutlookIntegration';
 
 const CalendarSkeleton = () => (
@@ -70,10 +70,7 @@ const Calendar = () => {
 
   const handleExportAll = useCallback(() => {
     exportAllAuditsToCalendar(audits);
-    toast({
-      title: "Alle Audits exportiert",
-      description: "ICS-Datei wurde heruntergeladen.",
-    });
+    toast.success('ICS-Datei wurde heruntergeladen.');
   }, [audits]);
 
   // Active audits within the next 12 months for Outlook sync
