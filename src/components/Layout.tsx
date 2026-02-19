@@ -68,7 +68,7 @@ const SidebarContent = ({
 
   return (
     <>
-      <div className="flex items-center p-4 border-b border-sidebar-border bg-gradient-to-b from-white via-white/80 to-transparent rounded-b-lg">
+      <div className="flex items-center p-4 border-b border-sidebar-border">
         <img src={logo} alt="cert consulting" className="h-16 w-auto" />
       </div>
       <nav className="p-4 space-y-2 flex-1 overflow-y-auto">
