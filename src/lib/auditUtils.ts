@@ -1,5 +1,35 @@
 import { Audit, AuditTask } from '@/types/audit';
 import { isOverdue } from './dateUtils';
+import { AuditWithClient } from '@/hooks/useAudits';
+
+/**
+ * Transform a database audit (AuditWithClient) to the local Audit type.
+ * Accepts optional tasks array for Audits page variant.
+ */
+export const transformAuditToLocal = (dbAudit: AuditWithClient, tasks?: any[]): Audit => ({
+  id: dbAudit.id,
+  clientId: dbAudit.client_id,
+  clientName: dbAudit.clients?.name || 'Unbekannt',
+  type: dbAudit.type,
+  certifications: (dbAudit.certifications || []) as any,
+  scheduledDate: new Date(dbAudit.scheduled_date),
+  status: dbAudit.status,
+  tasks: tasks
+    ? tasks
+        .filter(t => t.audit_id === dbAudit.id)
+        .map(t => ({
+          id: t.id,
+          title: t.title,
+          description: t.description || '',
+          status: t.status,
+          dueDate: new Date(t.due_date),
+          assignedTo: t.assigned_to || undefined,
+          completedAt: t.completed_at ? new Date(t.completed_at) : undefined,
+        }))
+    : [],
+  notes: dbAudit.notes || undefined,
+  createdAt: new Date(dbAudit.created_at),
+});
 
 /**
  * Calculate task progress for an audit

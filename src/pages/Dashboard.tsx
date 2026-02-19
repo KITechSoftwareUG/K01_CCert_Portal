@@ -8,26 +8,13 @@ import { DataQualityWarningsCard } from '@/components/DataQualityWarningsCard';
 import { MissingAuditorsWarning } from '@/components/MissingAuditorsWarning';
 import { SuggestedAuditsCard } from '@/components/SuggestedAuditsCard';
 import { DashboardAIChat } from '@/components/DashboardAIChat';
-import { useAudits, AuditWithClient } from '@/hooks/useAudits';
+import { useAudits } from '@/hooks/useAudits';
+import { transformAuditToLocal } from '@/lib/auditUtils';
 
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { ClipboardCheck, Calendar } from 'lucide-react';
 import { getDaysUntil } from '@/lib/dateUtils';
-import { Audit } from '@/types/audit';
-
-// Transform database audit to local Audit type
-const transformAuditToLocal = (dbAudit: AuditWithClient): Audit => ({
-  id: dbAudit.id,
-  clientId: dbAudit.client_id,
-  clientName: dbAudit.clients?.name || 'Unbekannt',
-  type: dbAudit.type,
-  certifications: (dbAudit.certifications || []) as any,
-  scheduledDate: new Date(dbAudit.scheduled_date),
-  status: dbAudit.status,
-  tasks: [],
-  createdAt: new Date(dbAudit.created_at),
-});
 
 const StatCardSkeleton = () => (
   <Card className="h-auto">

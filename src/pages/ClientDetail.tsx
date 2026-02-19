@@ -64,19 +64,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 
-const COUNTRIES = [
-  'Deutschland',
-  'Österreich',
-  'Rumänien',
-  'Italien',
-  'Ungarn',
-  'Slowenien',
-  'Finnland',
-  'Litauen',
-  'Niederlande',
-  'Schweden',
-  'Andere',
-];
+import { COUNTRIES } from '@/lib/constants';
 
 const ClientDetailSkeleton = () => (
   <Layout>

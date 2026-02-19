@@ -28,25 +28,12 @@ import { useCertifications } from '@/hooks/useCertifications';
 import { useCreateClientCertification } from '@/hooks/useClientCertifications';
 import { useAuditors } from '@/hooks/useAuditors';
 import { Constants } from '@/integrations/supabase/types';
+import { COUNTRIES } from '@/lib/constants';
 
 interface NewClientDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
-
-const COUNTRIES = [
-  'Deutschland',
-  'Österreich',
-  'Rumänien',
-  'Italien',
-  'Ungarn',
-  'Slowenien',
-  'Finnland',
-  'Litauen',
-  'Niederlande',
-  'Schweden',
-  'Andere',
-];
 
 // Track certification selection with optional auditor
 interface CertificationSelection {

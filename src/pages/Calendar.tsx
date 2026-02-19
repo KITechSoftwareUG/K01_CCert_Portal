@@ -1,7 +1,8 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
-import { useAudits, AuditWithClient } from '@/hooks/useAudits';
+import { useAudits } from '@/hooks/useAudits';
+import { transformAuditToLocal } from '@/lib/auditUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,20 +14,6 @@ import { cn } from '@/lib/utils';
 import { exportAllAuditsToCalendar } from '@/lib/calendarExport';
 import { toast } from '@/hooks/use-toast';
 import { OutlookIntegration } from '@/components/OutlookIntegration';
-import { Audit } from '@/types/audit';
-
-const transformAuditToLocal = (dbAudit: AuditWithClient): Audit => ({
-  id: dbAudit.id,
-  clientId: dbAudit.client_id,
-  clientName: dbAudit.clients?.name || 'Unbekannt',
-  type: dbAudit.type,
-  certifications: (dbAudit.certifications || []) as any,
-  scheduledDate: new Date(dbAudit.scheduled_date),
-  status: dbAudit.status,
-  tasks: [],
-  notes: dbAudit.notes || undefined,
-  createdAt: new Date(dbAudit.created_at),
-});
 
 const CalendarSkeleton = () => (
   <Card className="lg:col-span-2">
