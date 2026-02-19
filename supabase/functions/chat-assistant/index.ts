@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
@@ -21,117 +21,199 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Create Supabase client for database queries
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
-    // Fetch context data from database
-    const [clientsRes, auditsRes, tasksRes, certificationsRes, auditorsRes] = await Promise.all([
-      supabase.from("clients").select("id, name, client_number, contact_person, email, country, is_active"),
+    // Fetch comprehensive context data
+    const [
+      clientsRes, auditsRes, tasksRes, certificationsRes,
+      auditorsRes, certBodiesRes, contactsRes, certsRes
+    ] = await Promise.all([
+      supabase.from("clients").select("id, name, client_number, contact_person, email, phone, country, address, is_active, consultant, parent_client_id"),
       supabase.from("audits").select(`
-        id, type, status, scheduled_date, notes,
+        id, type, status, scheduled_date, notes, auditor_id, certification_body_id,
         clients (id, name, client_number),
         auditors (id, name),
+        certification_bodies (id, name, short_name),
         client_certifications (
-          id,
+          id, scope, certificate_number,
           certifications (name)
         )
-      `).order("scheduled_date", { ascending: false }).limit(100),
+      `).order("scheduled_date", { ascending: true }),
       supabase.from("audit_tasks").select(`
-        id, title, description, status, due_date, assigned_to,
+        id, title, description, status, due_date, assigned_to, completed_at,
         audits (
-          id, type, scheduled_date,
+          id, type, scheduled_date, status,
           clients (name, client_number)
         )
-      `).order("due_date", { ascending: true }).limit(100),
+      `).order("due_date", { ascending: true }),
       supabase.from("client_certifications").select(`
-        id, status, valid_from, valid_until, certificate_number, scope,
+        id, status, valid_from, valid_until, certificate_number, scope, notes,
         clients (id, name, client_number),
         certifications (name),
         auditors (id, name)
-      `).limit(100),
-      supabase.from("auditors").select("id, name, email, phone, certification_bodies (name)"),
+      `),
+      supabase.from("auditors").select("id, name, email, phone, notes, certification_bodies (name, short_name)"),
+      supabase.from("certification_bodies").select("id, name, short_name, contact_person, email, phone, website"),
+      supabase.from("contacts").select("id, name, role, email, phone, is_primary, clients (name, client_number)"),
+      supabase.from("certifications").select("id, name, description"),
     ]);
 
-    // Build context string
     const clients = clientsRes.data || [];
     const audits = auditsRes.data || [];
     const tasks = tasksRes.data || [];
-    const certifications = certificationsRes.data || [];
+    const clientCerts = certificationsRes.data || [];
     const auditors = auditorsRes.data || [];
-    // Filter open tasks
-    const openTasks = tasks.filter((t: any) => t.status === "pending" || t.status === "in-progress");
-    
-    // Build a structured context
-    const contextParts: string[] = [];
+    const certBodies = certBodiesRes.data || [];
+    const contacts = contactsRes.data || [];
+    const certTypes = certsRes.data || [];
 
-    // Clients summary
-    contextParts.push(`=== KUNDEN (${clients.length} gesamt) ===`);
-    clients.slice(0, 20).forEach((c: any) => {
-      contextParts.push(`- ${c.name} (KD-Nr: ${c.client_number || "N/A"}, Land: ${c.country || "DE"}, Aktiv: ${c.is_active ? "Ja" : "Nein"})`);
+    const now = new Date();
+    const todayStr = now.toLocaleDateString("de-DE");
+
+    // Build structured context
+    const ctx: string[] = [];
+    ctx.push(`AKTUELLES DATUM: ${todayStr}\n`);
+
+    // Certification types
+    ctx.push(`=== ZERTIFIZIERUNGSSTANDARDS (${certTypes.length}) ===`);
+    certTypes.forEach((c: any) => {
+      ctx.push(`- ${c.name}${c.description ? ` – ${c.description}` : ''}`);
     });
 
-    // Open tasks summary
-    contextParts.push(`\n=== OFFENE AUFGABEN (${openTasks.length} gesamt) ===`);
-    openTasks.slice(0, 30).forEach((t: any) => {
-      const clientName = t.audits?.clients?.name || "Unbekannt";
-      const dueDate = t.due_date ? new Date(t.due_date).toLocaleDateString("de-DE") : "Kein Datum";
-      contextParts.push(`- "${t.title}" für ${clientName} (Fällig: ${dueDate}, Status: ${t.status})`);
+    // Clients with full details
+    ctx.push(`\n=== KUNDEN (${clients.length}) ===`);
+    clients.forEach((c: any) => {
+      const parts = [`${c.name}`];
+      if (c.client_number) parts.push(`KD-Nr: ${c.client_number}`);
+      if (c.country) parts.push(`Land: ${c.country}`);
+      if (c.address) parts.push(`Adresse: ${c.address}`);
+      if (c.contact_person) parts.push(`Ansprechpartner: ${c.contact_person}`);
+      if (c.email) parts.push(`E-Mail: ${c.email}`);
+      if (c.phone) parts.push(`Tel: ${c.phone}`);
+      if (c.consultant) parts.push(`Berater: ${c.consultant}`);
+      parts.push(`Aktiv: ${c.is_active ? 'Ja' : 'Nein'}`);
+      ctx.push(`- ${parts.join(' | ')}`);
     });
 
-    // Upcoming audits
-    const upcomingAudits = audits.filter((a: any) => 
-      a.status === "scheduled" && new Date(a.scheduled_date) >= new Date()
-    );
-    contextParts.push(`\n=== ANSTEHENDE AUDITS (${upcomingAudits.length}) ===`);
-    upcomingAudits.slice(0, 30).forEach((a: any) => {
-      const clientName = a.clients?.name || "Unbekannt";
-      const certName = a.client_certifications?.certifications?.name || "N/A";
-      const auditorName = a.auditors?.name || "Kein Auditor";
-      const date = new Date(a.scheduled_date).toLocaleDateString("de-DE");
-      contextParts.push(`- ${a.type} bei ${clientName} (${certName}) am ${date}, Auditor: ${auditorName}`);
-    });
+    // Contacts
+    if (contacts.length > 0) {
+      ctx.push(`\n=== KONTAKTPERSONEN (${contacts.length}) ===`);
+      contacts.forEach((c: any) => {
+        const clientName = c.clients?.name || "Unbekannt";
+        const parts = [`${c.name} (${clientName})`];
+        if (c.role) parts.push(`Rolle: ${c.role}`);
+        if (c.email) parts.push(`E-Mail: ${c.email}`);
+        if (c.phone) parts.push(`Tel: ${c.phone}`);
+        if (c.is_primary) parts.push(`[Hauptkontakt]`);
+        ctx.push(`- ${parts.join(' | ')}`);
+      });
+    }
 
-    // Certifications overview
-    contextParts.push(`\n=== ZERTIFIZIERUNGEN (${certifications.length}) ===`);
-    certifications.slice(0, 30).forEach((c: any) => {
-      const clientName = c.clients?.name || "Unbekannt";
-      const certName = c.certifications?.name || "N/A";
-      const auditorName = c.auditors?.name || "Kein Auditor";
-      const validUntil = c.valid_until ? new Date(c.valid_until).toLocaleDateString("de-DE") : "Unbefristet";
-      contextParts.push(`- ${clientName}: ${certName} (Gültig bis: ${validUntil}, Status: ${c.status || "aktiv"}, Auditor: ${auditorName})`);
-    });
-
-    // Auditors overview
-    contextParts.push(`\n=== AUDITOREN (${auditors.length}) ===`);
+    // Auditors
+    ctx.push(`\n=== AUDITOREN (${auditors.length}) ===`);
     auditors.forEach((a: any) => {
-      const cbName = a.certification_bodies?.name || "Keine ZS";
-      contextParts.push(`- ${a.name} (E-Mail: ${a.email || "N/A"}, Tel: ${a.phone || "N/A"}, Zertifizierungsstelle: ${cbName})`);
+      const parts = [`${a.name}`];
+      if (a.email) parts.push(`E-Mail: ${a.email}`);
+      if (a.phone) parts.push(`Tel: ${a.phone}`);
+      const cbName = a.certification_bodies?.name || a.certification_bodies?.short_name;
+      if (cbName) parts.push(`Zertifizierungsstelle: ${cbName}`);
+      if (a.notes) parts.push(`Notizen: ${a.notes}`);
+      ctx.push(`- ${parts.join(' | ')}`);
     });
 
-    // All audits (not just upcoming)
-    contextParts.push(`\n=== ALLE AUDITS (${audits.length}) ===`);
-    audits.slice(0, 50).forEach((a: any) => {
+    // Certification bodies
+    ctx.push(`\n=== ZERTIFIZIERUNGSSTELLEN (${certBodies.length}) ===`);
+    certBodies.forEach((cb: any) => {
+      const parts = [`${cb.name}`];
+      if (cb.short_name) parts.push(`Kürzel: ${cb.short_name}`);
+      if (cb.contact_person) parts.push(`Kontakt: ${cb.contact_person}`);
+      if (cb.email) parts.push(`E-Mail: ${cb.email}`);
+      if (cb.phone) parts.push(`Tel: ${cb.phone}`);
+      if (cb.website) parts.push(`Web: ${cb.website}`);
+      ctx.push(`- ${parts.join(' | ')}`);
+    });
+
+    // Client certifications
+    ctx.push(`\n=== KUNDEN-ZERTIFIZIERUNGEN (${clientCerts.length}) ===`);
+    clientCerts.forEach((cc: any) => {
+      const clientName = cc.clients?.name || "Unbekannt";
+      const certName = cc.certifications?.name || "N/A";
+      const auditorName = cc.auditors?.name || "Kein Auditor";
+      const parts = [`${clientName}: ${certName}`];
+      if (cc.certificate_number) parts.push(`Zert-Nr: ${cc.certificate_number}`);
+      if (cc.scope) parts.push(`Scope: ${cc.scope}`);
+      parts.push(`Status: ${cc.status || 'aktiv'}`);
+      if (cc.valid_from) parts.push(`Gültig ab: ${new Date(cc.valid_from).toLocaleDateString("de-DE")}`);
+      if (cc.valid_until) parts.push(`Gültig bis: ${new Date(cc.valid_until).toLocaleDateString("de-DE")}`);
+      parts.push(`Auditor: ${auditorName}`);
+      if (cc.notes) parts.push(`Notizen: ${cc.notes}`);
+      ctx.push(`- ${parts.join(' | ')}`);
+    });
+
+    // All audits
+    ctx.push(`\n=== AUDITS (${audits.length}) ===`);
+    audits.forEach((a: any) => {
       const clientName = a.clients?.name || "Unbekannt";
       const certName = a.client_certifications?.certifications?.name || "N/A";
       const auditorName = a.auditors?.name || "Kein Auditor";
+      const cbName = a.certification_bodies?.short_name || a.certification_bodies?.name || "";
       const date = new Date(a.scheduled_date).toLocaleDateString("de-DE");
-      contextParts.push(`- ${a.type} bei ${clientName} (${certName}) am ${date}, Status: ${a.status}, Auditor: ${auditorName}`);
+      const parts = [`${a.type} bei ${clientName}`];
+      parts.push(`Zertifizierung: ${certName}`);
+      parts.push(`Datum: ${date}`);
+      parts.push(`Status: ${a.status}`);
+      parts.push(`Auditor: ${auditorName}`);
+      if (cbName) parts.push(`ZS: ${cbName}`);
+      if (a.notes) parts.push(`Notizen: ${a.notes}`);
+      ctx.push(`- ${parts.join(' | ')}`);
     });
 
-    const databaseContext = contextParts.join("\n");
+    // Tasks with status analysis
+    const openTasks = tasks.filter((t: any) => t.status === "pending" || t.status === "in-progress");
+    const overdueTasks = openTasks.filter((t: any) => new Date(t.due_date) < now);
+    const completedTasks = tasks.filter((t: any) => t.status === "completed");
 
-    const systemPrompt = `Du bist ein hilfreicher Audit-Assistent für ein Zertifizierungs-Management-System. Du hast Zugriff auf folgende Datenbank-Informationen:
+    ctx.push(`\n=== AUFGABEN (${tasks.length} gesamt, ${openTasks.length} offen, ${overdueTasks.length} überfällig, ${completedTasks.length} erledigt) ===`);
+    tasks.forEach((t: any) => {
+      const clientName = t.audits?.clients?.name || "Unbekannt";
+      const auditType = t.audits?.type || "";
+      const dueDate = new Date(t.due_date).toLocaleDateString("de-DE");
+      const isOverdue = t.status !== "completed" && new Date(t.due_date) < now;
+      const parts = [`"${t.title}" für ${clientName} (${auditType})`];
+      parts.push(`Fällig: ${dueDate}`);
+      parts.push(`Status: ${t.status}${isOverdue ? ' – ÜBERFÄLLIG' : ''}`);
+      if (t.assigned_to) parts.push(`Zugewiesen: ${t.assigned_to}`);
+      if (t.description) parts.push(`Beschreibung: ${t.description}`);
+      ctx.push(`- ${parts.join(' | ')}`);
+    });
 
+    const databaseContext = ctx.join("\n");
+
+    const systemPrompt = `Du bist der KI-Assistent für das Zertifizierungs-Management-System von CERT CONSULTING PANE. Du bist ein Experte für Zertifizierungsaudits (SURE, FSC, PEFC, ISCC, ISO 9001, ISO 14001) und hilfst Beratern bei ihrer täglichen Arbeit.
+
+DEINE DATENBANK:
 ${databaseContext}
 
-Deine Aufgaben:
-1. Beantworte Fragen zu Kunden, Audits, Aufgaben und Zertifizierungen basierend auf den obigen Daten.
-2. Wenn nach offenen Aufgaben für einen bestimmten Kunden gefragt wird, filtere die relevanten Aufgaben heraus.
-3. Gib klare, strukturierte Antworten auf Deutsch.
-4. Wenn du keine passenden Daten findest, sage das ehrlich.
-5. Bei Fragen zu Terminen, Fristen oder Abläufen, nutze die Audit- und Aufgabendaten.
+DEINE FÄHIGKEITEN:
+1. **Datenabfragen**: Du kannst alle Fragen zu Kunden, Audits, Aufgaben, Zertifizierungen, Auditoren und Zertifizierungsstellen präzise beantworten.
+2. **Analyse & Planung**: Du erkennst Muster, Risiken und Handlungsbedarf:
+   - Welche Zertifizierungen laufen bald ab?
+   - Welche Aufgaben sind überfällig?
+   - Welcher Auditor hat welche Kunden?
+   - Wie ist die Auslastung der Auditoren?
+3. **Terminplanung**: Du hilfst bei der Planung von Audits unter Berücksichtigung von Gültigkeitsfristen.
+4. **Zusammenfassungen**: Du erstellst Übersichten zu Kunden, Auditoren oder Zeiträumen.
+5. **Proaktive Hinweise**: Wenn du Probleme erkennst (überfällige Aufgaben, ablaufende Zertifikate), weise darauf hin.
 
-Formatiere Listen übersichtlich mit Spiegelstrichen. Halte Antworten prägnant aber informativ.`;
+REGELN:
+- Antworte IMMER auf Deutsch.
+- Sei präzise und strukturiert. Nutze Markdown für Listen und Hervorhebungen.
+- Wenn du nach konkreten Daten gefragt wirst, gib sie exakt aus der Datenbank wieder.
+- Wenn du etwas nicht weißt oder keine Daten findest, sage das ehrlich.
+- Beziehe dich NUR auf die dir vorliegenden Daten – erfinde nichts.
+- Halte Antworten kompakt aber informativ. Keine unnötigen Einleitungen.
+- Bei Auditor-Fragen: Prüfe sowohl die Audit-Zuordnungen als auch die Zertifizierungs-Zuordnungen.
+- Beachte das aktuelle Datum für Fälligkeitsberechnungen.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
