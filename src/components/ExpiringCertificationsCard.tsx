@@ -1,11 +1,10 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { AlertTriangle, Calendar, ChevronRight, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, Clock, AlertCircle } from 'lucide-react';
 import { useAllClientCertifications } from '@/hooks/useClientCertifications';
-import { format, differenceInDays, isPast, isToday } from 'date-fns';
+import { differenceInDays, isPast, isToday, format } from 'date-fns';
 import { de } from 'date-fns/locale';
 
 interface ExpiringCertification {
@@ -30,7 +29,7 @@ export const ExpiringCertificationsCard = () => {
 
       const validUntil = new Date(cert.valid_until);
       const daysUntilExpiry = differenceInDays(validUntil, new Date());
-      
+
       if (daysUntilExpiry > 90) continue;
 
       let status: ExpiringCertification['status'] = 'ok';
@@ -64,53 +63,39 @@ export const ExpiringCertificationsCard = () => {
     expired: expiringCertifications.filter(c => c.status === 'expired').length,
     critical: expiringCertifications.filter(c => c.status === 'critical').length,
     warning: expiringCertifications.filter(c => c.status === 'warning').length,
+    ok: expiringCertifications.filter(c => c.status === 'ok').length,
   }), [expiringCertifications]);
 
-  const formatValidUntil = (date: Date) => {
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = format(date, 'MMM', { locale: de });
-    const year = date.getFullYear();
-    return `${day}. ${month} ${year}`;
+  const getDaysLabel = (days: number, status: ExpiringCertification['status']) => {
+    if (status === 'expired') return 'Abgelaufen';
+    if (days === 0) return 'Heute';
+    if (days === 1) return '1 Tag';
+    return `${days} Tage`;
   };
 
-  const getStatusIndicator = (status: ExpiringCertification['status'], days: number) => {
+  const getStatusColor = (status: ExpiringCertification['status']) => {
     switch (status) {
-      case 'expired':
-        return (
-          <span className="inline-flex items-center gap-1 text-xs font-semibold text-destructive">
-            <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" />
-            Abgelaufen
-          </span>
-        );
-      case 'critical':
-        return (
-          <span className="inline-flex items-center gap-1 text-xs font-semibold text-destructive">
-            <span className="w-1.5 h-1.5 rounded-full bg-destructive" />
-            {days} Tag{days !== 1 ? 'e' : ''}
-          </span>
-        );
-      case 'warning':
-        return (
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-            {days} Tage
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-            <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40" />
-            {days} Tage
-          </span>
-        );
+      case 'expired': return 'bg-destructive text-destructive-foreground';
+      case 'critical': return 'bg-destructive/80 text-destructive-foreground';
+      case 'warning': return 'bg-amber-500 text-white';
+      default: return 'bg-muted text-muted-foreground';
+    }
+  };
+
+  const getRowAccent = (status: ExpiringCertification['status']) => {
+    switch (status) {
+      case 'expired': return 'border-l-destructive';
+      case 'critical': return 'border-l-destructive/70';
+      case 'warning': return 'border-l-amber-500';
+      default: return 'border-l-muted-foreground/30';
     }
   };
 
   if (isLoading) {
     return (
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-base">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
             <ShieldAlert className="h-4 w-4 text-amber-500" />
             Ablaufende Zertifikate
           </CardTitle>
@@ -123,69 +108,67 @@ export const ExpiringCertificationsCard = () => {
   }
 
   return (
-    <Card className="border-amber-500/20">
+    <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="flex items-center justify-between text-base">
-          <div className="flex items-center gap-2">
-            <ShieldAlert className="h-4 w-4 text-amber-500" />
-            Ablaufende Zertifikate
-          </div>
-          <div className="flex gap-1.5">
+        <CardTitle className="text-base font-semibold flex items-center gap-2">
+          <ShieldAlert className="h-4 w-4 text-amber-500" />
+          Ablaufende Zertifikate
+        </CardTitle>
+        {/* Summary pills */}
+        {expiringCertifications.length > 0 && (
+          <div className="flex gap-3 mt-2">
             {stats.expired > 0 && (
-              <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
-                {stats.expired}
-              </Badge>
+              <div className="flex items-center gap-1.5 text-xs font-medium text-destructive">
+                <AlertCircle className="h-3 w-3" />
+                {stats.expired} abgelaufen
+              </div>
             )}
             {stats.critical > 0 && (
-              <Badge className="bg-destructive/70 text-[10px] px-1.5 py-0">
-                {stats.critical}
-              </Badge>
+              <div className="flex items-center gap-1.5 text-xs font-medium text-destructive/80">
+                <Clock className="h-3 w-3" />
+                {stats.critical} kritisch
+              </div>
             )}
             {stats.warning > 0 && (
-              <Badge variant="outline" className="border-amber-500/50 text-amber-600 text-[10px] px-1.5 py-0">
-                {stats.warning}
-              </Badge>
+              <div className="flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+                <Clock className="h-3 w-3" />
+                {stats.warning} bald
+              </div>
             )}
           </div>
-        </CardTitle>
+        )}
       </CardHeader>
-      <CardContent className="pt-0">
+      <CardContent className="pt-1">
         {expiringCertifications.length === 0 ? (
-          <div className="text-center py-6">
+          <div className="text-center py-8">
             <ShieldCheck className="h-10 w-10 mx-auto text-success/40 mb-2" />
             <p className="text-sm text-muted-foreground">
-              Keine Zertifikate laufen in den nächsten 90 Tagen ab
+              Alles im grünen Bereich – keine Zertifikate laufen in den nächsten 90 Tagen ab.
             </p>
           </div>
         ) : (
-          <ScrollArea className="h-[320px] pr-3">
-            <div className="space-y-1.5">
+          <ScrollArea className="h-[340px] -mx-1 px-1">
+            <div className="space-y-1">
               {expiringCertifications.map((cert) => (
                 <div
                   key={cert.id}
-                  className={`group/item flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 p-2.5 rounded-lg cursor-pointer transition-all hover:bg-muted/60 ${
-                    cert.status === 'expired' 
-                      ? 'bg-destructive/[0.04]' 
-                      : cert.status === 'critical'
-                      ? 'bg-destructive/[0.03]'
-                      : ''
-                  }`}
+                  className={`group flex items-center gap-3 p-2.5 rounded-md border-l-[3px] cursor-pointer transition-all hover:bg-muted/50 ${getRowAccent(cert.status)}`}
                   onClick={() => navigate(`/certifications/${cert.id}`)}
                 >
+                  {/* Left content */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2 mb-0.5">
-                      <span className="font-medium text-sm truncate">
-                        {cert.certificationName}
-                      </span>
-                      {getStatusIndicator(cert.status, cert.daysUntilExpiry)}
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <span className="truncate">{cert.clientName}</span>
-                      <span className="text-muted-foreground/30">·</span>
-                      <span className="shrink-0">{formatValidUntil(cert.validUntil)}</span>
-                    </div>
+                    <p className="text-sm font-medium truncate leading-tight">
+                      {cert.clientName}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">
+                      {cert.certificationName} · bis {format(cert.validUntil, 'dd.MM.yyyy')}
+                    </p>
                   </div>
-                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover/item:text-muted-foreground transition-colors shrink-0" />
+
+                  {/* Days badge */}
+                  <span className={`shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full ${getStatusColor(cert.status)}`}>
+                    {getDaysLabel(cert.daysUntilExpiry, cert.status)}
+                  </span>
                 </div>
               ))}
             </div>
