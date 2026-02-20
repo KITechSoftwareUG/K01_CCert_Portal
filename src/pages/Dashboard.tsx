@@ -4,7 +4,7 @@ import { StatCard } from '@/components/StatCard';
 
 import { AlertsCard } from '@/components/AlertsCard';
 import { ExpiringCertificationsCard } from '@/components/ExpiringCertificationsCard';
-
+import { DataQualityWarningsCard } from '@/components/DataQualityWarningsCard';
 import { MissingAuditorsWarning } from '@/components/MissingAuditorsWarning';
 import { SuggestedAuditsCard } from '@/components/SuggestedAuditsCard';
 import { DashboardAIChat } from '@/components/DashboardAIChat';
@@ -97,6 +97,7 @@ const Dashboard = () => {
             {/* Left: Expiring Certs + Alerts (most critical info first) */}
             <div className="lg:col-span-5 space-y-5">
               <ExpiringCertificationsCard />
+              <DataQualityWarningsCard />
             </div>
 
             {/* Right: Tasks + Suggested Audits (actionable items) */}
