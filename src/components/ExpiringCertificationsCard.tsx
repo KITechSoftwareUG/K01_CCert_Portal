@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ShieldAlert, ShieldCheck } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, AlertTriangle, Clock, CalendarClock } from 'lucide-react';
 import { useAllClientCertifications } from '@/hooks/useClientCertifications';
 import { format, differenceInDays, isPast, isToday } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -18,6 +17,62 @@ interface ExpiringCertification {
   daysUntilExpiry: number;
   status: 'expired' | 'critical' | 'warning' | 'ok';
 }
+
+const KanbanColumn = ({
+  title,
+  icon: Icon,
+  items,
+  accentClass,
+  badgeVariant,
+  emptyText,
+  onItemClick,
+}: {
+  title: string;
+  icon: React.ElementType;
+  items: ExpiringCertification[];
+  accentClass: string;
+  badgeVariant: 'destructive' | 'outline' | 'secondary';
+  emptyText: string;
+  onItemClick: (id: string) => void;
+}) => (
+  <div className="flex flex-col min-w-0">
+    <div className={`flex items-center gap-2 mb-2 pb-2 border-b-2 ${accentClass}`}>
+      <Icon className="h-3.5 w-3.5 shrink-0" />
+      <span className="text-xs font-semibold uppercase tracking-wider truncate">{title}</span>
+      <Badge variant={badgeVariant} className="text-[10px] px-1.5 py-0 ml-auto shrink-0">
+        {items.length}
+      </Badge>
+    </div>
+    <ScrollArea className="h-[260px]">
+      {items.length === 0 ? (
+        <p className="text-xs text-muted-foreground text-center py-6 italic">{emptyText}</p>
+      ) : (
+        <div className="space-y-1.5 pr-2">
+          {items.map((cert) => (
+            <div
+              key={cert.id}
+              onClick={() => onItemClick(cert.id)}
+              className="group rounded-md border bg-card p-2.5 cursor-pointer transition-all hover:shadow-sm hover:border-primary/30 hover:-translate-y-px"
+            >
+              <p className="text-xs font-medium truncate leading-tight">{cert.clientName}</p>
+              <p className="text-[11px] text-muted-foreground truncate">{cert.certificationName}</p>
+              <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-border/50">
+                <span className="text-[10px] text-muted-foreground">
+                  {format(cert.validUntil, 'dd. MMM yyyy', { locale: de })}
+                </span>
+                <span className="text-[10px] font-semibold">
+                  {cert.status === 'expired'
+                    ? `${Math.abs(cert.daysUntilExpiry)}d überfällig`
+                    : `${cert.daysUntilExpiry}d`}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </ScrollArea>
+  </div>
+);
 
 export const ExpiringCertificationsCard = () => {
   const navigate = useNavigate();
@@ -54,54 +109,16 @@ export const ExpiringCertificationsCard = () => {
       });
     }
 
-    return result.sort((a, b) => {
-      if (a.status === 'expired' && b.status !== 'expired') return -1;
-      if (b.status === 'expired' && a.status !== 'expired') return 1;
-      return a.daysUntilExpiry - b.daysUntilExpiry;
-    });
+    return result.sort((a, b) => a.daysUntilExpiry - b.daysUntilExpiry);
   }, [certifications]);
 
-  const stats = useMemo(() => ({
-    expired: expiringCertifications.filter(c => c.status === 'expired').length,
-    critical: expiringCertifications.filter(c => c.status === 'critical').length,
-    warning: expiringCertifications.filter(c => c.status === 'warning').length,
+  const columns = useMemo(() => ({
+    expired: expiringCertifications.filter(c => c.status === 'expired'),
+    critical: expiringCertifications.filter(c => c.status === 'critical'),
+    upcoming: expiringCertifications.filter(c => c.status === 'warning' || c.status === 'ok'),
   }), [expiringCertifications]);
 
-  const formatValidUntil = (date: Date) => {
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = format(date, 'MMM', { locale: de });
-    const year = date.getFullYear();
-    return `${day}. ${month} ${year}`;
-  };
-
-  const getStatusBadge = (status: ExpiringCertification['status'], days: number) => {
-    switch (status) {
-      case 'expired':
-        return (
-          <Badge variant="destructive" className="text-[10px] px-1.5 py-0 font-semibold">
-            Abgelaufen
-          </Badge>
-        );
-      case 'critical':
-        return (
-          <Badge variant="destructive" className="text-[10px] px-1.5 py-0 bg-destructive/80">
-            {days} Tag{days !== 1 ? 'e' : ''}
-          </Badge>
-        );
-      case 'warning':
-        return (
-          <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-500/50 text-amber-600 dark:text-amber-400">
-            {days} Tage
-          </Badge>
-        );
-      default:
-        return (
-          <span className="text-xs text-muted-foreground">
-            {days} Tage
-          </span>
-        );
-    }
-  };
+  const handleClick = (id: string) => navigate(`/certifications/${id}`);
 
   if (isLoading) {
     return (
@@ -119,83 +136,68 @@ export const ExpiringCertificationsCard = () => {
     );
   }
 
-  return (
-    <Card className="border-amber-500/20">
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center justify-between text-base">
-          <div className="flex items-center gap-2">
-            <ShieldAlert className="h-4 w-4 text-amber-500" />
+  if (expiringCertifications.length === 0) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <ShieldCheck className="h-4 w-4 text-green-500" />
             Ablaufende Zertifikate
-          </div>
-          <div className="flex gap-1.5">
-            {stats.expired > 0 && (
-              <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
-                {stats.expired}
-              </Badge>
-            )}
-            {stats.critical > 0 && (
-              <Badge className="bg-destructive/70 text-[10px] px-1.5 py-0">
-                {stats.critical}
-              </Badge>
-            )}
-            {stats.warning > 0 && (
-              <Badge variant="outline" className="border-amber-500/50 text-amber-600 text-[10px] px-1.5 py-0">
-                {stats.warning}
-              </Badge>
-            )}
-          </div>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="pt-0">
-        {expiringCertifications.length === 0 ? (
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
           <div className="text-center py-6">
-            <ShieldCheck className="h-10 w-10 mx-auto text-success/40 mb-2" />
+            <ShieldCheck className="h-10 w-10 mx-auto text-muted-foreground/30 mb-2" />
             <p className="text-sm text-muted-foreground">
               Keine Zertifikate laufen in den nächsten 90 Tagen ab
             </p>
           </div>
-        ) : (
-          <ScrollArea className="h-[320px]">
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="text-xs h-8">Kunde</TableHead>
-                  <TableHead className="text-xs h-8">Zertifikat</TableHead>
-                  <TableHead className="text-xs h-8">Gültig bis</TableHead>
-                  <TableHead className="text-xs h-8 text-right">Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {expiringCertifications.map((cert) => (
-                  <TableRow
-                    key={cert.id}
-                    className={`cursor-pointer text-xs ${
-                      cert.status === 'expired' 
-                        ? 'bg-destructive/[0.04]' 
-                        : cert.status === 'critical'
-                        ? 'bg-destructive/[0.03]'
-                        : ''
-                    }`}
-                    onClick={() => navigate(`/certifications/${cert.id}`)}
-                  >
-                    <TableCell className="py-2 font-medium truncate max-w-[120px]">
-                      {cert.clientName}
-                    </TableCell>
-                    <TableCell className="py-2 truncate max-w-[100px] text-muted-foreground">
-                      {cert.certificationName}
-                    </TableCell>
-                    <TableCell className="py-2 text-muted-foreground whitespace-nowrap">
-                      {formatValidUntil(cert.validUntil)}
-                    </TableCell>
-                    <TableCell className="py-2 text-right">
-                      {getStatusBadge(cert.status, cert.daysUntilExpiry)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </ScrollArea>
-        )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <ShieldAlert className="h-4 w-4 text-amber-500" />
+          Ablaufende Zertifikate
+          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 ml-auto">
+            {expiringCertifications.length}
+          </Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <KanbanColumn
+            title="Abgelaufen"
+            icon={AlertTriangle}
+            items={columns.expired}
+            accentClass="border-destructive text-destructive"
+            badgeVariant="destructive"
+            emptyText="Keine abgelaufenen"
+            onItemClick={handleClick}
+          />
+          <KanbanColumn
+            title="Kritisch (≤14d)"
+            icon={Clock}
+            items={columns.critical}
+            accentClass="border-amber-500 text-amber-600 dark:text-amber-400"
+            badgeVariant="outline"
+            emptyText="Keine kritischen"
+            onItemClick={handleClick}
+          />
+          <KanbanColumn
+            title="Bald fällig"
+            icon={CalendarClock}
+            items={columns.upcoming}
+            accentClass="border-muted-foreground/30 text-muted-foreground"
+            badgeVariant="secondary"
+            emptyText="Keine bevorstehenden"
+            onItemClick={handleClick}
+          />
+        </div>
       </CardContent>
     </Card>
   );
