@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { AlertTriangle, Calendar, ChevronRight, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ShieldAlert, ShieldCheck } from 'lucide-react';
 import { useAllClientCertifications } from '@/hooks/useClientCertifications';
 import { format, differenceInDays, isPast, isToday } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -73,33 +74,29 @@ export const ExpiringCertificationsCard = () => {
     return `${day}. ${month} ${year}`;
   };
 
-  const getStatusIndicator = (status: ExpiringCertification['status'], days: number) => {
+  const getStatusBadge = (status: ExpiringCertification['status'], days: number) => {
     switch (status) {
       case 'expired':
         return (
-          <span className="inline-flex items-center gap-1 text-xs font-semibold text-destructive">
-            <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" />
+          <Badge variant="destructive" className="text-[10px] px-1.5 py-0 font-semibold">
             Abgelaufen
-          </span>
+          </Badge>
         );
       case 'critical':
         return (
-          <span className="inline-flex items-center gap-1 text-xs font-semibold text-destructive">
-            <span className="w-1.5 h-1.5 rounded-full bg-destructive" />
+          <Badge variant="destructive" className="text-[10px] px-1.5 py-0 bg-destructive/80">
             {days} Tag{days !== 1 ? 'e' : ''}
-          </span>
+          </Badge>
         );
       case 'warning':
         return (
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-500/50 text-amber-600 dark:text-amber-400">
             {days} Tage
-          </span>
+          </Badge>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-            <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40" />
+          <span className="text-xs text-muted-foreground">
             {days} Tage
           </span>
         );
@@ -158,37 +155,45 @@ export const ExpiringCertificationsCard = () => {
             </p>
           </div>
         ) : (
-          <ScrollArea className="h-[320px] pr-3">
-            <div className="space-y-1.5">
-              {expiringCertifications.map((cert) => (
-                <div
-                  key={cert.id}
-                  className={`group/item flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 p-2.5 rounded-lg cursor-pointer transition-all hover:bg-muted/60 ${
-                    cert.status === 'expired' 
-                      ? 'bg-destructive/[0.04]' 
-                      : cert.status === 'critical'
-                      ? 'bg-destructive/[0.03]'
-                      : ''
-                  }`}
-                  onClick={() => navigate(`/certifications/${cert.id}`)}
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2 mb-0.5">
-                      <span className="font-medium text-sm truncate">
-                        {cert.certificationName}
-                      </span>
-                      {getStatusIndicator(cert.status, cert.daysUntilExpiry)}
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <span className="truncate">{cert.clientName}</span>
-                      <span className="text-muted-foreground/30">·</span>
-                      <span className="shrink-0">{formatValidUntil(cert.validUntil)}</span>
-                    </div>
-                  </div>
-                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover/item:text-muted-foreground transition-colors shrink-0" />
-                </div>
-              ))}
-            </div>
+          <ScrollArea className="h-[320px]">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="text-xs h-8">Kunde</TableHead>
+                  <TableHead className="text-xs h-8">Zertifikat</TableHead>
+                  <TableHead className="text-xs h-8">Gültig bis</TableHead>
+                  <TableHead className="text-xs h-8 text-right">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {expiringCertifications.map((cert) => (
+                  <TableRow
+                    key={cert.id}
+                    className={`cursor-pointer text-xs ${
+                      cert.status === 'expired' 
+                        ? 'bg-destructive/[0.04]' 
+                        : cert.status === 'critical'
+                        ? 'bg-destructive/[0.03]'
+                        : ''
+                    }`}
+                    onClick={() => navigate(`/certifications/${cert.id}`)}
+                  >
+                    <TableCell className="py-2 font-medium truncate max-w-[120px]">
+                      {cert.clientName}
+                    </TableCell>
+                    <TableCell className="py-2 truncate max-w-[100px] text-muted-foreground">
+                      {cert.certificationName}
+                    </TableCell>
+                    <TableCell className="py-2 text-muted-foreground whitespace-nowrap">
+                      {formatValidUntil(cert.validUntil)}
+                    </TableCell>
+                    <TableCell className="py-2 text-right">
+                      {getStatusBadge(cert.status, cert.daysUntilExpiry)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </ScrollArea>
         )}
       </CardContent>
