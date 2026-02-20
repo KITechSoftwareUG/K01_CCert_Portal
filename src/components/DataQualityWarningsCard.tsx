@@ -2,9 +2,9 @@ import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { AlertTriangle, ChevronRight, UserX, CalendarX, FileWarning } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { AlertTriangle, UserX, CalendarX, FileWarning } from 'lucide-react';
 import { useAllClientCertifications } from '@/hooks/useClientCertifications';
 
 interface DataQualityIssue {
@@ -15,6 +15,24 @@ interface DataQualityIssue {
   type: 'missing_auditor' | 'missing_validity' | 'missing_both';
   description: string;
 }
+
+const TYPE_CONFIG = {
+  missing_both: {
+    icon: FileWarning,
+    label: 'Beides fehlt',
+    badgeVariant: 'destructive' as const,
+  },
+  missing_auditor: {
+    icon: UserX,
+    label: 'Kein Auditor',
+    badgeVariant: 'outline' as const,
+  },
+  missing_validity: {
+    icon: CalendarX,
+    label: 'Kein Datum',
+    badgeVariant: 'outline' as const,
+  },
+};
 
 export const DataQualityWarningsCard = () => {
   const navigate = useNavigate();
@@ -57,7 +75,6 @@ export const DataQualityWarningsCard = () => {
       }
     }
 
-    // Sort by severity (missing_both first)
     return result.sort((a, b) => {
       const severityOrder = { missing_both: 0, missing_auditor: 1, missing_validity: 2 };
       return severityOrder[a.type] - severityOrder[b.type];
@@ -71,23 +88,12 @@ export const DataQualityWarningsCard = () => {
     total: issues.length,
   }), [issues]);
 
-  const getIssueIcon = (type: DataQualityIssue['type']) => {
-    switch (type) {
-      case 'missing_auditor':
-        return <UserX className="h-4 w-4 text-amber-500" />;
-      case 'missing_validity':
-        return <CalendarX className="h-4 w-4 text-amber-500" />;
-      case 'missing_both':
-        return <FileWarning className="h-4 w-4 text-destructive" />;
-    }
-  };
-
   if (isLoading) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-amber-500" />
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
             Datenqualität
           </CardTitle>
         </CardHeader>
@@ -98,81 +104,70 @@ export const DataQualityWarningsCard = () => {
     );
   }
 
-  if (issues.length === 0) {
-    return null; // Hide card if no issues
-  }
+  if (issues.length === 0) return null;
 
   return (
-    <Card className="border-amber-500/30">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center justify-between">
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center justify-between text-base">
           <div className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-amber-500" />
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
             Datenqualität
           </div>
-          <Badge variant="outline" className="border-amber-500 text-amber-600">
-            {stats.total} Probleme
-          </Badge>
+          <div className="flex gap-1.5">
+            {stats.missingBoth > 0 && (
+              <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                {stats.missingBoth} kritisch
+              </Badge>
+            )}
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+              {stats.total} gesamt
+            </Badge>
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
-        {/* Summary */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          {stats.missingBoth > 0 && (
-            <Badge variant="destructive" className="text-xs">
-              <FileWarning className="h-3 w-3 mr-1" />
-              {stats.missingBoth} unvollständig
-            </Badge>
-          )}
-          {stats.missingAuditor > 0 && (
-            <Badge variant="outline" className="border-amber-500 text-amber-600 text-xs">
-              <UserX className="h-3 w-3 mr-1" />
-              {stats.missingAuditor} ohne Auditor
-            </Badge>
-          )}
-          {stats.missingValidity > 0 && (
-            <Badge variant="outline" className="border-amber-500 text-amber-600 text-xs">
-              <CalendarX className="h-3 w-3 mr-1" />
-              {stats.missingValidity} ohne Gültigkeit
-            </Badge>
-          )}
-        </div>
-
-        <ScrollArea className="h-[300px] pr-4">
-          <div className="space-y-2">
-            {issues.map((issue) => (
-              <div
-                key={issue.id}
-                className={`p-3 rounded-lg border transition-colors cursor-pointer hover:bg-muted/50 ${
-                  issue.type === 'missing_both' 
-                    ? 'border-destructive/30 bg-destructive/5' 
-                    : 'border-amber-500/20 bg-amber-50/50 dark:bg-amber-950/10'
-                }`}
-                onClick={() => navigate(`/certifications/${issue.clientCertificationId}`)}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    {getIssueIcon(issue.type)}
-                    <div className="min-w-0">
-                      <p className="font-medium text-sm truncate">
-                        {issue.certificationName}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {issue.clientName} • {issue.description}
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="shrink-0 h-8 w-8"
+        <ScrollArea className="h-[480px]">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="text-xs h-8 w-8 px-2"></TableHead>
+                <TableHead className="text-xs h-8">Kunde</TableHead>
+                <TableHead className="text-xs h-8">Zertifikat</TableHead>
+                <TableHead className="text-xs h-8 text-right">Problem</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {issues.map((issue) => {
+                const config = TYPE_CONFIG[issue.type];
+                const Icon = config.icon;
+                return (
+                  <TableRow
+                    key={issue.id}
+                    className={`cursor-pointer text-xs ${
+                      issue.type === 'missing_both' ? 'bg-destructive/[0.04]' : ''
+                    }`}
+                    onClick={() => navigate(`/certifications/${issue.clientCertificationId}`)}
                   >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
+                    <TableCell className="py-2 px-2 w-8">
+                      <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                    </TableCell>
+                    <TableCell className="py-2 font-medium truncate max-w-[120px]">
+                      {issue.clientName}
+                    </TableCell>
+                    <TableCell className="py-2 truncate max-w-[100px] text-muted-foreground">
+                      {issue.certificationName}
+                    </TableCell>
+                    <TableCell className="py-2 text-right">
+                      <Badge variant={config.badgeVariant} className="text-[10px] px-1.5 py-0">
+                        {config.label}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         </ScrollArea>
       </CardContent>
     </Card>
