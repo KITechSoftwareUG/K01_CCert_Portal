@@ -5,7 +5,7 @@ import { StatCard } from '@/components/StatCard';
 import { AlertsCard } from '@/components/AlertsCard';
 import { ExpiringCertificationsCard } from '@/components/ExpiringCertificationsCard';
 import { DataQualityWarningsCard } from '@/components/DataQualityWarningsCard';
-import { MissingAuditorsWarning } from '@/components/MissingAuditorsWarning';
+
 import { SuggestedAuditsCard } from '@/components/SuggestedAuditsCard';
 import { DashboardAIChat } from '@/components/DashboardAIChat';
 import { useAudits } from '@/hooks/useAudits';
@@ -61,8 +61,6 @@ const Dashboard = () => {
       <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 animate-fade-in">
         {/* AI Chat - Hero Section */}
         <DashboardAIChat />
-
-        {!isLoading && <MissingAuditorsWarning />}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-2 sm:gap-3">
