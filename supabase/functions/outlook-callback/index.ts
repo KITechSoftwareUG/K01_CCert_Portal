@@ -22,17 +22,14 @@ serve(async (req) => {
     const code = url.searchParams.get('code');
     const state = url.searchParams.get('state'); // This is the user ID
     const error = url.searchParams.get('error');
-    const errorDescription = url.searchParams.get('error_description');
-
-    console.log('Outlook callback received, state (userId):', state);
 
     if (error) {
-      console.error('OAuth error:', error, errorDescription);
+      console.error('OAuth error received');
       return new Response(`
         <html>
           <body>
             <script>
-              window.opener.postMessage({ type: 'outlook-auth-error', error: '${error}' }, '*');
+              window.opener.postMessage({ type: 'outlook-auth-error', error: 'auth_failed' }, '*');
               window.close();
             </script>
             <p>Fehler bei der Authentifizierung. Dieses Fenster schließt sich automatisch.</p>
@@ -44,12 +41,12 @@ serve(async (req) => {
     }
 
     if (!code || !state) {
-      console.error('Missing code or state');
+      console.error('Missing code or state in callback');
       return new Response(`
         <html>
           <body>
             <script>
-              window.opener.postMessage({ type: 'outlook-auth-error', error: 'Missing code or state' }, '*');
+              window.opener.postMessage({ type: 'outlook-auth-error', error: 'missing_params' }, '*');
               window.close();
             </script>
             <p>Fehler: Fehlende Parameter. Dieses Fenster schließt sich automatisch.</p>
@@ -60,7 +57,7 @@ serve(async (req) => {
       });
     }
 
-    // Exchange code for tokens - use the callback function URL as redirect URI
+    // Exchange code for tokens
     const redirectUri = `${SUPABASE_URL}/functions/v1/outlook-callback`;
     const tokenResponse = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
       method: 'POST',
@@ -78,23 +75,17 @@ serve(async (req) => {
     });
 
     const tokenData = await tokenResponse.json();
-    console.log('Token exchange response status:', tokenResponse.status);
 
     if (!tokenResponse.ok) {
-      const errorDetail = tokenData.error_description || tokenData.error || 'Unknown error';
-      console.error('Token exchange failed:', JSON.stringify(tokenData, null, 2));
-      console.error('Redirect URI used:', redirectUri);
-      console.error('Client ID:', AZURE_CLIENT_ID);
+      console.error('Token exchange failed');
       return new Response(`
         <html>
           <body>
             <script>
-              window.opener.postMessage({ type: 'outlook-auth-error', error: 'Token exchange failed: ${errorDetail.replace(/'/g, "\\'")}' }, '*');
+              window.opener.postMessage({ type: 'outlook-auth-error', error: 'token_exchange_failed' }, '*');
               window.close();
             </script>
-            <p>Fehler beim Token-Austausch: ${errorDetail}</p>
-            <p>Redirect URI: ${redirectUri}</p>
-            <p>Dieses Fenster schließt sich automatisch.</p>
+            <p>Fehler beim Token-Austausch. Dieses Fenster schließt sich automatisch.</p>
           </body>
         </html>
       `, {
@@ -119,15 +110,15 @@ serve(async (req) => {
       });
 
     if (upsertError) {
-      console.error('Error storing tokens:', upsertError);
+      console.error('Error storing tokens');
       return new Response(`
         <html>
           <body>
             <script>
-              window.opener.postMessage({ type: 'outlook-auth-error', error: 'Failed to store tokens' }, '*');
+              window.opener.postMessage({ type: 'outlook-auth-error', error: 'storage_failed' }, '*');
               window.close();
             </script>
-            <p>Fehler beim Speichern der Tokens. Dieses Fenster schließt sich automatisch.</p>
+            <p>Fehler beim Speichern. Dieses Fenster schließt sich automatisch.</p>
           </body>
         </html>
       `, {
@@ -135,7 +126,7 @@ serve(async (req) => {
       });
     }
 
-    console.log('Successfully stored tokens for user:', state);
+    console.log('Successfully completed OAuth flow for user');
     return new Response(`
       <html>
         <body>
@@ -151,13 +142,12 @@ serve(async (req) => {
     });
 
   } catch (error: unknown) {
-    console.error('Error in outlook-callback function:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error in outlook-callback function');
     return new Response(`
       <html>
         <body>
           <script>
-            window.opener.postMessage({ type: 'outlook-auth-error', error: '${errorMessage}' }, '*');
+            window.opener.postMessage({ type: 'outlook-auth-error', error: 'internal_error' }, '*');
             window.close();
           </script>
           <p>Ein Fehler ist aufgetreten. Dieses Fenster schließt sich automatisch.</p>
