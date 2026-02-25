@@ -278,11 +278,22 @@ const Clients = () => {
                 bis {new Date(row.earliestValidUntil).toLocaleDateString('de-DE')}
               </span>
             )}
-            {row.certifications.some(c => c.status && c.status !== 'active') && (
-              <Badge variant={row.certifications.some(c => c.status === 'expired') ? 'destructive' : 'outline'}>
-                {row.certifications.find(c => c.status !== 'active')?.status}
-              </Badge>
-            )}
+            {row.certifications.map(c => c.status).filter(Boolean).map((status, i) => {
+              const statusColors: Record<string, string> = {
+                active: 'bg-green-100 text-green-800 border-green-300',
+                valid: 'bg-green-100 text-green-800 border-green-300',
+                suspended: 'bg-orange-100 text-orange-800 border-orange-300',
+                expired: 'bg-red-100 text-red-800 border-red-300',
+              };
+              const statusLabel: Record<string, string> = {
+                active: 'Aktiv', valid: 'Gültig', suspended: 'Ausgesetzt', expired: 'Abgelaufen',
+              };
+              return (
+                <Badge key={i} variant="outline" className={`text-xs ${statusColors[status!] || ''}`}>
+                  {statusLabel[status!] || status}
+                </Badge>
+              );
+            })}
           </div>
           {/* Auditor on the right side - show warning if missing */}
           {auditorInfo ? (
@@ -803,11 +814,22 @@ const Clients = () => {
                                                           bis {new Date(row.earliestValidUntil).toLocaleDateString('de-DE')}
                                                         </span>
                                                       )}
-                                                      {row.certifications.some(c => c.status && c.status !== 'active') && (
-                                                        <Badge variant={row.certifications.some(c => c.status === 'expired') ? 'destructive' : 'outline'} className="text-xs">
-                                                          {row.certifications.find(c => c.status !== 'active')?.status}
-                                                        </Badge>
-                                                      )}
+                                                      {row.certifications.map(c => c.status).filter(Boolean).map((status, i) => {
+                                                        const statusColors: Record<string, string> = {
+                                                          active: 'bg-green-100 text-green-800 border-green-300',
+                                                          valid: 'bg-green-100 text-green-800 border-green-300',
+                                                          suspended: 'bg-orange-100 text-orange-800 border-orange-300',
+                                                          expired: 'bg-red-100 text-red-800 border-red-300',
+                                                        };
+                                                        const statusLabel: Record<string, string> = {
+                                                          active: 'Aktiv', valid: 'Gültig', suspended: 'Ausgesetzt', expired: 'Abgelaufen',
+                                                        };
+                                                        return (
+                                                          <Badge key={i} variant="outline" className={`text-xs ${statusColors[status!] || ''}`}>
+                                                            {statusLabel[status!] || status}
+                                                          </Badge>
+                                                        );
+                                                      })}
                                                     </div>
                                                     <div className="shrink-0">
                                                       {auditorInfo ? (

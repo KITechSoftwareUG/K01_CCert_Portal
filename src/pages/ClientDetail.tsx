@@ -591,25 +591,44 @@ const ClientDetail = () => {
                   </div>
                 ) : clientCertifications.length > 0 ? (
                   <div className="space-y-2">
-                    {clientCertifications.map((cc) => (
-                      <div 
-                        key={cc.id}
-                        onClick={() => navigate(`/certifications/${cc.id}`)}
-                        className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-primary/10 cursor-pointer transition-colors group gap-1"
-                      >
-                        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-                          <Badge variant="secondary" className="text-xs sm:text-sm px-2 sm:px-3 py-1">
-                            {cc.certifications?.name || 'Unbekannt'}
-                          </Badge>
-                          {cc.valid_until && (
-                            <span className="text-xs text-muted-foreground">
-                              bis {format(new Date(cc.valid_until), 'dd.MM.yyyy', { locale: de })}
-                            </span>
-                          )}
+                    {clientCertifications.map((cc) => {
+                      const statusColors: Record<string, string> = {
+                        active: 'bg-green-100 text-green-800 border-green-300',
+                        valid: 'bg-green-100 text-green-800 border-green-300',
+                        suspended: 'bg-orange-100 text-orange-800 border-orange-300',
+                        expired: 'bg-red-100 text-red-800 border-red-300',
+                      };
+                      const statusLabel: Record<string, string> = {
+                        active: 'Aktiv',
+                        valid: 'Gültig',
+                        suspended: 'Ausgesetzt',
+                        expired: 'Abgelaufen',
+                      };
+                      return (
+                        <div 
+                          key={cc.id}
+                          onClick={() => navigate(`/certifications/${cc.id}`)}
+                          className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-primary/10 cursor-pointer transition-colors group gap-1"
+                        >
+                          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                            <Badge variant="secondary" className="text-xs sm:text-sm px-2 sm:px-3 py-1">
+                              {cc.certifications?.name || 'Unbekannt'}
+                            </Badge>
+                            {cc.status && (
+                              <Badge variant="outline" className={`text-xs ${statusColors[cc.status] || ''}`}>
+                                {statusLabel[cc.status] || cc.status}
+                              </Badge>
+                            )}
+                            {cc.valid_until && (
+                              <span className="text-xs text-muted-foreground">
+                                bis {format(new Date(cc.valid_until), 'dd.MM.yyyy', { locale: de })}
+                              </span>
+                            )}
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0 hidden sm:block" />
                         </div>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0 hidden sm:block" />
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <p className="text-muted-foreground">Keine Zertifizierungen hinterlegt</p>
@@ -618,7 +637,7 @@ const ClientDetail = () => {
             </Card>
 
             {/* Audit History Card */}
-            <ClientAuditHistory clientId={id!} limit={10} />
+            <ClientAuditHistory clientId={id!} />
 
             {/* Contact Management Card */}
             <ContactManagement clientId={id!} isEditing={isEditing} />
