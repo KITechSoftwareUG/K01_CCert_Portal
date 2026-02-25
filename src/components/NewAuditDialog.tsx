@@ -22,7 +22,7 @@ import { toast } from 'sonner';
 import { useClients, CertificationStandard } from '@/hooks/useClients';
 import { useCreateAudit, AuditType } from '@/hooks/useAudits';
 import { useCreateBulkAuditTasks } from '@/hooks/useAuditTasks';
-import { Constants } from '@/integrations/supabase/types';
+import { useCertifications } from '@/hooks/useCertifications';
 import { AUDIT_TYPE_LABELS } from '@/lib/constants';
 import { daysFromNow } from '@/lib/dateUtils';
 
@@ -39,7 +39,7 @@ const auditTypeOptions: { value: AuditType; label: string }[] = [
   { value: 'internal', label: AUDIT_TYPE_LABELS['internal'] },
 ];
 
-const certificationOptions = Constants.public.Enums.certification_standard;
+
 
 const getDefaultTasksForAuditType = (type: AuditType, scheduledDate: Date) => {
   const taskTemplates: Record<AuditType, Array<{ title: string; description: string; dueDays: number; assignedTo: string }>> = {
@@ -80,11 +80,12 @@ const getDefaultTasksForAuditType = (type: AuditType, scheduledDate: Date) => {
 export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
   const [selectedClient, setSelectedClient] = useState('');
   const [auditType, setAuditType] = useState<AuditType>('initial');
-  const [selectedCertifications, setSelectedCertifications] = useState<CertificationStandard[]>([]);
+  const [selectedCertifications, setSelectedCertifications] = useState<string[]>([]);
   const [scheduledDate, setScheduledDate] = useState('');
   const [notes, setNotes] = useState('');
 
   const { data: clients = [], isLoading: clientsLoading } = useClients();
+  const { data: certifications = [] } = useCertifications();
   const createAudit = useCreateAudit();
   const createTasks = useCreateBulkAuditTasks();
 
@@ -93,11 +94,11 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
     [clients]
   );
 
-  const toggleCertification = (cert: CertificationStandard) => {
+  const toggleCertification = (certName: string) => {
     setSelectedCertifications(prev =>
-      prev.includes(cert)
-        ? prev.filter(c => c !== cert)
-        : [...prev, cert]
+      prev.includes(certName)
+        ? prev.filter(c => c !== certName)
+        : [...prev, certName]
     );
   };
 
@@ -121,7 +122,7 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
       const audit = await createAudit.mutateAsync({
         client_id: selectedClient,
         type: auditType,
-        certifications: selectedCertifications,
+        certifications: selectedCertifications as any,
         scheduled_date: new Date(scheduledDate).toISOString(),
         notes: notes || null,
         status: 'scheduled',
@@ -193,19 +194,19 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
           {/* Certifications */}
           <div className="space-y-2">
             <Label>Zertifizierungen *</Label>
-            <div className="grid grid-cols-2 gap-3 p-4 border rounded-lg">
-              {certificationOptions.map((cert) => (
-                <div key={cert} className="flex items-center space-x-2">
+            <div className="grid grid-cols-2 gap-3 p-4 border rounded-lg max-h-60 overflow-y-auto">
+              {certifications.map((cert) => (
+                <div key={cert.id} className="flex items-center space-x-2">
                   <Checkbox
-                    id={cert}
-                    checked={selectedCertifications.includes(cert)}
-                    onCheckedChange={() => toggleCertification(cert)}
+                    id={`cert-${cert.id}`}
+                    checked={selectedCertifications.includes(cert.name)}
+                    onCheckedChange={() => toggleCertification(cert.name)}
                   />
                   <label
-                    htmlFor={cert}
+                    htmlFor={`cert-${cert.id}`}
                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                   >
-                    {cert}
+                    {cert.name}
                   </label>
                 </div>
               ))}

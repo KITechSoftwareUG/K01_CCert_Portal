@@ -12,24 +12,29 @@ import { History, ChevronRight, Calendar, FileCheck } from 'lucide-react';
 
 interface ClientAuditHistoryProps {
   clientId: string;
-  limit?: number;
 }
 
-export const ClientAuditHistory = ({ clientId, limit = 10 }: ClientAuditHistoryProps) => {
+export const ClientAuditHistory = ({ clientId }: ClientAuditHistoryProps) => {
   const navigate = useNavigate();
   const { data: allAudits = [], isLoading } = useAudits();
 
-  // Filter audits for this client and sort by date (newest first)
+  // Filter and sort: scheduled/in-progress ascending first, then completed/cancelled descending
   const clientAudits = useMemo(() => {
-    return allAudits
-      .filter(audit => audit.client_id === clientId)
-      .sort((a, b) => new Date(b.scheduled_date).getTime() - new Date(a.scheduled_date).getTime())
-      .slice(0, limit);
-  }, [allAudits, clientId, limit]);
-
-  const totalAudits = useMemo(() => {
-    return allAudits.filter(audit => audit.client_id === clientId).length;
+    const audits = allAudits.filter(audit => audit.client_id === clientId);
+    
+    const activeStatuses = ['scheduled', 'in-progress'];
+    const active = audits
+      .filter(a => activeStatuses.includes(a.status))
+      .sort((a, b) => new Date(a.scheduled_date).getTime() - new Date(b.scheduled_date).getTime());
+    
+    const completed = audits
+      .filter(a => !activeStatuses.includes(a.status))
+      .sort((a, b) => new Date(b.scheduled_date).getTime() - new Date(a.scheduled_date).getTime());
+    
+    return [...active, ...completed];
   }, [allAudits, clientId]);
+
+  const totalAudits = clientAudits.length;
 
   if (isLoading) {
     return (
@@ -66,7 +71,7 @@ export const ClientAuditHistory = ({ clientId, limit = 10 }: ClientAuditHistoryP
       </CardHeader>
       <CardContent>
         {clientAudits.length > 0 ? (
-          <ScrollArea className="max-h-[500px]">
+          <ScrollArea className="max-h-[600px]">
             <div className="space-y-2">
               {clientAudits.map((audit) => (
                 <div
@@ -80,9 +85,9 @@ export const ClientAuditHistory = ({ clientId, limit = 10 }: ClientAuditHistoryP
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium">
+                        <Badge variant="outline" className="text-xs">
                           {AUDIT_TYPE_LABELS[audit.type] || audit.type}
-                        </span>
+                        </Badge>
                         <Badge 
                           variant="outline" 
                           className={`text-xs ${AUDIT_STATUS_COLORS[audit.status] || ''}`}
@@ -108,11 +113,6 @@ export const ClientAuditHistory = ({ clientId, limit = 10 }: ClientAuditHistoryP
                 </div>
               ))}
             </div>
-            {totalAudits > limit && (
-              <p className="text-xs text-muted-foreground text-center mt-3 pt-3 border-t">
-                Zeige {limit} von {totalAudits} Audits
-              </p>
-            )}
           </ScrollArea>
         ) : (
           <div className="flex flex-col items-center justify-center py-8 text-center">
