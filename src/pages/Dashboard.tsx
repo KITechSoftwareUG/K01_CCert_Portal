@@ -1,20 +1,19 @@
 import { useMemo } from 'react';
 import { Layout } from '@/components/Layout';
 import { StatCard } from '@/components/StatCard';
-
 import { AlertsCard } from '@/components/AlertsCard';
 import { ExpiringCertificationsCard } from '@/components/ExpiringCertificationsCard';
 import { DataQualityWarningsCard } from '@/components/DataQualityWarningsCard';
-
 import { SuggestedAuditsCard } from '@/components/SuggestedAuditsCard';
+import { CountryStatsCard } from '@/components/CountryStatsCard';
+import { AuditYearStatsCard } from '@/components/AuditYearStatsCard';
 import { DashboardAIChat } from '@/components/DashboardAIChat';
 import { useAudits } from '@/hooks/useAudits';
+import { useClients } from '@/hooks/useClients';
 import { transformAuditToLocal } from '@/lib/auditUtils';
-
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { ClipboardCheck, Calendar } from 'lucide-react';
-import { getDaysUntil } from '@/lib/dateUtils';
+import { Users, UserCheck, UserX } from 'lucide-react';
 
 const StatCardSkeleton = () => (
   <Card className="h-auto">
@@ -29,7 +28,7 @@ const StatCardSkeleton = () => (
 
 const Dashboard = () => {
   const { data: dbAudits = [], isLoading: auditsLoading } = useAudits();
-  
+  const { data: clients = [], isLoading: clientsLoading } = useClients();
 
   const audits = useMemo(() => 
     dbAudits
@@ -38,23 +37,14 @@ const Dashboard = () => {
     [dbAudits]
   );
 
-  const stats = useMemo(() => {
-    const activeAudits = audits.filter(a => 
-      a.status === 'scheduled' || a.status === 'in-progress'
-    );
-    
-    const upcomingThisMonth = activeAudits.filter(a => {
-      const days = getDaysUntil(a.scheduledDate);
-      return days >= 0 && days <= 30;
-    }).length;
+  const clientStats = useMemo(() => {
+    const total = clients.length;
+    const active = clients.filter(c => c.is_active !== false).length;
+    const inactive = clients.filter(c => c.is_active === false).length;
+    return { total, active, inactive };
+  }, [clients]);
 
-    return {
-      activeAudits: activeAudits.length,
-      upcomingThisMonth,
-    };
-  }, [audits]);
-
-  const isLoading = auditsLoading;
+  const isLoading = auditsLoading || clientsLoading;
 
   return (
     <Layout>
@@ -63,45 +53,56 @@ const Dashboard = () => {
         <DashboardAIChat />
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-2 sm:gap-3">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           {isLoading ? (
             <>
+              <StatCardSkeleton />
               <StatCardSkeleton />
               <StatCardSkeleton />
             </>
           ) : (
             <>
               <StatCard
-                title="Aktive Audits"
-                value={stats.activeAudits}
-                icon={ClipboardCheck}
+                title="Kunden gesamt"
+                value={clientStats.total}
+                icon={Users}
                 variant="default"
                 compact
               />
               <StatCard
-                title="Diesen Monat"
-                value={stats.upcomingThisMonth}
-                icon={Calendar}
-                variant="accent"
+                title="Aktiv"
+                value={clientStats.active}
+                icon={UserCheck}
+                variant="success"
+                compact
+              />
+              <StatCard
+                title="Inaktiv"
+                value={clientStats.inactive}
+                icon={UserX}
+                variant="warning"
                 compact
               />
             </>
           )}
         </div>
 
+        {/* Country Stats */}
+        {!isLoading && <CountryStatsCard />}
+
         {/* Main Content - Prioritized Layout */}
         {!isLoading && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-            {/* Left: Expiring Certs + Alerts (most critical info first) */}
+            {/* Left: Expiring Certs + Data Quality */}
             <div className="lg:col-span-5 space-y-5">
               <ExpiringCertificationsCard />
               <DataQualityWarningsCard />
             </div>
 
-            {/* Right: Tasks + Suggested Audits (actionable items) */}
+            {/* Right: Alerts + Audit Year Stats + Suggested Audits */}
             <div className="lg:col-span-7 space-y-5">
               <AlertsCard audits={audits} />
-              
+              <AuditYearStatsCard />
               <SuggestedAuditsCard />
             </div>
           </div>
