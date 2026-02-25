@@ -1,135 +1,59 @@
 
+# Plan: Dashboard- und UI-Verbesserungen
 
-# Offene Punkte aus der Feedback-Liste
+## 1. Audit-Historie: Alle Audits anzeigen + Audit-Art hinzufuegen + Sortierung
 
-Nach Abgleich mit dem aktuellen Code ergeben sich folgende noch nicht umgesetzte oder fehlerhafte Punkte. Jeder Punkt ist ein eigenstaendiger Prompt, den du einzeln absenden kannst.
+**Datei:** `src/components/ClientAuditHistory.tsx`
 
----
+- Das `limit`-Prop entfernen bzw. auf unbegrenzt setzen, damit alle Audits des Kunden angezeigt werden.
+- Neben dem Status-Badge die **Audit-Art** (z.B. "Initialaudit", "Ueberwachungsaudit") als zusaetzliche Info anzeigen -- aktuell wird nur `AUDIT_TYPE_LABELS[audit.type]` als Titel angezeigt, das ist bereits die Audit-Art. Es soll aber klarer als eigenes Badge dargestellt werden.
+- **Sortierung aendern:** Geplante Audits von 2026 aufsteigend (aelteste zuerst oben), abgeschlossene Audits darunter.
+  - Sortierlogik: Erst "scheduled"/"in-progress" Audits nach `scheduled_date` aufsteigend, dann "completed"/"cancelled" nach `scheduled_date` absteigend.
+- Das `limit={10}` in `ClientDetail.tsx` (Zeile 621) entfernen.
 
-## 1. Kontakt-Notizen: Absaetze ermoeglichen
+## 2. Neues Audit erstellen: Alle Zertifizierungen anzeigen
 
-**Problem:** Im Kontakt-Notizenfeld (`ContactManagement.tsx`, Zeile 295) wird die CSS-Klasse `truncate` verwendet, die mehrzeilige Texte abschneidet. Absaetze (Zeilenumbrueche) werden nicht dargestellt.
+**Datei:** `src/components/NewAuditDialog.tsx`
 
-**Prompt:**
-> "Im Ansprechpartner-Bereich (ContactManagement) werden Notizen mit `truncate` abgeschnitten. Bitte die Anzeige so aendern, dass mehrzeilige Notizen mit Absaetzen korrekt dargestellt werden (whitespace-pre-wrap), aehnlich wie das Bemerkungsfeld beim Kunden."
+- **Problem:** Die Checkbox-Liste nutzt `Constants.public.Enums.certification_standard`, was nur die 6 Enum-Werte enthaelt (SURE, FSC, PEFC, ISCC, ISO 9001, ISO 14001). Es fehlen weitere Zertifizierungen, die in der `certifications`-Tabelle gespeichert sind.
+- **Loesung:** Statt der statischen Enum-Liste die `useCertifications()`-Hook verwenden, um alle Zertifizierungen aus der Datenbank zu laden. Die Checkboxen dann dynamisch aus diesen Daten generieren.
 
----
+## 3. Kundendetail: Audit-Uebersicht chronologisch 2026 oben, 2028 unten
 
-## 2. Aufgeklappte Kunden beim Zurueckspringen beibehalten
+Wird durch die neue Sortierung in Punkt 1 abgedeckt (aufsteigende Sortierung fuer geplante Audits).
 
-**Problem:** Der State fuer `expandedGroups` und `expandedClients` in `Clients.tsx` wird bei Navigation zurueckgesetzt, da er nur als lokaler `useState` existiert.
+## 4. Zertifikat-Status immer farbig darstellen
 
-**Prompt:**
-> "Wenn ich von einer Kundendetailseite zurueck zur Kundenliste navigiere, sollen die zuvor aufgeklappten Laender, Gruppen und Kunden weiterhin aufgeklappt sein. Bitte den Expand-State persistent machen (z.B. ueber URL-Parameter, sessionStorage oder einen globalen State)."
+**Dateien:** `src/pages/ClientDetail.tsx`, `src/pages/Clients.tsx`
 
----
+Ueberall wo Zertifizierungsstatus angezeigt wird, konsistente Farbgebung einfuehren:
+- **active/valid** = Gruenes Badge
+- **suspended** = Oranges Badge
+- **expired** = Rotes Badge
 
-## 3. Nach Kundenanlage direkt zum neuen Kunden navigieren
+**ClientDetail.tsx** (Zeile ~600): Beim Rendern der Zertifizierungen ein farbiges Status-Badge hinzufuegen basierend auf `cc.status`.
 
-**Problem:** Nach dem Erstellen eines Kunden im `NewClientDialog` wird der Dialog geschlossen, aber nicht zum neu angelegten Kunden navigiert.
+**Clients.tsx** (Zeilen ~281-284, ~806-809): Die bestehende Status-Badge-Logik erweitern, sodass auch "active" gruen, "suspended" orange und "expired" rot angezeigt wird -- aktuell wird der Status nur als Text angezeigt ohne Farbe bei "suspended".
 
-**Prompt:**
-> "Nach dem erfolgreichen Anlegen eines neuen Kunden im Dialog soll automatisch zur Detailseite des neu angelegten Kunden navigiert werden. Das gleiche gilt beim Bearbeiten: nach dem Speichern soll der Nutzer beim bearbeiteten Kunden bleiben bzw. dorthin zurueckgeleitet werden."
+## 5. BIOCEN: Ueberwachungsaudits nicht angezeigt
 
----
+**Datei:** `src/hooks/useAutomaticAuditPlanning.ts`
 
-## 4. Den aktuell bearbeiteten/aufgeklappten Kunden visuell hervorheben
+- **Problem:** Das automatische Planungssystem schlaegt Ueberwachungsaudits nur vor, wenn es bereits **abgeschlossene** Audits gibt (`completedAudits.length > 0`, Zeile 73) und das letzte Audit mindestens 10 Monate zurueckliegt.
+- **Loesung:** Die Logik erweitern: Wenn eine Zertifizierung ein `valid_from`-Datum hat aber noch keine abgeschlossenen Audits existieren, soll das System trotzdem einen Ueberwachungsaudit vorschlagen (z.B. 12 Monate nach `valid_from`). Zusaetzlich auch geplante (nicht nur abgeschlossene) Audits als Basis fuer die Berechnung heranziehen.
 
-**Problem:** In der Kundenliste gibt es keine visuelle Hervorhebung des aktuell ausgewaehlten/aufgeklappten Kunden.
+## 6. Aenderungen der Aufgaben nicht uebernommen
 
-**Prompt:**
-> "In der Kundenübersicht soll der Kunde, der gerade aufgeklappt ist, deutlicher visuell hervorgehoben werden (z.B. durch eine farbliche Hinterlegung oder einen linken Akzentbalken), damit man sofort erkennt, welchen Kunden man gerade betrachtet."
-
----
-
-## 5. Laenderliste in ClientDetail.tsx aktualisieren
-
-**Problem:** Die Laenderliste in `ClientDetail.tsx` (Zeile 67-80) enthaelt falsche Laender (Schweiz, Belgien, Frankreich, Polen, Tschechien, Spanien, UK) und es fehlen die korrekten (Rumaenien, Ungarn, Slowenien, Finnland, Litauen, Schweden).
-
-**Prompt:**
-> "Die Laenderliste im Client-Detail-Bearbeitungsmodus (ClientDetail.tsx) ist veraltet und stimmt nicht mit der korrekten Laenderliste ueberein. Bitte synchronisiere sie mit der Liste aus NewClientDialog.tsx: Deutschland, Oesterreich, Rumaenien, Italien, Ungarn, Slowenien, Finnland, Litauen, Niederlande, Schweden, Andere."
+Dieses Problem muss naeher untersucht werden. Es koennte mit der Cache-Invalidierung oder dem Speichern der Aufgaben zusammenhaengen. Dies wird im Rahmen der Implementierung geprueft.
 
 ---
 
-## 6. Terminologie "Kunde seit" ueberarbeiten
-
-**Problem:** Die Anzeige "Kunde seit Januar 2026" ist inhaltlich irrefuehrend, da es sich um das Anlagedatum im System handelt, nicht um die tatsaechliche Kundenbeziehung.
-
-**Prompt:**
-> "Bitte die Terminologie 'Kunde seit' auf der Kundendetailseite ueberarbeiten. Entweder in 'Angelegt am' oder 'Im System seit' aendern, da es das Datum der Anlage im Portal widerspiegelt und nicht den tatsaechlichen Beginn der Kundenbeziehung."
-
----
-
-## 7. Placeholder-E-Mail bei Kundenanlage vermeiden
-
-**Problem:** In `NewClientDialog.tsx` Zeile 186 wird eine Placeholder-E-Mail generiert (`name@placeholder.local`), wenn keine E-Mail angegeben wird. Dies fuehrt zu Datenverschmutzung.
-
-**Prompt:**
-> "Beim Anlegen eines Kunden ohne E-Mail-Eingabe wird aktuell eine Placeholder-E-Mail generiert (`...@placeholder.local`). Bitte entferne diese Logik und erlaube stattdessen NULL-Werte fuer das E-Mail-Feld. Falls die Datenbank-Spalte `email` aktuell NOT NULL ist, muss das Schema entsprechend angepasst werden."
-
----
-
-## 8. Zertifizierer-Eingabemaske: Fokus-Problem beheben
-
-**Problem:** Bei der Eingabe in der Zertifizierer-Verwaltung muss man vor jedem Buchstaben mit der Maus an die Stelle klicken - das deutet auf ein Re-Rendering-Problem hin, bei dem der Fokus verloren geht.
-
-**Prompt:**
-> "Die Eingabemaske bei 'Zertifizierer hinzufuegen' hat ein Fokus-Problem: Vor dem Schreiben jedes Buchstabens muss man erneut mit der Maus in das Feld klicken. Bitte untersuche die Komponente auf der Seite CertificationBodies auf Re-Rendering-Probleme, die den Input-Fokus zuruecksetzen."
-
----
-
-## 9. Inaktive Kunden: Falsche Anzahl in der Anzeige
-
-**Problem:** Es werden mehr inaktive Kunden angezeigt als tatsaechlich als inaktiv markiert sind. Moeglicherweise werden Kunden mit `is_active = null` als inaktiv gezaehlt.
-
-**Prompt:**
-> "In der Kundenübersicht werden bei Filter 'Nur inaktive Kunden' mehr Eintraege angezeigt als tatsaechlich inaktiv markiert sind. Bitte pruefe die Filterlogik: `client.is_active === false` sollte strikt nur explizit als inaktiv markierte Kunden anzeigen, nicht solche mit NULL-Wert."
-
----
-
-## 10. Datenqualitaet im Dashboard: Alle unvollstaendigen Zertifikate anzeigen
-
-**Problem:** Die Datenqualitaets-Scrollliste zeigt moeglicherweise nicht alle unvollstaendigen Zertifikate an.
-
-**Prompt:**
-> "Im Dashboard-Bereich 'Datenqualitaet' sollen alle unvollstaendigen Zertifikate in der Scrollliste dargestellt werden, nicht nur eine begrenzte Anzahl. Bitte pruefe, ob es ein Limit gibt, und stelle sicher, dass die komplette Liste scrollbar angezeigt wird."
-
----
-
-## Bereits umgesetzte Punkte (keine Aktion noetig)
-
-Die folgenden Punkte aus der Feedbackliste sind im Code bereits korrekt implementiert:
-
-- Pflichtfelder mit rotem Sternchen
-- Berater als Pflichtfeld
-- E-Mail, Telefon, Ansprechpartner optional
-- Rumaenien und Ungarn in der Laenderliste (NewClientDialog)
-- Auditoren-Format "Nachname, Vorname"
-- Audit-Historie (letzte 10 Audits)
-- Kalender-Monatsübersicht mit Monatsnamen
-- Anklickbare Kalendertage
-- Datumsformat dd.MM.yyyy
-- Aktiv/Inaktiv-Status bei Kundenanlage
-- Filter aktiv/inaktiv/alle in Kundenübersicht
-- Internes Audit als Audittyp
-- Audit-Listenansicht
-- Bemerkungsfeld (Notes) fuer Kunden
-- Unternehmensgruppen loeschen und umbenennen
-- Kundensortierung nach Laenderkennung
-- Gruppen aufloesen (Kunden verschieben)
-- Outlook-Synchronisation (Einbahnstrasse)
-
----
-
-## Technische Details
+## Technische Uebersicht der Aenderungen
 
 | Datei | Aenderung |
 |---|---|
-| `src/components/ContactManagement.tsx` | `truncate` durch `whitespace-pre-wrap` ersetzen (Zeile 295) |
-| `src/pages/Clients.tsx` | Expand-State in sessionStorage persistieren |
-| `src/components/NewClientDialog.tsx` | Nach Erstellung `navigate(/clients/{id})` aufrufen; Placeholder-E-Mail entfernen |
-| `src/pages/ClientDetail.tsx` | Laenderliste synchronisieren; "Kunde seit" umbenennen |
-| `src/pages/CertificationBodies.tsx` | Fokus-Verlust im Eingabeformular debuggen |
-| `src/pages/Dashboard.tsx` | Datenqualitaet-Limit pruefen |
-| DB-Schema | `clients.email` auf nullable setzen falls noetig |
-
+| `src/components/ClientAuditHistory.tsx` | Limit entfernen, Sortierung anpassen (scheduled aufsteigend, completed unten), Audit-Art als Badge |
+| `src/pages/ClientDetail.tsx` | `limit`-Prop entfernen, Status-Badge bei Zertifizierungen farbig machen |
+| `src/components/NewAuditDialog.tsx` | `useCertifications()` statt statischer Enum-Liste verwenden |
+| `src/pages/Clients.tsx` | Farbige Status-Badges fuer Zertifizierungen (gruen/orange/rot) |
+| `src/hooks/useAutomaticAuditPlanning.ts` | Surveillance-Vorschlaege auch ohne abgeschlossene Audits (basierend auf `valid_from`) |
