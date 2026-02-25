@@ -82,6 +82,8 @@ export const ExpiringCertificationsCard = () => {
     const result: ExpiringCertification[] = [];
 
     for (const cert of certifications) {
+      // Nur aktive Kunden anzeigen
+      if ((cert as any).clients?.is_active === false) continue;
       if (!cert.valid_until) continue;
 
       const validUntil = new Date(cert.valid_until);

@@ -42,6 +42,8 @@ export const DataQualityWarningsCard = () => {
     const result: DataQualityIssue[] = [];
 
     for (const cert of certifications) {
+      // Nur aktive Kunden anzeigen
+      if ((cert as any).clients?.is_active === false) continue;
       const hasAuditor = !!cert.auditor_id;
       const hasValidity = !!cert.valid_until;
       
