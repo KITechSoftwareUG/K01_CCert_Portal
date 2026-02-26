@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, memo, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { useAudit, useUpdateAudit, useDeleteAudit } from '@/hooks/useAudits';
-import { useAuditTasks, useUpdateAuditTask } from '@/hooks/useAuditTasks';
+import { useAuditTasks, useUpdateAuditTask, useDeleteAuditTask } from '@/hooks/useAuditTasks';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -33,7 +33,10 @@ import {
   CalendarPlus,
   ChevronRight,
   Pencil,
-  XCircle
+  XCircle,
+  Plus,
+  AlertTriangle,
+  Trash2
 } from 'lucide-react';
 import { exportAuditToCalendar } from '@/lib/calendarExport';
 import { toast } from 'sonner';
@@ -45,6 +48,7 @@ import { AUDIT_TYPE_LABELS, AUDIT_STATUS_CONFIG, TASK_STATUS_CONFIG } from '@/li
 import { isOverdue } from '@/lib/dateUtils';
 import { DbAuditTask } from '@/hooks/useAuditTasks';
 import { EditAuditDialog } from '@/components/EditAuditDialog';
+import { NewFindingDialog } from '@/components/NewFindingDialog';
 
 const StatusIcon = {
   scheduled: Clock,
@@ -53,14 +57,28 @@ const StatusIcon = {
   cancelled: AlertCircle,
 };
 
+const SEVERITY_LABELS: Record<string, string> = {
+  major: 'Haupt-NK',
+  minor: 'Neben-NK',
+  recommendation: 'Empfehlung',
+};
+
+const SEVERITY_COLORS: Record<string, string> = {
+  major: 'bg-red-100 text-red-800 border-red-300',
+  minor: 'bg-orange-100 text-orange-800 border-orange-300',
+  recommendation: 'bg-blue-100 text-blue-800 border-blue-300',
+};
+
 interface TaskItemProps {
-  task: DbAuditTask;
+  task: DbAuditTask & { category?: string; severity?: string | null };
   index: number;
   onToggle: (taskId: string, currentStatus: string) => void;
+  onDelete: (taskId: string) => void;
   isUpdating: boolean;
+  showSeverity?: boolean;
 }
 
-const TaskItem = memo(({ task, index, onToggle, isUpdating }: TaskItemProps) => {
+const TaskItem = memo(({ task, index, onToggle, onDelete, isUpdating, showSeverity }: TaskItemProps) => {
   const dueDate = new Date(task.due_date);
   const taskOverdue = task.status !== 'completed' && isOverdue(dueDate);
   const displayStatus = taskOverdue ? TASK_STATUS_CONFIG.overdue : TASK_STATUS_CONFIG[task.status];
@@ -88,12 +106,27 @@ const TaskItem = memo(({ task, index, onToggle, isUpdating }: TaskItemProps) => 
               </p>
             )}
           </div>
-          <Badge 
-            variant="outline"
-            className={cn(displayStatus.bg, displayStatus.color)}
-          >
-            {displayStatus.label}
-          </Badge>
+          <div className="flex items-center gap-2">
+            {showSeverity && task.severity && (
+              <Badge variant="outline" className={`text-xs ${SEVERITY_COLORS[task.severity] || ''}`}>
+                {SEVERITY_LABELS[task.severity] || task.severity}
+              </Badge>
+            )}
+            <Badge 
+              variant="outline"
+              className={cn(displayStatus.bg, displayStatus.color)}
+            >
+              {displayStatus.label}
+            </Badge>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+              onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </div>
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-1">
@@ -154,16 +187,29 @@ const AuditDetail = () => {
   const navigate = useNavigate();
   
   const { data: audit, isLoading: auditLoading } = useAudit(id || '');
-  const { data: tasks = [], isLoading: tasksLoading } = useAuditTasks(id);
+  const { data: allItems = [], isLoading: tasksLoading } = useAuditTasks(id);
   const updateTask = useUpdateAuditTask();
+  const deleteTask = useDeleteAuditTask();
   const updateAudit = useUpdateAudit();
   const deleteAudit = useDeleteAudit();
   
   const [notes, setNotes] = useState('');
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showNewTaskDialog, setShowNewTaskDialog] = useState(false);
+  const [showNewFindingDialog, setShowNewFindingDialog] = useState(false);
+
+  // Separate tasks and findings
+  const tasks = useMemo(() => 
+    allItems.filter((t: any) => !t.category || t.category === 'task'),
+    [allItems]
+  );
+  
+  const findings = useMemo(() => 
+    allItems.filter((t: any) => t.category === 'finding'),
+    [allItems]
+  );
 
   // Update notes when audit loads
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (audit?.notes) {
       setNotes(audit.notes);
@@ -178,6 +224,13 @@ const AuditDetail = () => {
       completed_at: newStatus === 'completed' ? new Date().toISOString() : null,
     });
   }, [updateTask]);
+
+  const handleDeleteTask = useCallback((taskId: string) => {
+    deleteTask.mutate(taskId, {
+      onSuccess: () => toast.success('Eintrag gelöscht'),
+      onError: () => toast.error('Fehler beim Löschen'),
+    });
+  }, [deleteTask]);
 
   const handleExportCalendar = useCallback(() => {
     if (audit) {
@@ -245,6 +298,8 @@ const AuditDetail = () => {
   const completedTasks = tasks.filter(t => t.status === 'completed').length;
   const totalTasks = tasks.length;
   const percentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+  const openFindings = findings.filter(f => f.status !== 'completed').length;
 
   // Get certification name for breadcrumb
   const certificationName = audit.client_certifications?.certifications?.name || 
@@ -345,8 +400,12 @@ const AuditDetail = () => {
 
             {/* Tasks Card */}
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Aufgaben</CardTitle>
+                <Button size="sm" variant="outline" onClick={() => setShowNewTaskDialog(true)}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Aufgabe
+                </Button>
               </CardHeader>
               <CardContent className="space-y-4">
                 {tasks.length === 0 ? (
@@ -357,10 +416,52 @@ const AuditDetail = () => {
                   tasks.map((task, index) => (
                     <TaskItem 
                       key={task.id} 
-                      task={task} 
+                      task={task as any} 
                       index={index} 
                       onToggle={toggleTaskStatus}
+                      onDelete={handleDeleteTask}
                       isUpdating={updateTask.isPending}
+                    />
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Findings / NK Card */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CardTitle>Feststellungen / NK</CardTitle>
+                  {openFindings > 0 && (
+                    <Badge variant="destructive" className="text-xs">
+                      {openFindings} offen
+                    </Badge>
+                  )}
+                </div>
+                <Button size="sm" variant="outline" onClick={() => setShowNewFindingDialog(true)}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  NK hinzufügen
+                </Button>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {findings.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <AlertTriangle className="h-10 w-10 text-muted-foreground/50 mb-3" />
+                    <p className="text-muted-foreground">Keine Feststellungen erfasst</p>
+                    <p className="text-xs text-muted-foreground/70 mt-1">
+                      Nichtkonformitäten und Empfehlungen aus dem Audit hier erfassen
+                    </p>
+                  </div>
+                ) : (
+                  findings.map((finding, index) => (
+                    <TaskItem 
+                      key={finding.id} 
+                      task={finding as any} 
+                      index={index} 
+                      onToggle={toggleTaskStatus}
+                      onDelete={handleDeleteTask}
+                      isUpdating={updateTask.isPending}
+                      showSeverity
                     />
                   ))
                 )}
@@ -514,11 +615,23 @@ const AuditDetail = () => {
           </div>
         </div>
 
-        {/* Edit Audit Dialog */}
+        {/* Dialogs */}
         <EditAuditDialog
           audit={audit}
           open={showEditDialog}
           onOpenChange={setShowEditDialog}
+        />
+        <NewFindingDialog
+          open={showNewTaskDialog}
+          onOpenChange={setShowNewTaskDialog}
+          auditId={id!}
+          category="task"
+        />
+        <NewFindingDialog
+          open={showNewFindingDialog}
+          onOpenChange={setShowNewFindingDialog}
+          auditId={id!}
+          category="finding"
         />
       </div>
     </Layout>

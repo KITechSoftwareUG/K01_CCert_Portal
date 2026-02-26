@@ -2,12 +2,13 @@ import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { useAudits } from '@/hooks/useAudits';
+import { useAllAuditTasks } from '@/hooks/useAuditTasks';
 import { transformAuditToLocal } from '@/lib/auditUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Clock, Download, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Clock, Download, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, addMonths, subMonths, isAfter, isBefore } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -47,11 +48,26 @@ const Calendar = () => {
   }, []);
 
   const { data: dbAudits = [], isLoading, error } = useAudits();
+  const { data: allTasks = [] } = useAllAuditTasks();
 
   const audits = useMemo(() => 
     dbAudits.map(audit => transformAuditToLocal(audit)),
     [dbAudits]
   );
+
+  // Get finding deadlines (category = 'finding', not completed)
+  const findingDeadlines = useMemo(() => {
+    return (allTasks as any[])
+      .filter(t => t.category === 'finding' && t.status !== 'completed')
+      .map(t => ({
+        id: t.id,
+        title: t.title,
+        dueDate: new Date(t.due_date),
+        auditId: t.audit_id,
+        clientName: t.audits?.clients?.name || 'Unbekannt',
+        severity: t.severity,
+      }));
+  }, [allTasks]);
 
   const { daysInMonth, startDayOffset } = useMemo(() => {
     const start = startOfMonth(currentDate);
@@ -67,6 +83,10 @@ const Calendar = () => {
   const getAuditsForDay = useCallback((day: Date) => {
     return audits.filter(audit => isSameDay(audit.scheduledDate, day));
   }, [audits]);
+
+  const getFindingsForDay = useCallback((day: Date) => {
+    return findingDeadlines.filter(f => isSameDay(f.dueDate, day));
+  }, [findingDeadlines]);
 
   const handleExportAll = useCallback(() => {
     exportAllAuditsToCalendar(audits);
@@ -91,9 +111,18 @@ const Calendar = () => {
     [activeAudits]
   );
 
-  // Outlook events: only audits, next 12 months
+  // Upcoming finding deadlines
+  const upcomingFindings = useMemo(() => {
+    const now = new Date();
+    return findingDeadlines
+      .filter(f => isAfter(f.dueDate, now) || isSameDay(f.dueDate, now))
+      .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime())
+      .slice(0, 5);
+  }, [findingDeadlines]);
+
+  // Outlook events: audits + finding deadlines
   const outlookEvents = useMemo(() => {
-    return activeAudits.map(audit => ({
+    const auditEvents = activeAudits.map(audit => ({
       id: audit.id,
       clientName: audit.clientName,
       type: audit.type,
@@ -104,7 +133,28 @@ const Calendar = () => {
       eventType: 'audit' as const,
       isAllDay: false,
     }));
-  }, [activeAudits]);
+
+    const findingEvents = findingDeadlines
+      .filter(f => {
+        const now = new Date();
+        const in12Months = addMonths(now, 12);
+        return isAfter(f.dueDate, now) && isBefore(f.dueDate, in12Months);
+      })
+      .map(f => ({
+        id: f.id,
+        clientName: f.clientName,
+        type: 'finding-deadline',
+        status: 'scheduled',
+        scheduledDate: f.dueDate.toISOString(),
+        certifications: [] as string[],
+        notes: `NK-Frist: ${f.title}`,
+        eventType: 'audit' as const,
+        isAllDay: false,
+        title: `⚠️ NK-Frist: ${f.title}`,
+      }));
+
+    return [...auditEvents, ...findingEvents];
+  }, [activeAudits, findingDeadlines]);
 
   return (
     <Layout>
@@ -113,7 +163,7 @@ const Calendar = () => {
         <div className="flex flex-col gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-1 sm:mb-2">Kalender</h1>
-            <p className="text-sm text-muted-foreground">Übersicht aller geplanten Audits</p>
+            <p className="text-sm text-muted-foreground">Übersicht aller geplanten Audits und NK-Fristen</p>
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:gap-4">
             <div className="flex items-center gap-1 sm:gap-2">
@@ -163,12 +213,15 @@ const Calendar = () => {
                     ))}
                     {daysInMonth.map((day) => {
                       const dayAudits = getAuditsForDay(day);
-                      const hasEvents = dayAudits.length > 0;
+                      const dayFindings = getFindingsForDay(day);
+                      const hasEvents = dayAudits.length > 0 || dayFindings.length > 0;
                       const isToday = isSameDay(day, new Date());
 
                       const handleDayClick = () => {
                         if (dayAudits.length > 0) {
                           navigate(`/audits/${dayAudits[0].id}`);
+                        } else if (dayFindings.length > 0) {
+                          navigate(`/audits/${dayFindings[0].auditId}`);
                         }
                       };
 
@@ -195,6 +248,15 @@ const Calendar = () => {
                               className="text-xs bg-primary/10 text-primary px-2 py-1 rounded mb-1 truncate"
                             >
                               {audit.clientName}
+                            </div>
+                          ))}
+                          {dayFindings.map((finding) => (
+                            <div
+                              key={finding.id}
+                              className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded mb-1 truncate flex items-center gap-1"
+                            >
+                              <AlertTriangle className="h-3 w-3 shrink-0" />
+                              {finding.clientName}
                             </div>
                           ))}
                         </div>
@@ -251,6 +313,44 @@ const Calendar = () => {
                   )}
                 </CardContent>
               </Card>
+
+              {/* Upcoming NK Deadlines */}
+              {upcomingFindings.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-orange-500" />
+                      NK-Fristen
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {upcomingFindings.map((finding) => (
+                      <div 
+                        key={finding.id} 
+                        className="space-y-1 pb-3 border-b last:border-0 cursor-pointer hover:bg-muted/50 rounded p-2 -m-2 transition-colors"
+                        onClick={() => navigate(`/audits/${finding.auditId}`)}
+                      >
+                        <p className="font-medium text-sm text-foreground truncate">{finding.title}</p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          {format(finding.dueDate, 'dd. MMM yyyy', { locale: de })}
+                          <span>•</span>
+                          <span>{finding.clientName}</span>
+                        </div>
+                        {finding.severity && (
+                          <Badge variant="outline" className={cn('text-xs', {
+                            'bg-red-100 text-red-800 border-red-300': finding.severity === 'major',
+                            'bg-orange-100 text-orange-800 border-orange-300': finding.severity === 'minor',
+                            'bg-blue-100 text-blue-800 border-blue-300': finding.severity === 'recommendation',
+                          })}>
+                            {finding.severity === 'major' ? 'Haupt-NK' : finding.severity === 'minor' ? 'Neben-NK' : 'Empfehlung'}
+                          </Badge>
+                        )}
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </div>
         )}
