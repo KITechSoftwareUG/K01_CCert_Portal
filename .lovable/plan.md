@@ -1,59 +1,98 @@
 
-# Plan: Dashboard- und UI-Verbesserungen
 
-## 1. Audit-Historie: Alle Audits anzeigen + Audit-Art hinzufuegen + Sortierung
+# Plan: UI-Verbesserungen und Pflichtfeld-Anpassungen
 
-**Datei:** `src/components/ClientAuditHistory.tsx`
+## 1. Navigation: Zurueck-Button auf Kundendetailseite
 
-- Das `limit`-Prop entfernen bzw. auf unbegrenzt setzen, damit alle Audits des Kunden angezeigt werden.
-- Neben dem Status-Badge die **Audit-Art** (z.B. "Initialaudit", "Ueberwachungsaudit") als zusaetzliche Info anzeigen -- aktuell wird nur `AUDIT_TYPE_LABELS[audit.type]` als Titel angezeigt, das ist bereits die Audit-Art. Es soll aber klarer als eigenes Badge dargestellt werden.
-- **Sortierung aendern:** Geplante Audits von 2026 aufsteigend (aelteste zuerst oben), abgeschlossene Audits darunter.
-  - Sortierlogik: Erst "scheduled"/"in-progress" Audits nach `scheduled_date` aufsteigend, dann "completed"/"cancelled" nach `scheduled_date` absteigend.
-- Das `limit={10}` in `ClientDetail.tsx` (Zeile 621) entfernen.
+**Datei:** `src/pages/ClientDetail.tsx`
 
-## 2. Neues Audit erstellen: Alle Zertifizierungen anzeigen
+- Der "Zurueck"-Button navigiert aktuell immer hart zu `/clients`. Stattdessen soll `navigate(-1)` verwendet werden, damit der Nutzer zum vorherigen Kontext zurueckkehrt (z.B. nach dem Anlegen eines Kunden direkt auf die Kundendetailseite, dann zurueck zur Kundenliste).
+- **Hinweis:** Die Navigation nach dem Anlegen (`NewClientDialog`) leitet bereits korrekt zu `/clients/${client.id}` weiter -- das funktioniert. Das Problem ist nur der Zurueck-Button.
 
-**Datei:** `src/components/NewAuditDialog.tsx`
+## 2. Kunden: Alle aufklappen / Alle zuklappen
 
-- **Problem:** Die Checkbox-Liste nutzt `Constants.public.Enums.certification_standard`, was nur die 6 Enum-Werte enthaelt (SURE, FSC, PEFC, ISCC, ISO 9001, ISO 14001). Es fehlen weitere Zertifizierungen, die in der `certifications`-Tabelle gespeichert sind.
-- **Loesung:** Statt der statischen Enum-Liste die `useCertifications()`-Hook verwenden, um alle Zertifizierungen aus der Datenbank zu laden. Die Checkboxen dann dynamisch aus diesen Daten generieren.
+**Datei:** `src/pages/Clients.tsx`
 
-## 3. Kundendetail: Audit-Uebersicht chronologisch 2026 oben, 2028 unten
+- Zwei neue Buttons im Header-Bereich: **"Alle aufklappen"** und **"Alle zuklappen"**
+- "Alle aufklappen": Setzt `expandedCountries`, `expandedGroups` und `expandedClients` auf alle vorhandenen IDs
+- "Alle zuklappen": Leert alle drei Sets
+- Beide Aktionen aktualisieren auch den `sessionStorage`
 
-Wird durch die neue Sortierung in Punkt 1 abgedeckt (aufsteigende Sortierung fuer geplante Audits).
+## 3. Pflichtfelder mit rotem Sternchen kennzeichnen
 
-## 4. Zertifikat-Status immer farbig darstellen
+**Dateien:** `src/pages/ClientDetail.tsx`, `src/components/NewClientDialog.tsx`, `src/components/ContactManagement.tsx`, `src/components/NewFindingDialog.tsx`
 
-**Dateien:** `src/pages/ClientDetail.tsx`, `src/pages/Clients.tsx`
+- Alle Pflichtfeld-Labels erhalten ein `<span className="text-destructive">*</span>`
+- Einige Labels haben das bereits (z.B. Firmenname in NewClientDialog) -- Konsistenz sicherstellen
+- **Pflichtfelder sind:** Name, Land, Berater (bei Kunden), Kundennummer (bei Kunden)
 
-Ueberall wo Zertifizierungsstatus angezeigt wird, konsistente Farbgebung einfuehren:
-- **active/valid** = Gruenes Badge
-- **suspended** = Oranges Badge
-- **expired** = Rotes Badge
+## 4. E-Mail NICHT als Pflichtfeld
 
-**ClientDetail.tsx** (Zeile ~600): Beim Rendern der Zertifizierungen ein farbiges Status-Badge hinzufuegen basierend auf `cc.status`.
+**Dateien:** `src/pages/ClientDetail.tsx`
 
-**Clients.tsx** (Zeilen ~281-284, ~806-809): Die bestehende Status-Badge-Logik erweitern, sodass auch "active" gruen, "suspended" orange und "expired" rot angezeigt wird -- aktuell wird der Status nur als Text angezeigt ohne Farbe bei "suspended".
+- Aktuell prueft `handleSave` auf `!email` als Pflichtfeld (Zeile 161). Diese Pruefung entfernen.
+- Label aendern: `E-Mail *` wird zu `E-Mail` (ohne Stern)
+- E-Mail-Feld behaelt einen Platzhalter-Text
 
-## 5. BIOCEN: Ueberwachungsaudits nicht angezeigt
+## 5. E-Mail-Feld Placeholder anpassen
 
-**Datei:** `src/hooks/useAutomaticAuditPlanning.ts`
+**Dateien:** `src/pages/ClientDetail.tsx`, `src/components/NewClientDialog.tsx`
 
-- **Problem:** Das automatische Planungssystem schlaegt Ueberwachungsaudits nur vor, wenn es bereits **abgeschlossene** Audits gibt (`completedAudits.length > 0`, Zeile 73) und das letzte Audit mindestens 10 Monate zurueckliegt.
-- **Loesung:** Die Logik erweitern: Wenn eine Zertifizierung ein `valid_from`-Datum hat aber noch keine abgeschlossenen Audits existieren, soll das System trotzdem einen Ueberwachungsaudit vorschlagen (z.B. 12 Monate nach `valid_from`). Zusaetzlich auch geplante (nicht nur abgeschlossene) Audits als Basis fuer die Berechnung heranziehen.
+- Placeholder fuer E-Mail-Felder auf `z.B. kontakt@firma.de` setzen (kein "optional" im Text, da es kein Pflichtfeld ist, aber auch kein Stern)
 
-## 6. Aenderungen der Aufgaben nicht uebernommen
+## 6. Einheitliche Datumsformate
 
-Dieses Problem muss naeher untersucht werden. Es koennte mit der Cache-Invalidierung oder dem Speichern der Aufgaben zusammenhaengen. Dies wird im Rahmen der Implementierung geprueft.
+Bereits weitgehend umgesetzt (`dd.MM.yyyy`). Pruefung auf verbleibende Inkonsistenzen in:
+- `src/pages/AuditDetail.tsx`
+- `src/pages/Clients.tsx`
+- `src/components/ClientAuditHistory.tsx`
+- Alle Datumsanzeigen auf `dd.MM.yyyy` mit deutschem Locale vereinheitlichen
+
+## 7. Berichtfunktion bei Audits
+
+**Datei:** `src/pages/AuditDetail.tsx`
+
+- Untersuchen, was die aktuelle "Bericht"-Funktion tut und warum sie nicht funktioniert. Aktuell gibt es eine `exportAuditToCalendar`-Funktion -- pruefen ob eine separate Berichtfunktion fehlt oder fehlerhaft ist.
+- Falls keine Berichtfunktion existiert: Eine einfache PDF/Druck-Export-Funktion einbauen, die die Audit-Details (Typ, Datum, Aufgaben, Feststellungen) zusammenfasst.
+
+## 8. Gleichzeitiges Arbeiten verhindern (Locking)
+
+**Thema fuer spaetere Besprechung** -- Dies erfordert ein Realtime-basiertes Locking-System:
+- Eine `client_locks`-Tabelle mit `client_id`, `locked_by` (user_id), `locked_at`
+- Beim Oeffnen eines Kunden wird ein Lock gesetzt; beim Verlassen freigegeben
+- Andere Nutzer sehen "Wird aktuell von [Name] bearbeitet"
+- **Empfehlung:** Dies in einem separaten Schritt nach dem naechsten Online-Termin umsetzen, da es Realtime-Subscriptions und Edge Cases (Browser-Absturz, Timeout) beruecksichtigen muss.
+
+## 9. Navigation allgemein
+
+Wie besprochen: Wird im naechsten Online-Termin definiert. Keine Aenderungen in diesem Schritt.
+
+## 10. Excel-Import
+
+Wird vorerst nicht angefasst -- Struktur muss zuerst besprochen und definiert werden.
+
+## 11. Fuenf Berater einbinden
+
+Das aktuelle System unterstuetzt bereits mehrere Benutzer mit gleichen Rechten (flaches Rollenmodell, RLS-Policies auf `authenticated`). Fuer eine explizite Berater-Verwaltung:
+- **Kurzfristig:** Keine Aenderung noetig -- alle authentifizierten Nutzer haben die gleichen Rechte
+- **Mittelfristig:** Ein `profiles`-basiertes Berater-Dropdown in Formularen (z.B. "Berater" als Select statt Freitext), damit konsistente Namen verwendet werden
 
 ---
 
-## Technische Uebersicht der Aenderungen
+## Technische Uebersicht
 
 | Datei | Aenderung |
 |---|---|
-| `src/components/ClientAuditHistory.tsx` | Limit entfernen, Sortierung anpassen (scheduled aufsteigend, completed unten), Audit-Art als Badge |
-| `src/pages/ClientDetail.tsx` | `limit`-Prop entfernen, Status-Badge bei Zertifizierungen farbig machen |
-| `src/components/NewAuditDialog.tsx` | `useCertifications()` statt statischer Enum-Liste verwenden |
-| `src/pages/Clients.tsx` | Farbige Status-Badges fuer Zertifizierungen (gruen/orange/rot) |
-| `src/hooks/useAutomaticAuditPlanning.ts` | Surveillance-Vorschlaege auch ohne abgeschlossene Audits (basierend auf `valid_from`) |
+| `src/pages/ClientDetail.tsx` | Zurueck-Button: `navigate(-1)`, E-Mail kein Pflichtfeld mehr, Pflichtfeld-Sterne konsistent, Placeholder |
+| `src/pages/Clients.tsx` | Buttons "Alle aufklappen" / "Alle zuklappen" |
+| `src/components/NewClientDialog.tsx` | Pflichtfeld-Sterne pruefen, E-Mail-Placeholder |
+| `src/components/ContactManagement.tsx` | Pflichtfeld-Sterne |
+| `src/components/NewFindingDialog.tsx` | Pflichtfeld-Sterne |
+| `src/pages/AuditDetail.tsx` | Berichtfunktion untersuchen/reparieren, Datumsformat pruefen |
+
+**Nicht in diesem Schritt:**
+- Client-Locking (erfordert Datenbankdesign + Realtime)
+- Navigation-Redesign (naechster Online-Termin)
+- Excel-Import (Struktur muss definiert werden)
+- Berater-Management (laeuft bereits, Optimierung spaeter)
+
