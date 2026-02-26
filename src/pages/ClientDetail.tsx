@@ -158,7 +158,7 @@ const ClientDetail = () => {
   }, [client]);
 
   const handleSave = useCallback(async () => {
-    if (!id || !name || !contactPerson || !email) {
+    if (!id || !name || !contactPerson) {
       toast.error('Bitte füllen Sie alle Pflichtfelder aus');
       return;
     }
@@ -271,7 +271,7 @@ const ClientDetail = () => {
               variant="outline" 
               size="icon"
               className="shrink-0"
-              onClick={() => navigate('/clients')}
+              onClick={() => navigate(-1)}
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
@@ -401,7 +401,7 @@ const ClientDetail = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="client-number">KD-Nr.</Label>
+                        <Label htmlFor="client-number">KD-Nr. <span className="text-destructive">*</span></Label>
                         <Input
                           id="client-number"
                           value={clientNumber}
@@ -427,7 +427,7 @@ const ClientDetail = () => {
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="consultant">Berater</Label>
+                        <Label htmlFor="consultant">Berater <span className="text-destructive">*</span></Label>
                         <Input
                           id="consultant"
                           value={consultant}
@@ -437,13 +437,13 @@ const ClientDetail = () => {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="email">E-Mail *</Label>
+                      <Label htmlFor="email">E-Mail</Label>
                       <Input
                         id="email"
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="E-Mail"
+                        placeholder="z.B. kontakt@firma.de"
                       />
                     </div>
                     <div className="space-y-2">

@@ -579,7 +579,47 @@ const AuditDetail = () => {
                 <Button 
                   variant="outline" 
                   className="w-full justify-start"
-                  onClick={() => toast.info('Die Berichtfunktion wird bald verfügbar sein.')}
+                  onClick={() => {
+                    // Generate a printable audit report
+                    const reportWindow = window.open('', '_blank');
+                    if (!reportWindow) {
+                      toast.error('Popup-Blocker verhindert das Öffnen des Berichts');
+                      return;
+                    }
+                    const taskRows = tasks.map((t: any, i: number) => 
+                      `<tr><td>${i+1}</td><td>${t.title}</td><td>${t.status === 'completed' ? '✅ Erledigt' : '⏳ Offen'}</td><td>${format(new Date(t.due_date), 'dd.MM.yyyy', { locale: de })}</td><td>${t.assigned_to || '-'}</td></tr>`
+                    ).join('');
+                    const findingRows = findings.map((f: any, i: number) => 
+                      `<tr><td>${i+1}</td><td>${f.title}</td><td>${SEVERITY_LABELS[f.severity] || '-'}</td><td>${f.status === 'completed' ? '✅ Erledigt' : '⏳ Offen'}</td><td>${format(new Date(f.due_date), 'dd.MM.yyyy', { locale: de })}</td></tr>`
+                    ).join('');
+                    reportWindow.document.write(`<!DOCTYPE html><html><head><title>Audit-Bericht</title><style>
+                      body{font-family:Arial,sans-serif;margin:40px;color:#333}
+                      h1{font-size:22px;border-bottom:2px solid #333;padding-bottom:8px}
+                      h2{font-size:16px;margin-top:24px;color:#555}
+                      table{width:100%;border-collapse:collapse;margin-top:8px}
+                      th,td{border:1px solid #ddd;padding:8px;text-align:left;font-size:13px}
+                      th{background:#f5f5f5;font-weight:600}
+                      .meta{display:flex;gap:32px;margin:16px 0;font-size:14px}
+                      .meta span{color:#666}
+                      @media print{body{margin:20px}}
+                    </style></head><body>
+                      <h1>Audit-Bericht: ${AUDIT_TYPE_LABELS[audit.type]}</h1>
+                      <div class="meta">
+                        <div><span>Kunde:</span> <strong>${audit.clients?.name || 'Unbekannt'}</strong></div>
+                        <div><span>Datum:</span> <strong>${format(new Date(audit.scheduled_date), 'dd.MM.yyyy', { locale: de })}</strong></div>
+                        <div><span>Status:</span> <strong>${statusInfo.label}</strong></div>
+                      </div>
+                      ${tasks.length > 0 ? `<h2>Aufgaben (${completedTasks}/${totalTasks} erledigt)</h2>
+                      <table><tr><th>#</th><th>Aufgabe</th><th>Status</th><th>Frist</th><th>Zuständig</th></tr>${taskRows}</table>` : ''}
+                      ${findings.length > 0 ? `<h2>Feststellungen / NK (${openFindings} offen)</h2>
+                      <table><tr><th>#</th><th>Feststellung</th><th>Schweregrad</th><th>Status</th><th>Frist</th></tr>${findingRows}</table>` : ''}
+                      ${audit.notes ? `<h2>Notizen</h2><p>${audit.notes.replace(/\n/g, '<br>')}</p>` : ''}
+                      <p style="margin-top:32px;font-size:11px;color:#999">Erstellt am ${format(new Date(), 'dd.MM.yyyy HH:mm', { locale: de })}</p>
+                    </body></html>`);
+                    reportWindow.document.close();
+                    reportWindow.print();
+                    toast.success('Bericht wurde generiert');
+                  }}
                 >
                   <FileText className="h-4 w-4 mr-2" />
                   Bericht generieren
