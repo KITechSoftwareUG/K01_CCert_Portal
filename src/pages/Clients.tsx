@@ -275,7 +275,7 @@ const Clients = () => {
             )}
             {row.earliestValidUntil && (
               <span className="text-muted-foreground">
-                bis {new Date(row.earliestValidUntil).toLocaleDateString('de-DE')}
+                bis {new Date(row.earliestValidUntil).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}
               </span>
             )}
             {row.certifications.map(c => c.status).filter(Boolean).map((status, i) => {
@@ -433,7 +433,30 @@ const Clients = () => {
               {countryGroups.reduce((sum, cg) => sum + cg.companyGroups.length, 0)} Unternehmen • {clients.length} Standorte
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <Button size="sm" variant="outline" onClick={() => {
+              const allCountryIds = new Set(countryGroups.map(cg => cg.country));
+              const allGroupIds = new Set(countryGroups.flatMap(cg => cg.companyGroups.map(g => g.id)));
+              const allClientIds = new Set(countryGroups.flatMap(cg => cg.companyGroups.flatMap(g => g.children.map(c => c.client.id))));
+              setExpandedCountries(allCountryIds);
+              setExpandedGroups(allGroupIds);
+              setExpandedClients(allClientIds);
+              sessionStorage.setItem('clients-expanded-countries', JSON.stringify([...allCountryIds]));
+              sessionStorage.setItem('clients-expanded-groups', JSON.stringify([...allGroupIds]));
+              sessionStorage.setItem('clients-expanded-clients', JSON.stringify([...allClientIds]));
+            }}>
+              <span className="text-xs sm:text-sm">Alle aufklappen</span>
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => {
+              setExpandedCountries(new Set());
+              setExpandedGroups(new Set());
+              setExpandedClients(new Set());
+              sessionStorage.setItem('clients-expanded-countries', JSON.stringify([]));
+              sessionStorage.setItem('clients-expanded-groups', JSON.stringify([]));
+              sessionStorage.setItem('clients-expanded-clients', JSON.stringify([]));
+            }}>
+              <span className="text-xs sm:text-sm">Alle zuklappen</span>
+            </Button>
             <Button size="sm" className="sm:size-default" onClick={() => setShowNewClientDialog(true)}>
               <Plus className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Neuer Kunde</span>

@@ -97,7 +97,7 @@ export const NewFindingDialog = ({ open, onOpenChange, auditId, category }: NewF
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="finding-title">Titel *</Label>
+            <Label htmlFor="finding-title">Titel <span className="text-destructive">*</span></Label>
             <Input
               id="finding-title"
               value={title}
@@ -136,7 +136,7 @@ export const NewFindingDialog = ({ open, onOpenChange, auditId, category }: NewF
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="finding-due">Frist *</Label>
+            <Label htmlFor="finding-due">Frist <span className="text-destructive">*</span></Label>
             <Input
               id="finding-due"
               type="date"

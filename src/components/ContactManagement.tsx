@@ -348,7 +348,7 @@ export const ContactManagement = ({ clientId, isEditing = false }: ContactManage
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="contact-name">Name *</Label>
+              <Label htmlFor="contact-name">Name <span className="text-destructive">*</span></Label>
               <Input
                 id="contact-name"
                 value={formData.name}

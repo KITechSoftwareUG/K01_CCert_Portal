@@ -414,7 +414,7 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="kontakt@beispiel.de (optional)"
+                placeholder="z.B. kontakt@firma.de"
               />
             </div>
           )}
