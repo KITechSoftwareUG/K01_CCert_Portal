@@ -1,6 +1,6 @@
 export type AuditType = 'initial' | 'surveillance' | 'recertification' | 'six-month' | 'internal';
 
-export type CertificationStandard = 'SURE' | 'FSC' | 'PEFC' | 'ISCC' | 'ISO 9001' | 'ISO 14001';
+export type CertificationStandard = string;
 
 export type TaskStatus = 'pending' | 'in-progress' | 'completed' | 'overdue';
 
@@ -11,7 +11,7 @@ export interface Client {
   email: string;
   phone: string;
   address: string;
-  certifications: CertificationStandard[];
+  certifications: string[];
   createdAt: Date;
 }
 

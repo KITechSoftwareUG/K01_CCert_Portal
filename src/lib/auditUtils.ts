@@ -11,7 +11,14 @@ export const transformAuditToLocal = (dbAudit: AuditWithClient, tasks?: any[]): 
   clientId: dbAudit.client_id,
   clientName: dbAudit.clients?.name || 'Unbekannt',
   type: dbAudit.type,
-  certifications: (dbAudit.certifications || []) as any,
+  certifications: (() => {
+    // Primary: get certification name from joined client_certifications
+    const certName = dbAudit.client_certifications?.certifications?.name;
+    if (certName) return [certName];
+    // Fallback: legacy enum array on audits table
+    if (dbAudit.certifications && dbAudit.certifications.length > 0) return dbAudit.certifications as string[];
+    return [];
+  })(),
   scheduledDate: new Date(dbAudit.scheduled_date),
   status: dbAudit.status,
   tasks: tasks
