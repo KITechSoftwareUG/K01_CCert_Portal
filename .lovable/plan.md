@@ -1,98 +1,43 @@
 
 
-# Plan: UI-Verbesserungen und Pflichtfeld-Anpassungen
+# Plan: Zertifikate in der Audit-Uebersicht korrekt anzeigen
 
-## 1. Navigation: Zurueck-Button auf Kundendetailseite
+## Problem
 
-**Datei:** `src/pages/ClientDetail.tsx`
+Die Audit-Liste zeigt ueberall nur "–" statt des Zertifikatnamens. Die Ursache:
 
-- Der "Zurueck"-Button navigiert aktuell immer hart zu `/clients`. Stattdessen soll `navigate(-1)` verwendet werden, damit der Nutzer zum vorherigen Kontext zurueckkehrt (z.B. nach dem Anlegen eines Kunden direkt auf die Kundendetailseite, dann zurueck zur Kundenliste).
-- **Hinweis:** Die Navigation nach dem Anlegen (`NewClientDialog`) leitet bereits korrekt zu `/clients/${client.id}` weiter -- das funktioniert. Das Problem ist nur der Zurueck-Button.
+1. **`useAudits()` (Listenabfrage)** selektiert nur `clients(*)`, aber NICHT die verknuepfte Zertifizierung ueber `client_certifications -> certifications`
+2. **`transformAuditToLocal()`** liest `dbAudit.certifications` -- das ist ein altes Enum-Array auf der `audits`-Tabelle, das bei neueren Audits leer ist
+3. Die eigentliche Zuordnung laeuft ueber `audits.client_certification_id -> client_certifications.certification_id -> certifications.name`, aber dieser Join fehlt
 
-## 2. Kunden: Alle aufklappen / Alle zuklappen
+## Loesung
 
-**Datei:** `src/pages/Clients.tsx`
+### 1. `useAudits()` erweitern (src/hooks/useAudits.ts)
 
-- Zwei neue Buttons im Header-Bereich: **"Alle aufklappen"** und **"Alle zuklappen"**
-- "Alle aufklappen": Setzt `expandedCountries`, `expandedGroups` und `expandedClients` auf alle vorhandenen IDs
-- "Alle zuklappen": Leert alle drei Sets
-- Beide Aktionen aktualisieren auch den `sessionStorage`
+Die Query um den Join auf `client_certifications(id, certifications(*))` erweitern:
 
-## 3. Pflichtfelder mit rotem Sternchen kennzeichnen
+```sql
+*, clients(*), client_certifications(id, certifications(*))
+```
 
-**Dateien:** `src/pages/ClientDetail.tsx`, `src/components/NewClientDialog.tsx`, `src/components/ContactManagement.tsx`, `src/components/NewFindingDialog.tsx`
+### 2. `transformAuditToLocal()` anpassen (src/lib/auditUtils.ts)
 
-- Alle Pflichtfeld-Labels erhalten ein `<span className="text-destructive">*</span>`
-- Einige Labels haben das bereits (z.B. Firmenname in NewClientDialog) -- Konsistenz sicherstellen
-- **Pflichtfelder sind:** Name, Land, Berater (bei Kunden), Kundennummer (bei Kunden)
+Die Zertifikat-Zuordnung priorisieren:
+- **Primaer:** Wenn `client_certifications.certifications.name` vorhanden ist, diesen Namen verwenden
+- **Fallback:** Das alte `certifications`-Enum-Array (fuer Altdaten)
 
-## 4. E-Mail NICHT als Pflichtfeld
+### 3. Audit-Typ anpassen (src/types/audit.ts)
 
-**Dateien:** `src/pages/ClientDetail.tsx`
+`certifications` im Audit-Interface von `CertificationStandard[]` auf `string[]` aendern, da die Zertifizierungsnamen jetzt dynamisch aus der DB kommen und nicht mehr auf die 6 Enum-Werte beschraenkt sind.
 
-- Aktuell prueft `handleSave` auf `!email` als Pflichtfeld (Zeile 161). Diese Pruefung entfernen.
-- Label aendern: `E-Mail *` wird zu `E-Mail` (ohne Stern)
-- E-Mail-Feld behaelt einen Platzhalter-Text
-
-## 5. E-Mail-Feld Placeholder anpassen
-
-**Dateien:** `src/pages/ClientDetail.tsx`, `src/components/NewClientDialog.tsx`
-
-- Placeholder fuer E-Mail-Felder auf `z.B. kontakt@firma.de` setzen (kein "optional" im Text, da es kein Pflichtfeld ist, aber auch kein Stern)
-
-## 6. Einheitliche Datumsformate
-
-Bereits weitgehend umgesetzt (`dd.MM.yyyy`). Pruefung auf verbleibende Inkonsistenzen in:
-- `src/pages/AuditDetail.tsx`
-- `src/pages/Clients.tsx`
-- `src/components/ClientAuditHistory.tsx`
-- Alle Datumsanzeigen auf `dd.MM.yyyy` mit deutschem Locale vereinheitlichen
-
-## 7. Berichtfunktion bei Audits
-
-**Datei:** `src/pages/AuditDetail.tsx`
-
-- Untersuchen, was die aktuelle "Bericht"-Funktion tut und warum sie nicht funktioniert. Aktuell gibt es eine `exportAuditToCalendar`-Funktion -- pruefen ob eine separate Berichtfunktion fehlt oder fehlerhaft ist.
-- Falls keine Berichtfunktion existiert: Eine einfache PDF/Druck-Export-Funktion einbauen, die die Audit-Details (Typ, Datum, Aufgaben, Feststellungen) zusammenfasst.
-
-## 8. Gleichzeitiges Arbeiten verhindern (Locking)
-
-**Thema fuer spaetere Besprechung** -- Dies erfordert ein Realtime-basiertes Locking-System:
-- Eine `client_locks`-Tabelle mit `client_id`, `locked_by` (user_id), `locked_at`
-- Beim Oeffnen eines Kunden wird ein Lock gesetzt; beim Verlassen freigegeben
-- Andere Nutzer sehen "Wird aktuell von [Name] bearbeitet"
-- **Empfehlung:** Dies in einem separaten Schritt nach dem naechsten Online-Termin umsetzen, da es Realtime-Subscriptions und Edge Cases (Browser-Absturz, Timeout) beruecksichtigen muss.
-
-## 9. Navigation allgemein
-
-Wie besprochen: Wird im naechsten Online-Termin definiert. Keine Aenderungen in diesem Schritt.
-
-## 10. Excel-Import
-
-Wird vorerst nicht angefasst -- Struktur muss zuerst besprochen und definiert werden.
-
-## 11. Fuenf Berater einbinden
-
-Das aktuelle System unterstuetzt bereits mehrere Benutzer mit gleichen Rechten (flaches Rollenmodell, RLS-Policies auf `authenticated`). Fuer eine explizite Berater-Verwaltung:
-- **Kurzfristig:** Keine Aenderung noetig -- alle authentifizierten Nutzer haben die gleichen Rechte
-- **Mittelfristig:** Ein `profiles`-basiertes Berater-Dropdown in Formularen (z.B. "Berater" als Select statt Freitext), damit konsistente Namen verwendet werden
-
----
-
-## Technische Uebersicht
+## Betroffene Dateien
 
 | Datei | Aenderung |
 |---|---|
-| `src/pages/ClientDetail.tsx` | Zurueck-Button: `navigate(-1)`, E-Mail kein Pflichtfeld mehr, Pflichtfeld-Sterne konsistent, Placeholder |
-| `src/pages/Clients.tsx` | Buttons "Alle aufklappen" / "Alle zuklappen" |
-| `src/components/NewClientDialog.tsx` | Pflichtfeld-Sterne pruefen, E-Mail-Placeholder |
-| `src/components/ContactManagement.tsx` | Pflichtfeld-Sterne |
-| `src/components/NewFindingDialog.tsx` | Pflichtfeld-Sterne |
-| `src/pages/AuditDetail.tsx` | Berichtfunktion untersuchen/reparieren, Datumsformat pruefen |
+| `src/hooks/useAudits.ts` | Join auf `client_certifications(certifications(*))` hinzufuegen |
+| `src/lib/auditUtils.ts` | Zertifikatname aus dem Join lesen, Fallback auf Legacy-Array |
+| `src/types/audit.ts` | `certifications: string[]` statt `CertificationStandard[]` |
 
-**Nicht in diesem Schritt:**
-- Client-Locking (erfordert Datenbankdesign + Realtime)
-- Navigation-Redesign (naechster Online-Termin)
-- Excel-Import (Struktur muss definiert werden)
-- Berater-Management (laeuft bereits, Optimierung spaeter)
+## Ergebnis
 
+Jeder Audit in der Liste zeigt den korrekten Zertifikatnamen (z.B. "SURE", "FSC", "ISO 9001") als Badge an, basierend auf der tatsaechlichen Zuordnung ueber `client_certification_id`.
