@@ -24,7 +24,11 @@ export const useAudits = () => {
         .from('audits')
         .select(`
           *,
-          clients (*)
+          clients (*),
+          client_certifications (
+            id,
+            certifications (*)
+          )
         `)
         .order('scheduled_date', { ascending: true });
       
