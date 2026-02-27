@@ -1,43 +1,29 @@
 
+# Audit-Historie: Visuelle Trennung und Zertifikat-Fix
 
-# Plan: Zertifikate in der Audit-Uebersicht korrekt anzeigen
+## Aenderungen in `src/components/ClientAuditHistory.tsx`
 
-## Problem
+### 1. Zwei separate Gruppen statt einer flachen Liste
 
-Die Audit-Liste zeigt ueberall nur "–" statt des Zertifikatnamens. Die Ursache:
+Die aktuelle flache Liste wird in zwei visuell getrennte Sektionen aufgeteilt:
 
-1. **`useAudits()` (Listenabfrage)** selektiert nur `clients(*)`, aber NICHT die verknuepfte Zertifizierung ueber `client_certifications -> certifications`
-2. **`transformAuditToLocal()`** liest `dbAudit.certifications` -- das ist ein altes Enum-Array auf der `audits`-Tabelle, das bei neueren Audits leer ist
-3. Die eigentliche Zuordnung laeuft ueber `audits.client_certification_id -> client_certifications.certification_id -> certifications.name`, aber dieser Join fehlt
+- **"Geplant / Laufend"** -- mit eigenem Sektions-Header, zeigt Audits mit Status `scheduled` oder `in-progress`, aufsteigend sortiert
+- **"Abgeschlossen"** -- mit eigenem Sektions-Header, zeigt Audits mit Status `completed` oder `cancelled`, absteigend sortiert
 
-## Loesung
+Zwischen den Sektionen kommt ein `Separator` und jede Sektion erhaelt eine kleine Ueberschrift (z.B. mit Icon und Anzahl-Badge).
 
-### 1. `useAudits()` erweitern (src/hooks/useAudits.ts)
+### 2. Zertifikat-Anzeige korrigieren
 
-Die Query um den Join auf `client_certifications(id, certifications(*))` erweitern:
+Aktuell liest die Komponente `audit.certifications` (Legacy-Enum-Array, meist leer). Da `useAudits()` jetzt den Join auf `client_certifications(certifications(*))` enthaelt, wird die Anzeige umgestellt:
 
-```sql
-*, clients(*), client_certifications(id, certifications(*))
-```
+- Primaer: `audit.client_certifications?.certifications?.name`
+- Fallback: Legacy `audit.certifications` Array
 
-### 2. `transformAuditToLocal()` anpassen (src/lib/auditUtils.ts)
+### Technische Details
 
-Die Zertifikat-Zuordnung priorisieren:
-- **Primaer:** Wenn `client_certifications.certifications.name` vorhanden ist, diesen Namen verwenden
-- **Fallback:** Das alte `certifications`-Enum-Array (fuer Altdaten)
+**Datei:** `src/components/ClientAuditHistory.tsx`
 
-### 3. Audit-Typ anpassen (src/types/audit.ts)
-
-`certifications` im Audit-Interface von `CertificationStandard[]` auf `string[]` aendern, da die Zertifizierungsnamen jetzt dynamisch aus der DB kommen und nicht mehr auf die 6 Enum-Werte beschraenkt sind.
-
-## Betroffene Dateien
-
-| Datei | Aenderung |
-|---|---|
-| `src/hooks/useAudits.ts` | Join auf `client_certifications(certifications(*))` hinzufuegen |
-| `src/lib/auditUtils.ts` | Zertifikatname aus dem Join lesen, Fallback auf Legacy-Array |
-| `src/types/audit.ts` | `certifications: string[]` statt `CertificationStandard[]` |
-
-## Ergebnis
-
-Jeder Audit in der Liste zeigt den korrekten Zertifikatnamen (z.B. "SURE", "FSC", "ISO 9001") als Badge an, basierend auf der tatsaechlichen Zuordnung ueber `client_certification_id`.
+- `useMemo` gibt statt einem kombinierten Array zwei separate Arrays zurueck: `activeAudits` und `completedAudits`
+- Rendering: Zwei Bloecke mit Sektions-Header (`CalendarClock` Icon fuer Geplant, `CheckCircle` fuer Abgeschlossen), jeweils mit Anzahl-Badge
+- Import von `Separator` aus `@/components/ui/separator` und zusaetzliche Icons (`CalendarClock`, `CheckCircle2`)
+- Zertifikatname-Logik in der Audit-Zeile anpassen
