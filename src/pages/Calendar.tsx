@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Clock, Download, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Clock, Download, ChevronLeft, ChevronRight, AlertTriangle, User } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, addMonths, subMonths, isAfter, isBefore } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -33,7 +34,10 @@ const CalendarSkeleton = () => (
 
 const Calendar = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [currentDate, setCurrentDate] = useState(new Date());
+
+  const userName = user?.user_metadata?.full_name || user?.email || 'Unbekannt';
 
   const goToPreviousMonth = useCallback(() => {
     setCurrentDate(prev => subMonths(prev, 1));
@@ -163,7 +167,10 @@ const Calendar = () => {
         <div className="flex flex-col gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-1 sm:mb-2">Kalender</h1>
-            <p className="text-sm text-muted-foreground">Übersicht aller geplanten Audits und NK-Fristen</p>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <User className="h-4 w-4" />
+              <span>Angemeldet als <span className="font-medium text-foreground">{userName}</span></span>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:gap-4">
             <div className="flex items-center gap-1 sm:gap-2">
