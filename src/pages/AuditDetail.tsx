@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,7 +38,8 @@ import {
   XCircle,
   Plus,
   AlertTriangle,
-  Trash2
+  Trash2,
+  CalendarDays
 } from 'lucide-react';
 import { exportAuditToCalendar } from '@/lib/calendarExport';
 import { toast } from 'sonner';
@@ -74,14 +77,16 @@ interface TaskItemProps {
   index: number;
   onToggle: (taskId: string, currentStatus: string) => void;
   onDelete: (taskId: string) => void;
+  onSetCompletedAt?: (taskId: string, date: Date) => void;
   isUpdating: boolean;
   showSeverity?: boolean;
 }
 
-const TaskItem = memo(({ task, index, onToggle, onDelete, isUpdating, showSeverity }: TaskItemProps) => {
+const TaskItem = memo(({ task, index, onToggle, onDelete, onSetCompletedAt, isUpdating, showSeverity }: TaskItemProps) => {
   const dueDate = new Date(task.due_date);
   const taskOverdue = task.status !== 'completed' && isOverdue(dueDate);
   const displayStatus = taskOverdue ? TASK_STATUS_CONFIG.overdue : TASK_STATUS_CONFIG[task.status];
+  const isFinding = task.category === 'finding';
   
   return (
     <div className="flex items-start gap-4 p-4 border rounded-lg hover:bg-accent/50 transition-colors">
@@ -128,7 +133,7 @@ const TaskItem = memo(({ task, index, onToggle, onDelete, isUpdating, showSeveri
             </Button>
           </div>
         </div>
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+        <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
           <div className="flex items-center gap-1">
             <Calendar className="h-3 w-3" />
             {format(dueDate, 'dd.MM.yyyy', { locale: de })}
@@ -142,8 +147,30 @@ const TaskItem = memo(({ task, index, onToggle, onDelete, isUpdating, showSeveri
           {task.completed_at && (
             <div className="flex items-center gap-1">
               <CheckCircle2 className="h-3 w-3" />
-              Abgeschlossen: {format(new Date(task.completed_at), 'dd.MM.yyyy', { locale: de })}
+              Erledigt: {format(new Date(task.completed_at), 'dd.MM.yyyy', { locale: de })}
             </div>
+          )}
+          {/* Date picker for findings to set manual completion date */}
+          {isFinding && onSetCompletedAt && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-6 text-xs gap-1 px-2">
+                  <CalendarDays className="h-3 w-3" />
+                  {task.completed_at ? 'Datum ändern' : 'Erledigungsdatum'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarComponent
+                  mode="single"
+                  selected={task.completed_at ? new Date(task.completed_at) : undefined}
+                  onSelect={(date) => {
+                    if (date) onSetCompletedAt(task.id, date);
+                  }}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
           )}
         </div>
       </div>
@@ -231,6 +258,17 @@ const AuditDetail = () => {
       onError: () => toast.error('Fehler beim Löschen'),
     });
   }, [deleteTask]);
+
+  const handleSetCompletedAt = useCallback((taskId: string, date: Date) => {
+    updateTask.mutate({
+      id: taskId,
+      completed_at: date.toISOString(),
+      status: 'completed',
+    }, {
+      onSuccess: () => toast.success('Erledigungsdatum gesetzt'),
+      onError: () => toast.error('Fehler beim Setzen des Datums'),
+    });
+  }, [updateTask]);
 
   const handleExportCalendar = useCallback(() => {
     if (audit) {
@@ -460,6 +498,7 @@ const AuditDetail = () => {
                       index={index} 
                       onToggle={toggleTaskStatus}
                       onDelete={handleDeleteTask}
+                      onSetCompletedAt={handleSetCompletedAt}
                       isUpdating={updateTask.isPending}
                       showSeverity
                     />
