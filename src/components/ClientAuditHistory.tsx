@@ -5,11 +5,13 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAudits, AuditWithClient } from '@/hooks/useAudits';
+import { useAllAuditTasks } from '@/hooks/useAuditTasks';
 import { AUDIT_TYPE_LABELS, AUDIT_STATUS_LABELS, AUDIT_STATUS_COLORS } from '@/lib/constants';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { History, ChevronRight, Calendar, FileCheck, CalendarClock, CheckCircle2 } from 'lucide-react';
+import { History, ChevronRight, Calendar, FileCheck, CalendarClock, CheckCircle2, AlertTriangle } from 'lucide-react';
 
 interface ClientAuditHistoryProps {
   clientId: string;
@@ -22,7 +24,13 @@ const getCertificationName = (audit: AuditWithClient): string | null => {
   return null;
 };
 
-const AuditRow = ({ audit, onClick }: { audit: AuditWithClient; onClick: () => void }) => {
+const SEVERITY_LABELS: Record<string, string> = {
+  major: 'Haupt-NK',
+  minor: 'Neben-NK',
+  recommendation: 'Empfehlung',
+};
+
+const AuditRow = ({ audit, nkCount, onClick }: { audit: AuditWithClient; nkCount: number; onClick: () => void }) => {
   const certName = getCertificationName(audit);
   return (
     <div
@@ -44,6 +52,11 @@ const AuditRow = ({ audit, onClick }: { audit: AuditWithClient; onClick: () => v
             >
               {AUDIT_STATUS_LABELS[audit.status] || audit.status}
             </Badge>
+            {nkCount > 0 && (
+              <Badge variant="destructive" className="text-xs">
+                {nkCount} NK offen
+              </Badge>
+            )}
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
             <Calendar className="h-3 w-3" />
@@ -67,6 +80,46 @@ const AuditRow = ({ audit, onClick }: { audit: AuditWithClient; onClick: () => v
 export const ClientAuditHistory = ({ clientId }: ClientAuditHistoryProps) => {
   const navigate = useNavigate();
   const { data: allAudits = [], isLoading } = useAudits();
+  const { data: allTasks = [] } = useAllAuditTasks();
+
+  const clientAuditIds = useMemo(() => {
+    return new Set(allAudits.filter(a => a.client_id === clientId).map(a => a.id));
+  }, [allAudits, clientId]);
+
+  const openFindingsByAudit = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const task of allTasks) {
+      if (
+        task.category === 'finding' &&
+        task.status !== 'completed' &&
+        clientAuditIds.has(task.audit_id)
+      ) {
+        map[task.audit_id] = (map[task.audit_id] || 0) + 1;
+      }
+    }
+    return map;
+  }, [allTasks, clientAuditIds]);
+
+  const totalOpenFindings = useMemo(() => {
+    return Object.values(openFindingsByAudit).reduce((sum, n) => sum + n, 0);
+  }, [openFindingsByAudit]);
+
+  const openFindingsSummary = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const task of allTasks) {
+      if (
+        task.category === 'finding' &&
+        task.status !== 'completed' &&
+        clientAuditIds.has(task.audit_id) &&
+        task.severity
+      ) {
+        counts[task.severity] = (counts[task.severity] || 0) + 1;
+      }
+    }
+    return Object.entries(counts)
+      .map(([sev, count]) => `${count} ${SEVERITY_LABELS[sev] || sev}`)
+      .join(', ');
+  }, [allTasks, clientAuditIds]);
 
   const { activeAudits, completedAudits } = useMemo(() => {
     const audits = allAudits.filter(audit => audit.client_id === clientId);
@@ -119,10 +172,24 @@ export const ClientAuditHistory = ({ clientId }: ClientAuditHistoryProps) => {
         </CardTitle>
       </CardHeader>
       <CardContent>
+        {/* Open NK Warning Banner */}
+        {totalOpenFindings > 0 && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              <span className="font-medium">
+                {totalOpenFindings} offene Nicht-Konformität{totalOpenFindings !== 1 ? 'en' : ''} aus früheren Audits
+              </span>
+              {openFindingsSummary && (
+                <span className="text-sm ml-1">({openFindingsSummary})</span>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+
         {totalAudits > 0 ? (
           <ScrollArea className="max-h-[600px]">
             <div className="space-y-4">
-              {/* Geplant / Laufend */}
               {activeAudits.length > 0 && (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
@@ -131,17 +198,15 @@ export const ClientAuditHistory = ({ clientId }: ClientAuditHistoryProps) => {
                     <Badge variant="outline" className="text-xs ml-1">{activeAudits.length}</Badge>
                   </div>
                   {activeAudits.map((audit) => (
-                    <AuditRow key={audit.id} audit={audit} onClick={() => navigate(`/audits/${audit.id}`)} />
+                    <AuditRow key={audit.id} audit={audit} nkCount={openFindingsByAudit[audit.id] || 0} onClick={() => navigate(`/audits/${audit.id}`)} />
                   ))}
                 </div>
               )}
 
-              {/* Separator */}
               {activeAudits.length > 0 && completedAudits.length > 0 && (
                 <Separator />
               )}
 
-              {/* Abgeschlossen */}
               {completedAudits.length > 0 && (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
@@ -150,7 +215,7 @@ export const ClientAuditHistory = ({ clientId }: ClientAuditHistoryProps) => {
                     <Badge variant="outline" className="text-xs ml-1">{completedAudits.length}</Badge>
                   </div>
                   {completedAudits.map((audit) => (
-                    <AuditRow key={audit.id} audit={audit} onClick={() => navigate(`/audits/${audit.id}`)} />
+                    <AuditRow key={audit.id} audit={audit} nkCount={openFindingsByAudit[audit.id] || 0} onClick={() => navigate(`/audits/${audit.id}`)} />
                   ))}
                 </div>
               )}

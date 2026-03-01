@@ -18,13 +18,23 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { toast } from 'sonner';
 import { useClients, CertificationStandard } from '@/hooks/useClients';
 import { useCreateAudit, AuditType } from '@/hooks/useAudits';
-import { useCreateBulkAuditTasks } from '@/hooks/useAuditTasks';
+import { useCreateBulkAuditTasks, useAllAuditTasks } from '@/hooks/useAuditTasks';
 import { useCertifications } from '@/hooks/useCertifications';
 import { AUDIT_TYPE_LABELS } from '@/lib/constants';
 import { daysFromNow } from '@/lib/dateUtils';
+import { AlertTriangle, ChevronDown, Calendar as CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
+import { de } from 'date-fns/locale';
 
 interface NewAuditDialogProps {
   open: boolean;
@@ -39,7 +49,17 @@ const auditTypeOptions: { value: AuditType; label: string }[] = [
   { value: 'internal', label: AUDIT_TYPE_LABELS['internal'] },
 ];
 
+const SEVERITY_LABELS: Record<string, string> = {
+  major: 'Haupt-NK',
+  minor: 'Neben-NK',
+  recommendation: 'Empfehlung',
+};
 
+const SEVERITY_COLORS: Record<string, string> = {
+  major: 'bg-red-100 text-red-800 border-red-300',
+  minor: 'bg-orange-100 text-orange-800 border-orange-300',
+  recommendation: 'bg-blue-100 text-blue-800 border-blue-300',
+};
 
 const getDefaultTasksForAuditType = (type: AuditType, scheduledDate: Date) => {
   const taskTemplates: Record<AuditType, Array<{ title: string; description: string; dueDays: number; assignedTo: string }>> = {
@@ -83,9 +103,11 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
   const [selectedCertifications, setSelectedCertifications] = useState<string[]>([]);
   const [scheduledDate, setScheduledDate] = useState('');
   const [notes, setNotes] = useState('');
+  const [nkListOpen, setNkListOpen] = useState(false);
 
   const { data: clients = [], isLoading: clientsLoading } = useClients();
   const { data: certifications = [] } = useCertifications();
+  const { data: allTasks = [] } = useAllAuditTasks();
   const createAudit = useCreateAudit();
   const createTasks = useCreateBulkAuditTasks();
 
@@ -93,6 +115,27 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
     [...clients].sort((a, b) => a.name.localeCompare(b.name)),
     [clients]
   );
+
+  // Open findings for selected client
+  const openFindings = useMemo(() => {
+    if (!selectedClient) return [];
+    return allTasks.filter((t: any) =>
+      t.category === 'finding' &&
+      t.status !== 'completed' &&
+      t.audits?.client_id === selectedClient
+    );
+  }, [allTasks, selectedClient]);
+
+  const openFindingsSummary = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const f of openFindings) {
+      const sev = (f as any).severity || 'unknown';
+      counts[sev] = (counts[sev] || 0) + 1;
+    }
+    return Object.entries(counts)
+      .map(([sev, count]) => `${count} ${SEVERITY_LABELS[sev] || sev}`)
+      .join(', ');
+  }, [openFindings]);
 
   const toggleCertification = (certName: string) => {
     setSelectedCertifications(prev =>
@@ -108,6 +151,7 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
     setSelectedCertifications([]);
     setScheduledDate('');
     setNotes('');
+    setNkListOpen(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -128,7 +172,6 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
         status: 'scheduled',
       });
 
-      // Create default tasks for the audit
       const defaultTasks = getDefaultTasksForAuditType(auditType, new Date(scheduledDate));
       await createTasks.mutateAsync(
         defaultTasks.map(task => ({
@@ -173,6 +216,48 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
               </SelectContent>
             </Select>
           </div>
+
+          {/* Open NK Warning */}
+          {openFindings.length > 0 && (
+            <Collapsible open={nkListOpen} onOpenChange={setNkListOpen}>
+              <CollapsibleTrigger asChild>
+                <Alert variant="destructive" className="cursor-pointer hover:bg-destructive/10 transition-colors">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription className="flex items-center justify-between w-full">
+                    <span>
+                      <span className="font-medium">
+                        {openFindings.length} offene NK aus früheren Audits
+                      </span>
+                      {openFindingsSummary && (
+                        <span className="text-sm ml-1">({openFindingsSummary})</span>
+                      )}
+                    </span>
+                    <ChevronDown className={`h-4 w-4 transition-transform ${nkListOpen ? 'rotate-180' : ''}`} />
+                  </AlertDescription>
+                </Alert>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="border rounded-lg mt-2 divide-y max-h-48 overflow-y-auto">
+                  {openFindings.map((f: any) => (
+                    <div key={f.id} className="p-3 text-sm flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{f.title}</p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                          <CalendarIcon className="h-3 w-3" />
+                          <span>Frist: {format(new Date(f.due_date), 'dd.MM.yyyy', { locale: de })}</span>
+                        </div>
+                      </div>
+                      {f.severity && (
+                        <Badge variant="outline" className={`text-xs shrink-0 ${SEVERITY_COLORS[f.severity] || ''}`}>
+                          {SEVERITY_LABELS[f.severity] || f.severity}
+                        </Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
 
           {/* Audit Type */}
           <div className="space-y-2">
