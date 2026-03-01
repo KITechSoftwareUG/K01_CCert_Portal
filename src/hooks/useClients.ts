@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables, TablesInsert, Enums } from '@/integrations/supabase/types';
 import { calculateNextClientNumber, getCountryPrefix } from '@/lib/clientNumberUtils';
+import { logActivity } from '@/hooks/useActivityLog';
 
 export type DbClient = Tables<'clients'>;
 export type DbClientInsert = TablesInsert<'clients'>;
@@ -132,8 +133,9 @@ export const useCreateClient = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
+      logActivity({ action: 'created', entity_type: 'client', entity_id: data.id, entity_name: data.name });
     },
   });
 };
@@ -153,8 +155,9 @@ export const useUpdateClient = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
+      logActivity({ action: 'updated', entity_type: 'client', entity_id: data.id, entity_name: data.name });
     },
   });
 };
@@ -171,8 +174,9 @@ export const useDeleteClient = () => {
       
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
+      logActivity({ action: 'deleted', entity_type: 'client', entity_id: id });
     },
   });
 };

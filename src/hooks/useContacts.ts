@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
+import { logActivity } from '@/hooks/useActivityLog';
 
 export type Contact = Tables<'contacts'>;
 export type ContactInsert = TablesInsert<'contacts'>;
@@ -57,8 +58,9 @@ export const useCreateContact = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      logActivity({ action: 'created', entity_type: 'contact', entity_id: data.id, entity_name: data.name });
     },
   });
 };
@@ -71,8 +73,9 @@ export const useUpdateContact = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      logActivity({ action: 'updated', entity_type: 'contact', entity_id: data.id, entity_name: data.name });
     },
   });
 };
@@ -84,8 +87,9 @@ export const useDeleteContact = () => {
       const { error } = await supabase.from('contacts').delete().eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      logActivity({ action: 'deleted', entity_type: 'contact', entity_id: id });
     },
   });
 };

@@ -13,7 +13,8 @@ import {
   ListChecks,
   ChevronDown,
   ChevronRight,
-  Menu
+  Menu,
+  History
 } from 'lucide-react';
 import logo from '@/assets/logo-navy.jpg';
 import { useAuth } from '@/contexts/AuthContext';
@@ -42,6 +43,7 @@ const mainNavigation = [
   { name: 'Zertifizierer', href: '/certification-bodies', icon: Building2 },
   { name: 'Auditoren', href: '/auditors', icon: UserCheck },
   { name: 'Kalender', href: '/calendar', icon: Calendar },
+  { name: 'Aktivitäten', href: '/activity-log', icon: History },
 ];
 
 const settingsNavigation = [
