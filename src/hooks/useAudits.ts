@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables, TablesInsert, Enums } from '@/integrations/supabase/types';
 import { useOutlookSync } from './useOutlookSync';
+import { logActivity } from '@/hooks/useActivityLog';
 
 export type DbAudit = Tables<'audits'>;
 export type DbAuditInsert = TablesInsert<'audits'>;
@@ -83,6 +84,7 @@ export const useCreateAudit = () => {
     },
     onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ['audits'] });
+      logActivity({ action: 'created', entity_type: 'audit', entity_id: data.id, entity_name: data.clients?.name || 'Audit' });
       
       // Auto-sync to Outlook if connected
       if (data && data.clients) {
@@ -121,6 +123,7 @@ export const useUpdateAudit = () => {
     },
     onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ['audits'] });
+      logActivity({ action: 'updated', entity_type: 'audit', entity_id: data.id, entity_name: data.clients?.name || 'Audit' });
       
       // Auto-sync to Outlook if connected and audit is scheduled
       if (data && data.clients && data.status === 'scheduled') {
@@ -150,8 +153,9 @@ export const useDeleteAudit = () => {
       
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: ['audits'] });
+      logActivity({ action: 'deleted', entity_type: 'audit', entity_id: id });
     },
   });
 };

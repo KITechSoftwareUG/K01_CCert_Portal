@@ -16,6 +16,7 @@ import CertificationBodies from "./pages/CertificationBodies";
 import Auditors from "./pages/Auditors";
 import CertificationsManagement from "./pages/CertificationsManagement";
 import AuditTemplates from "./pages/AuditTemplates";
+import ActivityLog from "./pages/ActivityLog";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -41,6 +42,7 @@ const App = () => (
             <Route path="/auditors" element={<ProtectedRoute><Auditors /></ProtectedRoute>} />
             <Route path="/settings/certifications" element={<ProtectedRoute><CertificationsManagement /></ProtectedRoute>} />
             <Route path="/settings/audit-templates" element={<ProtectedRoute><AuditTemplates /></ProtectedRoute>} />
+            <Route path="/activity-log" element={<ProtectedRoute><ActivityLog /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

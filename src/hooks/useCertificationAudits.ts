@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables, TablesInsert, Enums } from '@/integrations/supabase/types';
+import { logActivity } from '@/hooks/useActivityLog';
 
 export type DbAudit = Tables<'audits'>;
 export type DbAuditInsert = TablesInsert<'audits'>;
@@ -49,9 +50,10 @@ export const useCreateCertificationAudit = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['certification-audits', variables.client_certification_id] });
       queryClient.invalidateQueries({ queryKey: ['audits'] });
+      logActivity({ action: 'created', entity_type: 'audit', entity_id: data.id });
     },
   });
 };
@@ -71,9 +73,10 @@ export const useUpdateCertificationAudit = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['certification-audits'] });
       queryClient.invalidateQueries({ queryKey: ['audits'] });
+      logActivity({ action: 'updated', entity_type: 'audit', entity_id: data.id });
     },
   });
 };
@@ -90,9 +93,10 @@ export const useDeleteCertificationAudit = () => {
       
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: ['certification-audits'] });
       queryClient.invalidateQueries({ queryKey: ['audits'] });
+      logActivity({ action: 'deleted', entity_type: 'audit', entity_id: id });
     },
   });
 };
