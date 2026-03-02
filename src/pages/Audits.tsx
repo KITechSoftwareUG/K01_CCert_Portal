@@ -334,9 +334,9 @@ const Audits = () => {
                     <Table className="table-fixed w-full">
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="text-left w-[25%]">Kunde</TableHead>
+                          {groupBy !== 'client' && <TableHead className="text-left w-[25%]">Kunde</TableHead>}
                           <TableHead className="text-left w-[15%]">Zertifikat</TableHead>
-                          <TableHead className="text-left w-[15%]">Auditart</TableHead>
+                          {groupBy !== 'type' && <TableHead className="text-left w-[15%]">Auditart</TableHead>}
                           <TableHead className="text-left w-[15%]">Termin</TableHead>
                           <TableHead className="text-left w-[12%]">Status</TableHead>
                           <TableHead className="text-left w-[12%]">Aufgaben</TableHead>
