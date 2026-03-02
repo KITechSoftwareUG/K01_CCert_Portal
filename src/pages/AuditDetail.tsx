@@ -52,6 +52,8 @@ import { isOverdue } from '@/lib/dateUtils';
 import { DbAuditTask } from '@/hooks/useAuditTasks';
 import { EditAuditDialog } from '@/components/EditAuditDialog';
 import { NewFindingDialog } from '@/components/NewFindingDialog';
+import { EditFindingDialog } from '@/components/EditFindingDialog';
+import { FindingsCsvUpload } from '@/components/FindingsCsvUpload';
 
 const StatusIcon = {
   scheduled: Clock,
@@ -77,12 +79,13 @@ interface TaskItemProps {
   index: number;
   onToggle: (taskId: string, currentStatus: string) => void;
   onDelete: (taskId: string) => void;
+  onEdit?: (task: DbAuditTask) => void;
   onSetCompletedAt?: (taskId: string, date: Date) => void;
   isUpdating: boolean;
   showSeverity?: boolean;
 }
 
-const TaskItem = memo(({ task, index, onToggle, onDelete, onSetCompletedAt, isUpdating, showSeverity }: TaskItemProps) => {
+const TaskItem = memo(({ task, index, onToggle, onDelete, onEdit, onSetCompletedAt, isUpdating, showSeverity }: TaskItemProps) => {
   const dueDate = new Date(task.due_date);
   const taskOverdue = task.status !== 'completed' && isOverdue(dueDate);
   const displayStatus = taskOverdue ? TASK_STATUS_CONFIG.overdue : TASK_STATUS_CONFIG[task.status];
@@ -123,6 +126,17 @@ const TaskItem = memo(({ task, index, onToggle, onDelete, onSetCompletedAt, isUp
             >
               {displayStatus.label}
             </Badge>
+            {onEdit && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                onClick={(e) => { e.stopPropagation(); onEdit(task); }}
+                title="Bearbeiten"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="icon"
@@ -224,6 +238,7 @@ const AuditDetail = () => {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showNewTaskDialog, setShowNewTaskDialog] = useState(false);
   const [showNewFindingDialog, setShowNewFindingDialog] = useState(false);
+  const [editingTask, setEditingTask] = useState<DbAuditTask | null>(null);
 
   // Separate tasks and findings
   const tasks = useMemo(() => 
@@ -458,6 +473,7 @@ const AuditDetail = () => {
                       index={index} 
                       onToggle={toggleTaskStatus}
                       onDelete={handleDeleteTask}
+                      onEdit={setEditingTask}
                       isUpdating={updateTask.isPending}
                     />
                   ))
@@ -476,10 +492,13 @@ const AuditDetail = () => {
                     </Badge>
                   )}
                 </div>
-                <Button size="sm" variant="outline" onClick={() => setShowNewFindingDialog(true)}>
-                  <Plus className="h-4 w-4 mr-1" />
-                  NK hinzufügen
-                </Button>
+                <div className="flex items-center gap-2">
+                  <FindingsCsvUpload auditId={id!} />
+                  <Button size="sm" variant="outline" onClick={() => setShowNewFindingDialog(true)}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    NK hinzufügen
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 {findings.length === 0 ? (
@@ -498,6 +517,7 @@ const AuditDetail = () => {
                       index={index} 
                       onToggle={toggleTaskStatus}
                       onDelete={handleDeleteTask}
+                      onEdit={setEditingTask}
                       onSetCompletedAt={handleSetCompletedAt}
                       isUpdating={updateTask.isPending}
                       showSeverity
@@ -711,6 +731,11 @@ const AuditDetail = () => {
           onOpenChange={setShowNewFindingDialog}
           auditId={id!}
           category="finding"
+        />
+        <EditFindingDialog
+          open={!!editingTask}
+          onOpenChange={(open) => { if (!open) setEditingTask(null); }}
+          task={editingTask}
         />
       </div>
     </Layout>
