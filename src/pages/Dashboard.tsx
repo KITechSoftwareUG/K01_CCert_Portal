@@ -4,7 +4,7 @@ import { StatCard } from '@/components/StatCard';
 import { AlertsCard } from '@/components/AlertsCard';
 import { ExpiringCertificationsCard } from '@/components/ExpiringCertificationsCard';
 import { DataQualityWarningsCard } from '@/components/DataQualityWarningsCard';
-import { SuggestedAuditsCard } from '@/components/SuggestedAuditsCard';
+
 import { CountryStatsCard } from '@/components/CountryStatsCard';
 import { AuditYearStatsCard } from '@/components/AuditYearStatsCard';
 import { DashboardAIChat } from '@/components/DashboardAIChat';
@@ -103,7 +103,7 @@ const Dashboard = () => {
             <div className="lg:col-span-7 space-y-5">
               <AlertsCard audits={audits} />
               <AuditYearStatsCard />
-              <SuggestedAuditsCard />
+              
             </div>
           </div>
         )}
