@@ -4,6 +4,7 @@ import { Layout } from '@/components/Layout';
 import { NewAuditDialog } from '@/components/NewAuditDialog';
 import { useAudits } from '@/hooks/useAudits';
 import { useAuditTasks } from '@/hooks/useAuditTasks';
+import { useClients } from '@/hooks/useClients';
 import { transformAuditToLocal } from '@/lib/auditUtils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -140,9 +141,24 @@ const Audits = () => {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [groupBy, setGroupBy] = useState<GroupBy>('month');
   const [showNewAuditDialog, setShowNewAuditDialog] = useState(false);
+  const [clientStatusFilter, setClientStatusFilter] = useState<'all' | 'active' | 'inactive'>('active');
+  const [consultantFilter, setConsultantFilter] = useState<string>('all');
 
   const { data: dbAudits = [], isLoading: auditsLoading, error: auditsError } = useAudits();
   const { data: tasks = [], isLoading: tasksLoading } = useAuditTasks();
+  const { data: clients = [] } = useClients();
+
+  const clientMap = useMemo(() => {
+    const map = new Map<string, { is_active: boolean; consultant: string | null }>();
+    clients.forEach(c => map.set(c.id, { is_active: c.is_active, consultant: c.consultant }));
+    return map;
+  }, [clients]);
+
+  const consultants = useMemo(() => {
+    const set = new Set<string>();
+    clients.forEach(c => { if (c.consultant) set.add(c.consultant); });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'de'));
+  }, [clients]);
 
   const audits = useMemo(() => 
     dbAudits.map(audit => transformAuditToLocal(audit, tasks)),
@@ -158,10 +174,17 @@ const Audits = () => {
       .filter(audit => {
         const matchesSearch = audit.clientName.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesStatus = statusFilter === 'all' || audit.status === statusFilter;
-        return matchesSearch && matchesStatus;
+        
+        const clientInfo = clientMap.get(audit.clientId);
+        const matchesClientStatus = clientStatusFilter === 'all' 
+          || (clientStatusFilter === 'active' && clientInfo?.is_active !== false)
+          || (clientStatusFilter === 'inactive' && clientInfo?.is_active === false);
+        const matchesConsultant = consultantFilter === 'all' || clientInfo?.consultant === consultantFilter;
+        
+        return matchesSearch && matchesStatus && matchesClientStatus && matchesConsultant;
       })
       .sort((a, b) => a.scheduledDate.getTime() - b.scheduledDate.getTime());
-  }, [audits, searchQuery, statusFilter]);
+  }, [audits, searchQuery, statusFilter, clientStatusFilter, consultantFilter, clientMap]);
 
   // Group audits
   const groupedAudits = useMemo(() => {
@@ -232,7 +255,30 @@ const Audits = () => {
             />
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Select value={clientStatusFilter} onValueChange={(v) => setClientStatusFilter(v as 'all' | 'active' | 'inactive')}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alle Kunden</SelectItem>
+                <SelectItem value="active">Nur aktive</SelectItem>
+                <SelectItem value="inactive">Nur inaktive</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={consultantFilter} onValueChange={setConsultantFilter}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Berater..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alle Berater</SelectItem>
+                {consultants.map(c => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             <span className="text-sm text-muted-foreground hidden sm:inline">Gruppieren:</span>
             <Select value={groupBy} onValueChange={(v) => setGroupBy(v as GroupBy)}>
               <SelectTrigger className="w-[160px]">

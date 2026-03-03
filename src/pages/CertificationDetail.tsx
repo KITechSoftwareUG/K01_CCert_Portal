@@ -227,13 +227,21 @@ const CertificationDetail = () => {
   const getStatusBadge = (statusValue: string) => {
     const statusOption = STATUS_OPTIONS.find(s => s.value === statusValue);
     if (!statusOption) return null;
+
+    const colorMap: Record<string, string> = {
+      active: 'bg-green-100 text-green-800 border-green-300',
+      valid: 'bg-green-100 text-green-800 border-green-300',
+      suspended: 'bg-orange-100 text-orange-800 border-orange-300',
+      expired: 'bg-red-100 text-red-800 border-red-300',
+      pending: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+    };
     
     return (
       <Badge 
-        variant={statusValue === 'active' ? 'default' : statusValue === 'expired' ? 'destructive' : 'secondary'}
-        className="gap-1"
+        variant="outline"
+        className={`gap-1 ${colorMap[statusValue] || ''}`}
       >
-        {statusValue === 'active' ? <CheckCircle className="h-3 w-3" /> : 
+        {statusValue === 'active' || statusValue === 'valid' ? <CheckCircle className="h-3 w-3" /> : 
          statusValue === 'expired' ? <AlertCircle className="h-3 w-3" /> : 
          <Clock className="h-3 w-3" />}
         {statusOption.label}

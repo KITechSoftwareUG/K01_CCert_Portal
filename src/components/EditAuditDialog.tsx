@@ -28,9 +28,11 @@ import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useUpdateAudit, AuditWithClient } from '@/hooks/useAudits';
 import { useAuditors } from '@/hooks/useAuditors';
+import { useAuditTasks, useUpdateAuditTask } from '@/hooks/useAuditTasks';
 import { formatAuditorName, sortAuditorsByLastName } from '@/lib/auditorUtils';
 import { toast } from 'sonner';
 import { AUDIT_STATUS_CONFIG } from '@/lib/constants';
+import { addDays, differenceInCalendarDays } from 'date-fns';
 
 interface EditAuditDialogProps {
   audit: AuditWithClient | null;
@@ -48,6 +50,8 @@ const AUDIT_STATUSES = [
 export function EditAuditDialog({ audit, open, onOpenChange }: EditAuditDialogProps) {
   const updateAudit = useUpdateAudit();
   const { data: auditors = [] } = useAuditors();
+  const { data: auditTasks = [] } = useAuditTasks(audit?.id);
+  const updateTask = useUpdateAuditTask();
   
   const [scheduledDate, setScheduledDate] = useState<Date | undefined>(undefined);
   const [status, setStatus] = useState<string>('scheduled');
@@ -71,14 +75,31 @@ export function EditAuditDialog({ audit, open, onOpenChange }: EditAuditDialogPr
     }
 
     try {
+      const originalDate = new Date(audit.scheduled_date);
+      const daysDiff = differenceInCalendarDays(scheduledDate, originalDate);
+
       await updateAudit.mutateAsync({
         id: audit.id,
         scheduled_date: scheduledDate.toISOString(),
         status: status as 'scheduled' | 'in-progress' | 'completed' | 'cancelled',
         auditor_id: auditorId === '__none__' ? null : auditorId,
       });
+
+      // Shift task due dates if audit date changed
+      if (daysDiff !== 0 && auditTasks.length > 0) {
+        await Promise.all(
+          auditTasks.map((task) =>
+            updateTask.mutateAsync({
+              id: task.id,
+              due_date: addDays(new Date(task.due_date), daysDiff).toISOString(),
+            })
+          )
+        );
+        toast.success(`Audit und ${auditTasks.length} Aufgaben-Fristen aktualisiert.`);
+      } else {
+        toast.success('Audit wurde erfolgreich aktualisiert.');
+      }
       
-      toast.success('Audit wurde erfolgreich aktualisiert.');
       onOpenChange(false);
     } catch (error) {
       toast.error('Audit konnte nicht aktualisiert werden.');
