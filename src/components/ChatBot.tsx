@@ -6,6 +6,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { streamChat } from '@/lib/chatUtils';
+import ReactMarkdown from 'react-markdown';
+import { useNavigate } from 'react-router-dom';
 
 interface Message {
   id: string;
@@ -35,13 +37,39 @@ const MessageBubble = memo(({ message }: { message: Message }) => (
     )}
     <div
       className={cn(
-        'max-w-[80%] px-3 py-2 rounded-xl text-sm whitespace-pre-line',
+        'max-w-[80%] px-3 py-2 rounded-xl text-sm',
         message.role === 'user'
-          ? 'bg-primary text-primary-foreground rounded-br-sm'
+          ? 'bg-primary text-primary-foreground rounded-br-sm whitespace-pre-line'
           : 'bg-muted text-foreground rounded-bl-sm'
       )}
     >
-      {message.content}
+      {message.role === 'assistant' ? (
+        <div className="prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0.5 leading-relaxed">
+          <ReactMarkdown
+            components={{
+              a: ({ href, children }) => (
+                <a
+                  href={href}
+                  className="text-primary underline hover:text-primary/80 cursor-pointer"
+                  onClick={(e) => {
+                    if (href && (href.startsWith('/') || href.includes(window.location.origin))) {
+                      e.preventDefault();
+                      const path = href.startsWith('/') ? href : new URL(href).pathname;
+                      window.location.href = path;
+                    }
+                  }}
+                >
+                  {children}
+                </a>
+              ),
+            }}
+          >
+            {message.content}
+          </ReactMarkdown>
+        </div>
+      ) : (
+        message.content
+      )}
     </div>
     {message.role === 'user' && (
       <div className="bg-secondary p-1.5 rounded-full h-fit flex-shrink-0">

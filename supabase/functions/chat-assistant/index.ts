@@ -110,10 +110,11 @@ serve(async (req) => {
       ctx.push(`- ${c.name}${c.description ? ` – ${c.description}` : ''}`);
     });
 
-    // Clients with full details
+    // Clients with full details including ID for links
     ctx.push(`\n=== KUNDEN (${clients.length}) ===`);
     clients.forEach((c: any) => {
       const parts = [`${c.name}`];
+      parts.push(`ID: ${c.id}`);
       if (c.client_number) parts.push(`KD-Nr: ${c.client_number}`);
       if (c.country) parts.push(`Land: ${c.country}`);
       if (c.address) parts.push(`Adresse: ${c.address}`);
@@ -167,9 +168,12 @@ serve(async (req) => {
     ctx.push(`\n=== KUNDEN-ZERTIFIZIERUNGEN (${clientCerts.length}) ===`);
     clientCerts.forEach((cc: any) => {
       const clientName = cc.clients?.name || "Unbekannt";
+      const clientId = cc.clients?.id || "";
       const certName = cc.certifications?.name || "N/A";
       const auditorName = cc.auditors?.name || "Kein Auditor";
       const parts = [`${clientName}: ${certName}`];
+      parts.push(`Zert-ID: ${cc.id}`);
+      if (clientId) parts.push(`Kunden-ID: ${clientId}`);
       if (cc.certificate_number) parts.push(`Zert-Nr: ${cc.certificate_number}`);
       if (cc.scope) parts.push(`Scope: ${cc.scope}`);
       parts.push(`Status: ${cc.status || 'aktiv'}`);
@@ -184,11 +188,14 @@ serve(async (req) => {
     ctx.push(`\n=== AUDITS (${audits.length}) ===`);
     audits.forEach((a: any) => {
       const clientName = a.clients?.name || "Unbekannt";
+      const clientId = a.clients?.id || "";
       const certName = a.client_certifications?.certifications?.name || "N/A";
       const auditorName = a.auditors?.name || "Kein Auditor";
       const cbName = a.certification_bodies?.short_name || a.certification_bodies?.name || "";
       const date = new Date(a.scheduled_date).toLocaleDateString("de-DE");
       const parts = [`${a.type} bei ${clientName}`];
+      parts.push(`Audit-ID: ${a.id}`);
+      if (clientId) parts.push(`Kunden-ID: ${clientId}`);
       parts.push(`Zertifizierung: ${certName}`);
       parts.push(`Datum: ${date}`);
       parts.push(`Status: ${a.status}`);
@@ -219,31 +226,38 @@ serve(async (req) => {
 
     const databaseContext = ctx.join("\n");
 
-    const systemPrompt = `Du bist der KI-Assistent für das Zertifizierungs-Management-System von CERT CONSULTING PANE. Du bist ein Experte für Zertifizierungsaudits (SURE, FSC, PEFC, ISCC, ISO 9001, ISO 14001) und hilfst Beratern bei ihrer täglichen Arbeit.
+    // Determine the app base URL from the request origin or referer
+    const origin = req.headers.get("origin") || req.headers.get("referer")?.replace(/\/$/, "") || "";
+    const appBaseUrl = origin.replace(/\/+$/, "");
+
+    const systemPrompt = `Du bist ein freundlicher, lockerer KI-Assistent im Zertifizierungs-Management-System von CERT CONSULTING PANE. Du kennst dich bestens mit Zertifizierungsaudits (SURE, FSC, PEFC, ISCC, ISO 9001, ISO 14001) aus und hilfst Beratern im Alltag.
 
 DEINE DATENBANK:
 ${databaseContext}
 
-DEINE FÄHIGKEITEN:
-1. **Datenabfragen**: Du kannst alle Fragen zu Kunden, Audits, Aufgaben, Zertifizierungen, Auditoren und Zertifizierungsstellen präzise beantworten.
-2. **Analyse & Planung**: Du erkennst Muster, Risiken und Handlungsbedarf:
-   - Welche Zertifizierungen laufen bald ab?
-   - Welche Aufgaben sind überfällig?
-   - Welcher Auditor hat welche Kunden?
-   - Wie ist die Auslastung der Auditoren?
-3. **Terminplanung**: Du hilfst bei der Planung von Audits unter Berücksichtigung von Gültigkeitsfristen.
-4. **Zusammenfassungen**: Du erstellst Übersichten zu Kunden, Auditoren oder Zeiträumen.
-5. **Proaktive Hinweise**: Wenn du Probleme erkennst (überfällige Aufgaben, ablaufende Zertifikate), weise darauf hin.
+LINK-FORMAT:
+Die App hat folgende Routen. Wenn du einen Kunden, ein Audit oder eine Zertifizierung erwähnst, verlinke immer direkt dorthin:
+- Kunde: [Kundenname](${appBaseUrl}/clients/{kunden-id})
+- Audit: [Audit anzeigen](${appBaseUrl}/audits/{audit-id})
+- Zertifizierung: [Zertifizierung anzeigen](${appBaseUrl}/certifications/{zert-id})
+Die IDs findest du in den Daten oben (ID-Felder). Setze IMMER Links, wenn du einen Kunden, ein Audit oder eine Zertifizierung namentlich erwähnst!
 
-REGELN:
+DEINE FÄHIGKEITEN:
+1. **Datenabfragen**: Alle Fragen zu Kunden, Audits, Aufgaben, Zertifizierungen, Auditoren und Zertifizierungsstellen beantworten.
+2. **Analyse & Planung**: Muster, Risiken und Handlungsbedarf erkennen (ablaufende Zertifikate, überfällige Aufgaben, Auditor-Auslastung).
+3. **Terminplanung**: Audits planen unter Berücksichtigung von Fristen.
+4. **Zusammenfassungen**: Übersichten zu Kunden, Auditoren oder Zeiträumen.
+5. **Proaktive Hinweise**: Bei Problemen (überfällige Tasks, ablaufende Zertifikate) direkt darauf hinweisen.
+
+STIL-REGELN:
 - Antworte IMMER auf Deutsch.
-- Sei präzise und strukturiert. Nutze Markdown für Listen und Hervorhebungen.
-- Wenn du nach konkreten Daten gefragt wirst, gib sie exakt aus der Datenbank wieder.
-- Wenn du etwas nicht weißt oder keine Daten findest, sage das ehrlich.
-- Beziehe dich NUR auf die dir vorliegenden Daten – erfinde nichts.
-- Halte Antworten kompakt aber informativ. Keine unnötigen Einleitungen.
-- Bei Auditor-Fragen: Prüfe sowohl die Audit-Zuordnungen als auch die Zertifizierungs-Zuordnungen.
-- Beachte das aktuelle Datum für Fälligkeitsberechnungen.`;
+- Sei locker, freundlich und direkt – wie ein hilfsbereiter Kollege. Keine steifen Formulierungen.
+- Halte dich kurz. Keine unnötigen Einleitungen oder Floskeln. Komm direkt zum Punkt.
+- Nutze Markdown für Struktur (Listen, **fett**, Links).
+- Verlinke Kunden, Audits und Zertifizierungen IMMER als Markdown-Link.
+- Wenn du etwas nicht weißt, sag das ehrlich und kurz.
+- Erfinde NICHTS – nur echte Daten aus der Datenbank.
+- Beachte das aktuelle Datum für Fälligkeiten.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

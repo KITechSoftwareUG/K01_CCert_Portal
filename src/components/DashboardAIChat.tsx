@@ -10,6 +10,25 @@ import { useAuth } from '@/contexts/AuthContext';
 import ReactMarkdown from 'react-markdown';
 import { streamChat } from '@/lib/chatUtils';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
+import { useNavigate } from 'react-router-dom';
+
+const markdownLinkComponents = {
+  a: ({ href, children }: { href?: string; children?: React.ReactNode }) => (
+    <a
+      href={href}
+      className="text-primary underline hover:text-primary/80 cursor-pointer"
+      onClick={(e) => {
+        if (href && (href.startsWith('/') || href.includes(window.location.origin))) {
+          e.preventDefault();
+          const path = href.startsWith('/') ? href : new URL(href).pathname;
+          window.location.href = path;
+        }
+      }}
+    >
+      {children}
+    </a>
+  ),
+};
 
 interface DashboardAIChatProps {
   className?: string;
@@ -279,7 +298,7 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
                 </div>
                 <div className="max-w-[80%] rounded-2xl rounded-bl-md bg-muted/60 px-4 py-2.5 text-sm">
                   <div className="prose prose-sm max-w-none prose-p:my-1 leading-relaxed">
-                    <ReactMarkdown>{greeting}</ReactMarkdown>
+                    <ReactMarkdown components={markdownLinkComponents}>{greeting}</ReactMarkdown>
                   </div>
                 </div>
               </div>
@@ -315,7 +334,7 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
                 )}>
                   {msg.role === 'assistant' ? (
                     <div className="prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 leading-relaxed">
-                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      <ReactMarkdown components={markdownLinkComponents}>{msg.content}</ReactMarkdown>
                     </div>
                   ) : (
                     <p className="leading-relaxed">{msg.content}</p>
@@ -337,7 +356,7 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
                 </div>
                 <div className="max-w-[80%] rounded-2xl rounded-bl-md bg-muted/60 px-4 py-2.5 text-sm">
                   <div className="prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 leading-relaxed">
-                    <ReactMarkdown>{currentResponse}</ReactMarkdown>
+                    <ReactMarkdown components={markdownLinkComponents}>{currentResponse}</ReactMarkdown>
                   </div>
                 </div>
               </div>
