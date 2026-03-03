@@ -97,7 +97,7 @@ export const useAutomaticAuditPlanning = () => {
             validUntil,
           });
         }
-      } else if (cert.valid_from && !hasSurveillanceScheduled && allRelevantAudits.length === 0 && monthsUntilExpiry > 4) {
+      } else if (cert.valid_from && !hasSurveillanceScheduled && monthsUntilExpiry > 4) {
         // No audits at all but certification has valid_from → suggest surveillance 12 months after valid_from
         const validFrom = new Date(cert.valid_from);
         const suggestedDate = addMonths(validFrom, 12);
