@@ -256,7 +256,11 @@ const Clients = () => {
       return (
         <div
           key={`${row.clientId}-${idx}`}
-          className="flex items-center justify-between gap-4 pl-16 pr-4 py-2 text-sm border-t border-border/30 hover:bg-muted/30 cursor-pointer"
+          className={cn(
+            "flex items-center justify-between gap-4 pl-16 pr-4 py-2 text-sm border-t border-border/30 hover:bg-muted/30 cursor-pointer",
+            row.certifications.some(c => c.status === 'expired') && "bg-red-50 dark:bg-red-950/20",
+            row.certifications.some(c => c.status === 'suspended') && "bg-orange-50 dark:bg-orange-950/20"
+          )}
           onClick={() => navigate(`/certifications/${row.primaryCertificationId}`)}
         >
           <div className="flex items-center gap-4">
