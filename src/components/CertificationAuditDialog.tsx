@@ -50,6 +50,8 @@ interface CertificationAuditDialogProps {
   certificationId: string;
   certificationName: string;
   existingAudit?: CertificationAudit | null;
+  presetType?: string | null;
+  presetDate?: string | null;
 }
 
 const AUDIT_STATUS_OPTIONS: { value: AuditStatus; label: string }[] = [
@@ -86,7 +88,9 @@ export const CertificationAuditDialog = ({
   clientId,
   certificationId,
   certificationName,
-  existingAudit 
+  existingAudit,
+  presetType,
+  presetDate,
 }: CertificationAuditDialogProps) => {
   const [auditType, setAuditType] = useState<AuditType>('initial');
   const [scheduledDate, setScheduledDate] = useState('');
@@ -127,8 +131,14 @@ export const CertificationAuditDialog = ({
       setNotes(existingAudit.notes || '');
     } else {
       resetForm();
+      if (presetType) {
+        setAuditType(presetType as AuditType);
+      }
+      if (presetDate) {
+        setScheduledDate(presetDate);
+      }
     }
-  }, [existingAudit, open]);
+  }, [existingAudit, open, presetType, presetDate]);
 
   const resetForm = () => {
     setAuditType('initial');
