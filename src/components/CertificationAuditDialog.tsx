@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -17,6 +17,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { toast } from 'sonner';
 import { 
   useCreateCertificationAudit, 
@@ -27,17 +35,19 @@ import {
 } from '@/hooks/useCertificationAudits';
 import { useAuditors } from '@/hooks/useAuditors';
 import { useCertificationBodies } from '@/hooks/useCertificationBodies';
-import { useCreateBulkAuditTasks } from '@/hooks/useAuditTasks';
+import { useCreateBulkAuditTasks, useAllAuditTasks } from '@/hooks/useAuditTasks';
 import { fetchTemplateTasksForAudit } from '@/hooks/useAuditTemplates';
 import { AUDIT_TYPE_LABELS } from '@/lib/constants';
-import { addDays } from 'date-fns';
+import { addDays, format } from 'date-fns';
+import { de } from 'date-fns/locale';
+import { AlertTriangle, ChevronDown, Calendar as CalendarIcon } from 'lucide-react';
 
 interface CertificationAuditDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   clientCertificationId: string;
   clientId: string;
-  certificationId: string; // ID der Zertifizierung für Template-Lookup
+  certificationId: string;
   certificationName: string;
   existingAudit?: CertificationAudit | null;
 }
@@ -57,6 +67,18 @@ const auditTypeOptions: { value: AuditType; label: string }[] = [
   { value: 'internal', label: AUDIT_TYPE_LABELS['internal'] },
 ];
 
+const SEVERITY_LABELS: Record<string, string> = {
+  major: 'Haupt-NK',
+  minor: 'Neben-NK',
+  recommendation: 'Empfehlung',
+};
+
+const SEVERITY_COLORS: Record<string, string> = {
+  major: 'bg-red-100 text-red-800 border-red-300',
+  minor: 'bg-orange-100 text-orange-800 border-orange-300',
+  recommendation: 'bg-blue-100 text-blue-800 border-blue-300',
+};
+
 export const CertificationAuditDialog = ({ 
   open, 
   onOpenChange, 
@@ -72,14 +94,27 @@ export const CertificationAuditDialog = ({
   const [auditorId, setAuditorId] = useState<string>('');
   const [certificationBodyId, setCertificationBodyId] = useState<string>('');
   const [notes, setNotes] = useState('');
+  const [selectedNks, setSelectedNks] = useState<string[]>([]);
+  const [nkListOpen, setNkListOpen] = useState(false);
 
   const { data: auditors = [] } = useAuditors();
   const { data: certificationBodies = [] } = useCertificationBodies();
+  const { data: allTasks = [] } = useAllAuditTasks();
   const createAudit = useCreateCertificationAudit();
   const updateAudit = useUpdateCertificationAudit();
   const createTasks = useCreateBulkAuditTasks();
 
   const isEditMode = !!existingAudit;
+
+  // Open findings for this specific client_certification_id
+  const openFindings = useMemo(() => {
+    if (isEditMode) return [];
+    return allTasks.filter((t: any) =>
+      t.category === 'finding' &&
+      t.status !== 'completed' &&
+      t.audits?.client_certification_id === clientCertificationId
+    );
+  }, [allTasks, clientCertificationId, isEditMode]);
 
   // Initialize form when dialog opens or existingAudit changes
   useEffect(() => {
@@ -102,6 +137,22 @@ export const CertificationAuditDialog = ({
     setAuditorId('');
     setCertificationBodyId('');
     setNotes('');
+    setSelectedNks([]);
+    setNkListOpen(false);
+  };
+
+  const toggleNk = (id: string) => {
+    setSelectedNks(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const toggleAllNks = () => {
+    if (selectedNks.length === openFindings.length) {
+      setSelectedNks([]);
+    } else {
+      setSelectedNks(openFindings.map((f: any) => f.id));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -137,13 +188,15 @@ export const CertificationAuditDialog = ({
           certifications: [],
         });
 
-        // Load tasks from template, fallback to empty if no template exists
+        // Load tasks from template
         const templateTasks = await fetchTemplateTasksForAudit(certificationId, auditType);
         
+        const tasksToCreate: any[] = [];
+
         if (templateTasks.length > 0) {
           const auditDate = new Date(scheduledDate);
-          await createTasks.mutateAsync(
-            templateTasks.map(task => ({
+          tasksToCreate.push(
+            ...templateTasks.map(task => ({
               title: task.title,
               description: task.description || undefined,
               due_date: addDays(auditDate, -task.days_before_audit).toISOString(),
@@ -154,7 +207,28 @@ export const CertificationAuditDialog = ({
           );
         }
 
-        toast.success('Audit erfolgreich erstellt');
+        // Copy selected NKs
+        if (selectedNks.length > 0) {
+          const nksToCopy = openFindings.filter((f: any) => selectedNks.includes(f.id));
+          tasksToCreate.push(
+            ...nksToCopy.map((f: any) => ({
+              title: f.title,
+              description: f.description || undefined,
+              severity: f.severity || undefined,
+              due_date: f.due_date,
+              assigned_to: f.assigned_to || undefined,
+              category: 'finding',
+              status: 'pending' as const,
+              audit_id: audit.id,
+            }))
+          );
+        }
+
+        if (tasksToCreate.length > 0) {
+          await createTasks.mutateAsync(tasksToCreate);
+        }
+
+        toast.success(`Audit erfolgreich erstellt${selectedNks.length > 0 ? ` (${selectedNks.length} NK übernommen)` : ''}`);
       }
       
       onOpenChange(false);
@@ -197,6 +271,65 @@ export const CertificationAuditDialog = ({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Open NK Warning with checkboxes */}
+          {!isEditMode && openFindings.length > 0 && (
+            <Collapsible open={nkListOpen} onOpenChange={setNkListOpen}>
+              <CollapsibleTrigger asChild>
+                <Alert variant="destructive" className="cursor-pointer hover:bg-destructive/10 transition-colors">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription className="flex items-center justify-between w-full">
+                    <span className="font-medium">
+                      {openFindings.length} offene NK aus früheren Audits
+                    </span>
+                    <ChevronDown className={`h-4 w-4 transition-transform ${nkListOpen ? 'rotate-180' : ''}`} />
+                  </AlertDescription>
+                </Alert>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="border rounded-lg mt-2 max-h-48 overflow-y-auto">
+                  <div className="p-2 border-b flex items-center justify-between">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs"
+                      onClick={toggleAllNks}
+                    >
+                      {selectedNks.length === openFindings.length ? 'Keine auswählen' : 'Alle auswählen'}
+                    </Button>
+                    {selectedNks.length > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        {selectedNks.length} ausgewählt
+                      </span>
+                    )}
+                  </div>
+                  <div className="divide-y">
+                    {openFindings.map((f: any) => (
+                      <div key={f.id} className="p-3 text-sm flex items-center gap-3">
+                        <Checkbox
+                          checked={selectedNks.includes(f.id)}
+                          onCheckedChange={() => toggleNk(f.id)}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{f.title}</p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                            <CalendarIcon className="h-3 w-3" />
+                            <span>Frist: {format(new Date(f.due_date), 'dd.MM.yyyy', { locale: de })}</span>
+                          </div>
+                        </div>
+                        {f.severity && (
+                          <Badge variant="outline" className={`text-xs shrink-0 ${SEVERITY_COLORS[f.severity] || ''}`}>
+                            {SEVERITY_LABELS[f.severity] || f.severity}
+                          </Badge>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
 
           {/* Scheduled Date */}
           <div className="space-y-2">

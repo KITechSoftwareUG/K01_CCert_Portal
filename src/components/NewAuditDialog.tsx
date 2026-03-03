@@ -104,6 +104,7 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
   const [scheduledDate, setScheduledDate] = useState('');
   const [notes, setNotes] = useState('');
   const [nkListOpen, setNkListOpen] = useState(false);
+  const [selectedNks, setSelectedNks] = useState<string[]>([]);
 
   const { data: clients = [], isLoading: clientsLoading } = useClients();
   const { data: certifications = [] } = useCertifications();
@@ -145,6 +146,20 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
     );
   };
 
+  const toggleNk = (id: string) => {
+    setSelectedNks(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const toggleAllNks = () => {
+    if (selectedNks.length === openFindings.length) {
+      setSelectedNks([]);
+    } else {
+      setSelectedNks(openFindings.map((f: any) => f.id));
+    }
+  };
+
   const resetForm = () => {
     setSelectedClient('');
     setAuditType('initial');
@@ -152,6 +167,7 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
     setScheduledDate('');
     setNotes('');
     setNkListOpen(false);
+    setSelectedNks([]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -173,14 +189,31 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
       });
 
       const defaultTasks = getDefaultTasksForAuditType(auditType, new Date(scheduledDate));
-      await createTasks.mutateAsync(
-        defaultTasks.map(task => ({
-          ...task,
-          audit_id: audit.id,
-        }))
-      );
+      const tasksToCreate: any[] = defaultTasks.map(task => ({
+        ...task,
+        audit_id: audit.id,
+      }));
 
-      toast.success('Audit erfolgreich erstellt');
+      // Copy selected NKs
+      if (selectedNks.length > 0) {
+        const nksToCopy = openFindings.filter((f: any) => selectedNks.includes(f.id));
+        tasksToCreate.push(
+          ...nksToCopy.map((f: any) => ({
+            title: f.title,
+            description: f.description || undefined,
+            severity: f.severity || undefined,
+            due_date: f.due_date,
+            assigned_to: f.assigned_to || undefined,
+            category: 'finding',
+            status: 'pending' as const,
+            audit_id: audit.id,
+          }))
+        );
+      }
+
+      await createTasks.mutateAsync(tasksToCreate);
+
+      toast.success(`Audit erfolgreich erstellt${selectedNks.length > 0 ? ` (${selectedNks.length} NK übernommen)` : ''}`);
       onOpenChange(false);
       resetForm();
     } catch (error) {
@@ -203,7 +236,7 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
           {/* Client Selection */}
           <div className="space-y-2">
             <Label htmlFor="client">Kunde *</Label>
-            <Select value={selectedClient} onValueChange={setSelectedClient}>
+            <Select value={selectedClient} onValueChange={(v) => { setSelectedClient(v); setSelectedNks([]); }}>
               <SelectTrigger id="client">
                 <SelectValue placeholder={clientsLoading ? 'Lade Kunden...' : 'Kunde auswählen'} />
               </SelectTrigger>
@@ -217,7 +250,7 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
             </Select>
           </div>
 
-          {/* Open NK Warning */}
+          {/* Open NK Warning with checkboxes */}
           {openFindings.length > 0 && (
             <Collapsible open={nkListOpen} onOpenChange={setNkListOpen}>
               <CollapsibleTrigger asChild>
@@ -237,23 +270,45 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
                 </Alert>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <div className="border rounded-lg mt-2 divide-y max-h-48 overflow-y-auto">
-                  {openFindings.map((f: any) => (
-                    <div key={f.id} className="p-3 text-sm flex items-center justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{f.title}</p>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                          <CalendarIcon className="h-3 w-3" />
-                          <span>Frist: {format(new Date(f.due_date), 'dd.MM.yyyy', { locale: de })}</span>
+                <div className="border rounded-lg mt-2 max-h-48 overflow-y-auto">
+                  <div className="p-2 border-b flex items-center justify-between">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs"
+                      onClick={toggleAllNks}
+                    >
+                      {selectedNks.length === openFindings.length ? 'Keine auswählen' : 'Alle auswählen'}
+                    </Button>
+                    {selectedNks.length > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        {selectedNks.length} ausgewählt
+                      </span>
+                    )}
+                  </div>
+                  <div className="divide-y">
+                    {openFindings.map((f: any) => (
+                      <div key={f.id} className="p-3 text-sm flex items-center gap-3">
+                        <Checkbox
+                          checked={selectedNks.includes(f.id)}
+                          onCheckedChange={() => toggleNk(f.id)}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{f.title}</p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                            <CalendarIcon className="h-3 w-3" />
+                            <span>Frist: {format(new Date(f.due_date), 'dd.MM.yyyy', { locale: de })}</span>
+                          </div>
                         </div>
+                        {f.severity && (
+                          <Badge variant="outline" className={`text-xs shrink-0 ${SEVERITY_COLORS[f.severity] || ''}`}>
+                            {SEVERITY_LABELS[f.severity] || f.severity}
+                          </Badge>
+                        )}
                       </div>
-                      {f.severity && (
-                        <Badge variant="outline" className={`text-xs shrink-0 ${SEVERITY_COLORS[f.severity] || ''}`}>
-                          {SEVERITY_LABELS[f.severity] || f.severity}
-                        </Badge>
-                      )}
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </CollapsibleContent>
             </Collapsible>
