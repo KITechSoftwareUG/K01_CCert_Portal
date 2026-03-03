@@ -1,54 +1,69 @@
 
-# NKs beim Anlegen eines neuen Audits anzeigen und uebertragen
+
+# Mehrere Verbesserungen: Status-Badges, Audit-Filter, Inaktive Kunden, Aufgaben-Datumsanpassung
 
 ## Zusammenfassung
 
-Beim Erstellen eines neuen Audits ueber den `CertificationAuditDialog` (also im Kontext einer bestimmten Zertifizierung eines Kunden) sollen offene Nicht-Konformitaeten (NKs) aus frueheren Audits derselben Zertifizierung angezeigt werden. Der Benutzer kann per Checkbox auswaehlen, welche NKs ins neue Audit uebernommen (kopiert) werden sollen.
+5 Aenderungen in einem Schritt:
+
+1. **Zertifikats-Status immer farbig** — suspended orange, expired rot, valid/active gruen (ueberall konsistent)
+2. **Audit-Uebersicht: Filter nach aktiv/inaktiv und Berater**
+3. **Abgelaufene/inaktive Zertifizierungen sichtbar beim Kunden** (in der Clients-Liste)
+4. **Inaktive Kunden aus Audit-Liste ausblenden** (z.B. DML Invest)
+5. **Aufgaben-Fristen verschieben wenn Auditdatum geaendert wird**
+
+---
 
 ## Aenderungen
 
-### 1. CertificationAuditDialog erweitern
+### 1. Zertifikats-Status-Badge konsistent farbig machen
 
-**Datei:** `src/components/CertificationAuditDialog.tsx`
+**Dateien:** `src/pages/CertificationDetail.tsx`, `src/pages/ClientDetail.tsx`, `src/pages/Clients.tsx`
 
-- `useAllAuditTasks` importieren und laden
-- Offene NKs filtern: `category === 'finding'` UND `status !== 'completed'` UND das zugehoerige Audit hat dieselbe `client_certification_id`
-- Unterhalb des Audit-Typ-Selects ein Collapsible-Warnbanner anzeigen (wie bereits in `NewAuditDialog`), wenn offene NKs existieren
-- Jede NK bekommt eine Checkbox zur Auswahl fuer die Uebernahme
-- State `selectedNks: string[]` fuer die ausgewaehlten NK-IDs
-- "Alle auswaehlen" / "Keine auswaehlen" Toggle-Button
+Die `getStatusBadge`-Funktion und die inline `statusColors`-Maps existieren schon mit korrekten Farben. Anpassung in `CertificationDetail.tsx`: Die `getStatusBadge`-Funktion nutzt aktuell generische `variant`-Werte statt die definierten Farben aus `STATUS_OPTIONS`. Aendern auf explizite Tailwind-Klassen (gruen/orange/rot) wie in den anderen Dateien.
 
-### 2. NKs beim Erstellen kopieren
+### 2. Audit-Uebersicht: Filter nach aktiven/inaktiven Kunden und Berater
 
-**Datei:** `src/components/CertificationAuditDialog.tsx` (gleiche Datei, Submit-Logik)
+**Datei:** `src/pages/Audits.tsx`
 
-- Nach dem Erstellen des Audits und der Template-Tasks: fuer jede ausgewaehlte NK einen neuen `audit_task` mit `category: 'finding'` im neuen Audit erstellen
-- Die kopierten Felder: `title`, `description`, `severity`, `due_date` (Frist wird beibehalten), `assigned_to`, `category: 'finding'`
-- Status der Kopie wird auf `pending` gesetzt (da sie im neuen Audit erneut geprueft werden muss)
-- `completed_at` wird NICHT uebernommen (ist ja offen)
+- Neuen State `clientStatusFilter` (`'all' | 'active' | 'inactive'`) hinzufuegen
+- Neuen State `consultantFilter` (string) hinzufuegen
+- `useClients()` importieren um auf `is_active` und `consultant` der Kunden zuzugreifen
+- In `filteredAudits` die neuen Filter anwenden: `is_active`-Check ueber den zugehoerigen Client, Berater-Abgleich
+- Zwei neue Select-Dropdowns in der Filter-Leiste rendern
 
-### 3. NewAuditDialog ebenfalls erweitern
+### 3. Abgelaufene Zertifizierungen in der Kunden-Liste sichtbar machen
 
-**Datei:** `src/components/NewAuditDialog.tsx`
+**Datei:** `src/pages/Clients.tsx`
 
-- Die bestehende NK-Anzeige (Collapsible-Liste) um Checkboxen ergaenzen
-- Gleiche Uebernahme-Logik wie im CertificationAuditDialog: ausgewaehlte NKs werden als neue Tasks im neuen Audit erstellt
+Die Status-Badges werden bereits angezeigt (Zeilen 281-296) mit korrekten Farben. Sie werden aber nur gerendert wenn ein Status vorhanden ist. Zusaetzlich: Wenn ein Zertifikat `expired` oder `suspended` ist, soll die ganze Zeile optisch hervorgehoben werden (z.B. leicht roter/oranger Hintergrund oder ein Warnsymbol).
+
+### 4. Inaktive Kunden aus Audit-Liste ausblenden
+
+**Datei:** `src/pages/Audits.tsx`
+
+- In der `filteredAudits`-Logik pruefen ob `dbAudit.clients?.is_active === false` — diese standardmaessig ausfiltern
+- Der neue `clientStatusFilter` steuert ob inaktive Kunden angezeigt werden oder nicht (Standard: nur aktive)
+
+### 5. Aufgaben-Fristen verschieben bei Auditdatum-Aenderung
+
+**Datei:** `src/components/EditAuditDialog.tsx`
+
+- `useAuditTasks(audit.id)` und `useUpdateAuditTask()` importieren
+- In `handleSave`: Wenn sich `scheduledDate` gegenueber dem Original-Datum geaendert hat:
+  - Differenz in Tagen berechnen (`newDate - oldDate`)
+  - Alle Tasks des Audits laden, deren `due_date` um die gleiche Differenz verschieben
+  - Batch-Update aller Tasks mit neuem `due_date`
+- Toast-Nachricht ergaenzen: "Audit und X Aufgaben-Fristen aktualisiert"
+
+---
 
 ## Technische Details
 
-### Datenbank
-- Keine Schema-Aenderungen noetig. NKs werden als neue `audit_tasks`-Eintraege mit `category: 'finding'` kopiert
+- Keine Datenbank-Aenderungen noetig
+- Dateien die geaendert werden:
+  1. `src/pages/CertificationDetail.tsx` — Badge-Farben
+  2. `src/pages/Audits.tsx` — Zwei neue Filter + inaktive Kunden ausblenden
+  3. `src/pages/Clients.tsx` — Expired/suspended Zertifikate hervorheben
+  4. `src/components/EditAuditDialog.tsx` — Tasks-Fristen mitverschieben
 
-### Dateien die geaendert werden
-
-1. **`src/components/CertificationAuditDialog.tsx`**
-   - Imports: `useAllAuditTasks`, `Collapsible`, `Checkbox`, `Badge`, `Alert`, Icons
-   - Neuer State: `selectedNks`, `nkListOpen`
-   - `useMemo` fuer `openFindings` gefiltert nach `client_certification_id`
-   - Warnbanner mit Checkbox-Liste im Formular (nur bei Neu-Erstellung, nicht bei Bearbeitung)
-   - Submit-Logik: ausgewaehlte NKs als neue Tasks kopieren
-
-2. **`src/components/NewAuditDialog.tsx`**
-   - Bestehende NK-Liste um Checkboxen erweitern
-   - Neuer State: `selectedNks`
-   - Submit-Logik: ausgewaehlte NKs als neue Tasks kopieren
