@@ -1,36 +1,54 @@
 
+# NKs beim Anlegen eines neuen Audits anzeigen und uebertragen
 
-# Bug-Fix: Spaltenverschiebung bei Gruppierung nach Kunde/Auditart
+## Zusammenfassung
 
-## Problem
+Beim Erstellen eines neuen Audits ueber den `CertificationAuditDialog` (also im Kontext einer bestimmten Zertifizierung eines Kunden) sollen offene Nicht-Konformitaeten (NKs) aus frueheren Audits derselben Zertifizierung angezeigt werden. Der Benutzer kann per Checkbox auswaehlen, welche NKs ins neue Audit uebernommen (kopiert) werden sollen.
 
-Wenn nach "Kunde" gruppiert wird, blendet `AuditRow` die Kunde-Zelle aus (`showClient=false`), aber der Tabellenkopf zeigt weiterhin alle 7 Spalten. Dadurch haben die Zeilen nur 6 Zellen, waehrend der Header 7 hat -- alle Inhalte rutschen um eine Spalte nach links.
+## Aenderungen
 
-Gleiches Problem bei Gruppierung nach "Auditart" (`showType=false`).
+### 1. CertificationAuditDialog erweitern
 
-## Loesung
+**Datei:** `src/components/CertificationAuditDialog.tsx`
 
-**Datei:** `src/pages/Audits.tsx`
+- `useAllAuditTasks` importieren und laden
+- Offene NKs filtern: `category === 'finding'` UND `status !== 'completed'` UND das zugehoerige Audit hat dieselbe `client_certification_id`
+- Unterhalb des Audit-Typ-Selects ein Collapsible-Warnbanner anzeigen (wie bereits in `NewAuditDialog`), wenn offene NKs existieren
+- Jede NK bekommt eine Checkbox zur Auswahl fuer die Uebernahme
+- State `selectedNks: string[]` fuer die ausgewaehlten NK-IDs
+- "Alle auswaehlen" / "Keine auswaehlen" Toggle-Button
 
-Die `TableHeader`-Zeilen (Zeilen 336-344) muessen die gleichen Bedingungen wie `AuditRow` verwenden:
+### 2. NKs beim Erstellen kopieren
 
-- "Kunde"-Spalte nur anzeigen wenn `groupBy !== 'client'`
-- "Auditart"-Spalte nur anzeigen wenn `groupBy !== 'type'`
-- Spaltenbreiten anpassen, damit sie bei weniger Spalten korrekt verteilt sind
+**Datei:** `src/components/CertificationAuditDialog.tsx` (gleiche Datei, Submit-Logik)
 
-Konkret wird der Header-Block so geaendert, dass `showClient` und `showType` Variablen auch dort greifen:
+- Nach dem Erstellen des Audits und der Template-Tasks: fuer jede ausgewaehlte NK einen neuen `audit_task` mit `category: 'finding'` im neuen Audit erstellen
+- Die kopierten Felder: `title`, `description`, `severity`, `due_date` (Frist wird beibehalten), `assigned_to`, `category: 'finding'`
+- Status der Kopie wird auf `pending` gesetzt (da sie im neuen Audit erneut geprueft werden muss)
+- `completed_at` wird NICHT uebernommen (ist ja offen)
 
-```tsx
-<TableRow>
-  {groupBy !== 'client' && <TableHead className="text-left w-[25%]">Kunde</TableHead>}
-  <TableHead className="text-left w-[15%]">Zertifikat</TableHead>
-  {groupBy !== 'type' && <TableHead className="text-left w-[15%]">Auditart</TableHead>}
-  <TableHead className="text-left w-[15%]">Termin</TableHead>
-  <TableHead className="text-left w-[12%]">Status</TableHead>
-  <TableHead className="text-left w-[12%]">Aufgaben</TableHead>
-  <TableHead className="w-[6%]"></TableHead>
-</TableRow>
-```
+### 3. NewAuditDialog ebenfalls erweitern
 
-Dies betrifft nur eine Stelle in der Datei (Zeilen 336-344). Keine weiteren Dateien betroffen.
+**Datei:** `src/components/NewAuditDialog.tsx`
 
+- Die bestehende NK-Anzeige (Collapsible-Liste) um Checkboxen ergaenzen
+- Gleiche Uebernahme-Logik wie im CertificationAuditDialog: ausgewaehlte NKs werden als neue Tasks im neuen Audit erstellt
+
+## Technische Details
+
+### Datenbank
+- Keine Schema-Aenderungen noetig. NKs werden als neue `audit_tasks`-Eintraege mit `category: 'finding'` kopiert
+
+### Dateien die geaendert werden
+
+1. **`src/components/CertificationAuditDialog.tsx`**
+   - Imports: `useAllAuditTasks`, `Collapsible`, `Checkbox`, `Badge`, `Alert`, Icons
+   - Neuer State: `selectedNks`, `nkListOpen`
+   - `useMemo` fuer `openFindings` gefiltert nach `client_certification_id`
+   - Warnbanner mit Checkbox-Liste im Formular (nur bei Neu-Erstellung, nicht bei Bearbeitung)
+   - Submit-Logik: ausgewaehlte NKs als neue Tasks kopieren
+
+2. **`src/components/NewAuditDialog.tsx`**
+   - Bestehende NK-Liste um Checkboxen erweitern
+   - Neuer State: `selectedNks`
+   - Submit-Logik: ausgewaehlte NKs als neue Tasks kopieren
