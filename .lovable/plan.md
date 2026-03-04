@@ -1,69 +1,53 @@
+# Dashboard-Summen Analyse und Korrektur
+
+## Problem
+
+Die Zahl "277 Kunden gesamt" zaehlt **jeden Eintrag** in der `clients`-Tabelle, inklusive:
+
+- **11 Unternehmensgruppen** (Eltern-Eintraege mit Kindern) — das sind keine eigenstaendigen Kunden, sondern Gruppen-Header
+- **39 Standorte/Kinder** — werden separat gezaehlt, obwohl sie zu einer Gruppe gehoeren
+- **227 eigenstaendige Kunden** — die tatsaechlichen Einzelkunden
+
+Die korrekte Zaehlweise waere: **Einfach alle Unternehmen!**
+
+## Analyse aller Dashboard-Summen
 
 
-# Mehrere Verbesserungen: Status-Badges, Audit-Filter, Inaktive Kunden, Aufgaben-Datumsanpassung
+| Widget                                                  | Was wird gezaehlt                              | Problem?                                                                              |
+| ------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------- |
+| **Kunden gesamt / Aktiv / Inaktiv**                     | Alle `clients`-Zeilen                          | **Ja** — Gruppen-Header werden als Kunden gezaehlt, Standorte werden separat gezaehlt |
+| **Aktive Kunden nach Land** (CountryStatsCard)          | Alle aktiven `clients`                         | **Ja** — gleicher Fehler, zaehlt Gruppen-Header und Standorte einzeln                 |
+| **Ablaufende Zertifikate** (ExpiringCertificationsCard) | `client_certifications` mit `valid_until` ≤90d | **OK** — zaehlt Zertifikate, nicht Kunden. Korrekt.                                   |
+| **Datenqualitaet** (DataQualityWarningsCard)            | `client_certifications` ohne Auditor/Datum     | **OK** — zaehlt Qualitaetsprobleme pro Zertifikat. Korrekt.                           |
+| **Audit-Statistik** (AuditYearStatsCard)                | `audits` im aktuellen Jahr, aktive Kunden      | **OK** — zaehlt Audits, nicht Kunden. Korrekt.                                        |
+| **Warnungen** (AlertsCard)                              | Ueberfaellige Tasks und nahende Audits         | **OK** — zaehlt Warnungen. Korrekt.                                                   |
 
-## Zusammenfassung
 
-5 Aenderungen in einem Schritt:
+## Loesung
 
-1. **Zertifikats-Status immer farbig** — suspended orange, expired rot, valid/active gruen (ueberall konsistent)
-2. **Audit-Uebersicht: Filter nach aktiv/inaktiv und Berater**
-3. **Abgelaufene/inaktive Zertifizierungen sichtbar beim Kunden** (in der Clients-Liste)
-4. **Inaktive Kunden aus Audit-Liste ausblenden** (z.B. DML Invest)
-5. **Aufgaben-Fristen verschieben wenn Auditdatum geaendert wird**
+### Korrektur der Kunden-Zaehlung
 
----
+ **Nur Eintraege mit** `client_number` **zaehlen** — das sind die "echten" Kunden/Standorte. Reine Gruppen-Header haben `client_number === null` (siehe Zeile 138 in useClientGroups: `const isExplicitGroup = parent.client_number === null`).
 
-## Aenderungen
+**Empfohlene Variante:** Zwei Zeilen anzeigen:
 
-### 1. Zertifikats-Status-Badge konsistent farbig machen
+- **Kunden/Standorte**: Nur Eintraege mit `client_number` (die echten Kunden)
+- **Unternehmensgruppen**: Anzahl der Gruppen (Eltern mit Kindern)
 
-**Dateien:** `src/pages/CertificationDetail.tsx`, `src/pages/ClientDetail.tsx`, `src/pages/Clients.tsx`
+### Betroffene Dateien
 
-Die `getStatusBadge`-Funktion und die inline `statusColors`-Maps existieren schon mit korrekten Farben. Anpassung in `CertificationDetail.tsx`: Die `getStatusBadge`-Funktion nutzt aktuell generische `variant`-Werte statt die definierten Farben aus `STATUS_OPTIONS`. Aendern auf explizite Tailwind-Klassen (gruen/orange/rot) wie in den anderen Dateien.
+1. `**src/pages/Dashboard.tsx**` — `clientStats`-Berechnung anpassen: Gruppen-Header (`client_number === null` UND hat Kinder) ausschliessen; StatCards umbenennen
+2. `**src/components/CountryStatsCard.tsx**` — gleiche Filter-Logik: nur Eintraege mit `client_number` zaehlen
+3. `**src/components/StatCard.tsx**` — keine Aenderung noetig
 
-### 2. Audit-Uebersicht: Filter nach aktiven/inaktiven Kunden und Berater
+### Implementierung
 
-**Datei:** `src/pages/Audits.tsx`
+**Dashboard.tsx** — `clientStats` Memo aendern:
 
-- Neuen State `clientStatusFilter` (`'all' | 'active' | 'inactive'`) hinzufuegen
-- Neuen State `consultantFilter` (string) hinzufuegen
-- `useClients()` importieren um auf `is_active` und `consultant` der Kunden zuzugreifen
-- In `filteredAudits` die neuen Filter anwenden: `is_active`-Check ueber den zugehoerigen Client, Berater-Abgleich
-- Zwei neue Select-Dropdowns in der Filter-Leiste rendern
+- Kunden mit `client_number !== null` als "Kunden/Standorte" zaehlen
+- Optional: Gruppen-Header separat zaehlen und als 4. Stat anzeigen (oder weglassen)
+- Aktiv/Inaktiv ebenfalls nur auf echte Kunden filtern
 
-### 3. Abgelaufene Zertifizierungen in der Kunden-Liste sichtbar machen
+**CountryStatsCard.tsx** — Filter anpassen:
 
-**Datei:** `src/pages/Clients.tsx`
-
-Die Status-Badges werden bereits angezeigt (Zeilen 281-296) mit korrekten Farben. Sie werden aber nur gerendert wenn ein Status vorhanden ist. Zusaetzlich: Wenn ein Zertifikat `expired` oder `suspended` ist, soll die ganze Zeile optisch hervorgehoben werden (z.B. leicht roter/oranger Hintergrund oder ein Warnsymbol).
-
-### 4. Inaktive Kunden aus Audit-Liste ausblenden
-
-**Datei:** `src/pages/Audits.tsx`
-
-- In der `filteredAudits`-Logik pruefen ob `dbAudit.clients?.is_active === false` — diese standardmaessig ausfiltern
-- Der neue `clientStatusFilter` steuert ob inaktive Kunden angezeigt werden oder nicht (Standard: nur aktive)
-
-### 5. Aufgaben-Fristen verschieben bei Auditdatum-Aenderung
-
-**Datei:** `src/components/EditAuditDialog.tsx`
-
-- `useAuditTasks(audit.id)` und `useUpdateAuditTask()` importieren
-- In `handleSave`: Wenn sich `scheduledDate` gegenueber dem Original-Datum geaendert hat:
-  - Differenz in Tagen berechnen (`newDate - oldDate`)
-  - Alle Tasks des Audits laden, deren `due_date` um die gleiche Differenz verschieben
-  - Batch-Update aller Tasks mit neuem `due_date`
-- Toast-Nachricht ergaenzen: "Audit und X Aufgaben-Fristen aktualisiert"
-
----
-
-## Technische Details
-
-- Keine Datenbank-Aenderungen noetig
-- Dateien die geaendert werden:
-  1. `src/pages/CertificationDetail.tsx` — Badge-Farben
-  2. `src/pages/Audits.tsx` — Zwei neue Filter + inaktive Kunden ausblenden
-  3. `src/pages/Clients.tsx` — Expired/suspended Zertifikate hervorheben
-  4. `src/components/EditAuditDialog.tsx` — Tasks-Fristen mitverschieben
-
+- `clients.filter(c => c.is_active !== false && c.client_number !== null)` statt nur `is_active`-Check
