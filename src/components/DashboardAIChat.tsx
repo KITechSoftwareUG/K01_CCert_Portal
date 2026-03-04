@@ -216,9 +216,9 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
               </div>
               <div className="min-h-[1.5rem] flex-1">
                 {greeting ? (
-                  <p className="text-xs sm:text-sm text-foreground/80 leading-relaxed animate-fade-in">
-                    {greeting}
-                  </p>
+                  <div className="text-xs sm:text-sm text-foreground/80 leading-relaxed animate-fade-in prose prose-sm max-w-none prose-p:my-0">
+                    <ReactMarkdown components={markdownLinkComponents}>{greeting}</ReactMarkdown>
+                  </div>
                 ) : (
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <div className="flex gap-1">
