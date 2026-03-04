@@ -38,9 +38,10 @@ const Dashboard = () => {
   );
 
   const clientStats = useMemo(() => {
-    const total = clients.length;
-    const active = clients.filter(c => c.is_active !== false).length;
-    const inactive = clients.filter(c => c.is_active === false).length;
+    const realClients = clients.filter(c => c.client_number !== null);
+    const total = realClients.length;
+    const active = realClients.filter(c => c.is_active !== false).length;
+    const inactive = realClients.filter(c => c.is_active === false).length;
     return { total, active, inactive };
   }, [clients]);
 

@@ -7,7 +7,7 @@ export const CountryStatsCard = () => {
   const { data: clients = [], isLoading } = useClients();
 
   const countryStats = useMemo(() => {
-    const activeClients = clients.filter(c => c.is_active !== false);
+    const activeClients = clients.filter(c => c.is_active !== false && c.client_number !== null);
     const countryMap: Record<string, number> = {};
 
     for (const client of activeClients) {
