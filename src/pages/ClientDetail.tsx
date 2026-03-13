@@ -344,9 +344,14 @@ const ClientDetail = () => {
           </div>
           <div className="flex gap-2 self-start sm:self-auto shrink-0">
             {!isEditing ? (
-              <Button size="sm" className="sm:size-default gap-2" onClick={() => setIsEditing(true)}>
-                <Pencil className="h-4 w-4" />
-                <span className="hidden sm:inline">Bearbeiten</span>
+              <Button 
+                size="sm" 
+                className="sm:size-default gap-2" 
+                onClick={handleStartEditing}
+                disabled={isLockedByOther}
+              >
+                {isLockedByOther ? <Lock className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
+                <span className="hidden sm:inline">{isLockedByOther ? 'Gesperrt' : 'Bearbeiten'}</span>
               </Button>
             ) : (
               <>
