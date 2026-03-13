@@ -368,6 +368,16 @@ const ClientDetail = () => {
           </div>
         </div>
 
+        {/* Lock Banner */}
+        {isLockedByOther && (
+          <Alert className="border-orange-300 bg-orange-50 dark:bg-orange-950/20">
+            <Lock className="h-4 w-4 text-orange-600" />
+            <AlertDescription className="text-orange-800 dark:text-orange-200">
+              Wird gerade von <span className="font-semibold">{lockedByName}</span> bearbeitet. Bearbeitung ist temporär gesperrt.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-4 sm:space-y-6">
