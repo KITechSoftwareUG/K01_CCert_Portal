@@ -1,39 +1,53 @@
+# Dashboard-Summen Analyse und Korrektur
+
+## Problem
+
+Die Zahl "277 Kunden gesamt" zaehlt **jeden Eintrag** in der `clients`-Tabelle, inklusive:
+
+- **11 Unternehmensgruppen** (Eltern-Eintraege mit Kindern) — das sind keine eigenstaendigen Kunden, sondern Gruppen-Header
+- **39 Standorte/Kinder** — werden separat gezaehlt, obwohl sie zu einer Gruppe gehoeren
+- **227 eigenstaendige Kunden** — die tatsaechlichen Einzelkunden
+
+Die korrekte Zaehlweise waere: **Einfach alle Unternehmen!**
+
+## Analyse aller Dashboard-Summen
 
 
-# Drei Bugfixes: Zertifikats-Sichtbarkeit, Inaktive Kunden, Aufgaben-Datumsverschiebung
+| Widget                                                  | Was wird gezaehlt                              | Problem?                                                                              |
+| ------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------- |
+| **Kunden gesamt / Aktiv / Inaktiv**                     | Alle `clients`-Zeilen                          | **Ja** — Gruppen-Header werden als Kunden gezaehlt, Standorte werden separat gezaehlt |
+| **Aktive Kunden nach Land** (CountryStatsCard)          | Alle aktiven `clients`                         | **Ja** — gleicher Fehler, zaehlt Gruppen-Header und Standorte einzeln                 |
+| **Ablaufende Zertifikate** (ExpiringCertificationsCard) | `client_certifications` mit `valid_until` ≤90d | **OK** — zaehlt Zertifikate, nicht Kunden. Korrekt.                                   |
+| **Datenqualitaet** (DataQualityWarningsCard)            | `client_certifications` ohne Auditor/Datum     | **OK** — zaehlt Qualitaetsprobleme pro Zertifikat. Korrekt.                           |
+| **Audit-Statistik** (AuditYearStatsCard)                | `audits` im aktuellen Jahr, aktive Kunden      | **OK** — zaehlt Audits, nicht Kunden. Korrekt.                                        |
+| **Warnungen** (AlertsCard)                              | Ueberfaellige Tasks und nahende Audits         | **OK** — zaehlt Warnungen. Korrekt.                                                   |
 
-## 1. Aufgaben-Fristen verschieben sich nicht (EditAuditDialog)
 
-**Root Cause:** Der `useEffect` in `EditAuditDialog.tsx` (Zeile 61-67) haengt von `[audit]` ab. Da `audit` ein Objekt-Prop ist, das bei jedem React-Query-Refetch eine neue Referenz bekommt, wird `scheduledDate` laufend auf das Original zurueckgesetzt. Wenn ein Hintergrund-Refetch zwischen Datumswahl und Klick auf "Speichern" passiert, geht die Aenderung verloren und `daysDiff === 0`.
+## Loesung
 
-**Fix in `src/components/EditAuditDialog.tsx`:**
-- Einen separaten `originalDate`-State einfuehren, der nur einmal beim Oeffnen des Dialogs gesetzt wird (via `audit.id` als Dependency statt `audit`)
-- `daysDiff` aus `scheduledDate` vs `originalDate` berechnen statt vs `audit.scheduled_date`
-- So kann kein Refetch die Berechnung stoeren
+### Korrektur der Kunden-Zaehlung
 
-## 2. Inaktive Kunden in der Audit-Liste (z.B. DML Invest)
+ **Nur Eintraege mit** `client_number` **zaehlen** — das sind die "echten" Kunden/Standorte. Reine Gruppen-Header haben `client_number === null` (siehe Zeile 138 in useClientGroups: `const isExplicitGroup = parent.client_number === null`).
 
-**Root Cause:** In der Filter-Logik (Zeile 180) wird `clientInfo?.is_active !== false` geprueft. Wenn `clientInfo` undefined ist (Clients noch nicht geladen oder Client-ID nicht gefunden), ergibt `undefined !== false` = `true`, und der Audit wird faelschlich angezeigt.
+**Empfohlene Variante:** Zwei Zeilen anzeigen:
 
-**Fix in `src/pages/Audits.tsx`:**
-- Pruefung aendern: Wenn `clientStatusFilter === 'active'`, muss `clientInfo?.is_active === true` oder mindestens `clientInfo` existieren UND `is_active` nicht `false` sein
-- Zusaetzlich: Wenn `clientInfo` undefined ist und Filter auf `active` steht, Audit ausblenden
+- **Kunden/Standorte**: Nur Eintraege mit `client_number` (die echten Kunden)
+- **Unternehmensgruppen**: Anzahl der Gruppen (Eltern mit Kindern)
 
-## 3. Abgelaufene/suspended Zertifizierungen beim Kunden sichtbar machen
+### Betroffene Dateien
 
-**Aktuell:** Status-Badges werden bereits angezeigt (Zeile 617-620 in ClientDetail.tsx), aber nur als kleine Badges. Wenn eine Zertifizierung `expired` oder `suspended` ist, soll die gesamte Zeile farblich hervorgehoben werden.
+1. `**src/pages/Dashboard.tsx**` — `clientStats`-Berechnung anpassen: Gruppen-Header (`client_number === null` UND hat Kinder) ausschliessen; StatCards umbenennen
+2. `**src/components/CountryStatsCard.tsx**` — gleiche Filter-Logik: nur Eintraege mit `client_number` zaehlen
+3. `**src/components/StatCard.tsx**` — keine Aenderung noetig
 
-**Fix in `src/pages/ClientDetail.tsx`:**
-- Den Hintergrund der Zertifizierungs-Zeile (Zeile 611) konditional einfaerben:
-  - `expired` → `bg-red-50 border-red-200` statt `bg-muted/50`
-  - `suspended` → `bg-orange-50 border-orange-200` statt `bg-muted/50`
-- Ein kleines Warnsymbol (AlertTriangle) bei problematischen Zertifizierungen hinzufuegen
+### Implementierung
 
----
+**Dashboard.tsx** — `clientStats` Memo aendern:
 
-## Betroffene Dateien
+- Kunden mit `client_number !== null` als "Kunden/Standorte" zaehlen
+- Optional: Gruppen-Header separat zaehlen und als 4. Stat anzeigen (oder weglassen)
+- Aktiv/Inaktiv ebenfalls nur auf echte Kunden filtern
 
-1. `src/components/EditAuditDialog.tsx` — originalDate-State, useEffect-Dependency auf `audit?.id`, daysDiff-Fix
-2. `src/pages/Audits.tsx` — Filter-Logik fuer inaktive Kunden robuster machen
-3. `src/pages/ClientDetail.tsx` — Zertifizierungs-Zeilen farblich hervorheben bei expired/suspended
+**CountryStatsCard.tsx** — Filter anpassen:
 
+- `clients.filter(c => c.is_active !== false && c.client_number !== null)` statt nur `is_active`-Check
