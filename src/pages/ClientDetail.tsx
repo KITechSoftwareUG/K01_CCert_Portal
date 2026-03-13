@@ -516,6 +516,20 @@ const ClientDetail = () => {
                         placeholder="Adresse"
                       />
                     </div>
+                    {/* Audit Mode */}
+                    <div className="space-y-2">
+                      <Label htmlFor="audit-mode">Audit-Modus</Label>
+                      <Select value={auditMode} onValueChange={setAuditMode}>
+                        <SelectTrigger id="audit-mode">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background border shadow-lg z-50">
+                          <SelectItem value="on-site">Vor-Ort</SelectItem>
+                          <SelectItem value="remote">Remote</SelectItem>
+                          <SelectItem value="hybrid">Hybrid</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <div className="space-y-2">
                       <Label htmlFor="notes">Bemerkungen / Notizen</Label>
                       <Textarea
