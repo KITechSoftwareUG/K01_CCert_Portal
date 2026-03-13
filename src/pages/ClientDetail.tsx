@@ -171,6 +171,16 @@ const ClientDetail = () => {
     }
   }, [client]);
 
+  const handleStartEditing = useCallback(async () => {
+    if (isLockedByOther) return;
+    const acquired = await acquireLock();
+    if (acquired) {
+      setIsEditing(true);
+    } else {
+      toast.error('Kunde wird gerade von jemand anderem bearbeitet');
+    }
+  }, [isLockedByOther, acquireLock]);
+
   const handleSave = useCallback(async () => {
     if (!id || !name || !contactPerson) {
       toast.error('Bitte füllen Sie alle Pflichtfelder aus');
@@ -189,18 +199,19 @@ const ClientDetail = () => {
         address: address || null,
         country,
         parent_client_id: parentClientId || null,
-        // Note: certifications field is intentionally omitted - managed via client_certifications table
         is_active: isActive,
         notes: notes || null,
-      });
+        audit_mode: auditMode,
+      } as any);
 
       toast.success('Kunde erfolgreich aktualisiert');
       setIsEditing(false);
+      await releaseLock();
     } catch (error) {
       console.error('Error updating client:', error);
       toast.error('Fehler beim Aktualisieren des Kunden');
     }
-  }, [id, name, clientNumber, consultant, contactPerson, email, phone, address, country, parentClientId, isActive, notes, updateClient]);
+  }, [id, name, clientNumber, consultant, contactPerson, email, phone, address, country, parentClientId, isActive, notes, auditMode, updateClient, releaseLock]);
 
   const handleCancel = useCallback(() => {
     if (client) {
@@ -213,12 +224,13 @@ const ClientDetail = () => {
       setAddress(client.address || '');
       setCountry(client.country || 'Deutschland');
       setParentClientId(client.parent_client_id || '');
-      // Note: Certifications are managed via client_certifications table
       setIsActive((client as any).is_active !== false);
       setNotes((client as any).notes || '');
+      setAuditMode((client as any).audit_mode || 'on-site');
     }
     setIsEditing(false);
-  }, [client]);
+    releaseLock();
+  }, [client, releaseLock]);
 
   const handleDelete = useCallback(async () => {
     if (!id) return;
