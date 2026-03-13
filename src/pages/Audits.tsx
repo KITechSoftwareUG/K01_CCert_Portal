@@ -177,7 +177,7 @@ const Audits = () => {
         
         const clientInfo = clientMap.get(audit.clientId);
         const matchesClientStatus = clientStatusFilter === 'all' 
-          || (clientStatusFilter === 'active' && clientInfo?.is_active !== false)
+          || (clientStatusFilter === 'active' && clientInfo?.is_active === true)
           || (clientStatusFilter === 'inactive' && clientInfo?.is_active === false);
         const matchesConsultant = consultantFilter === 'all' || clientInfo?.consultant === consultantFilter;
         

@@ -608,7 +608,11 @@ const ClientDetail = () => {
                         <div 
                           key={cc.id}
                           onClick={() => navigate(`/certifications/${cc.id}`)}
-                          className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-primary/10 cursor-pointer transition-colors group gap-1"
+                          className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg cursor-pointer transition-colors group gap-1 ${
+                            cc.status === 'expired' ? 'bg-red-50 border border-red-200 hover:bg-red-100' 
+                            : cc.status === 'suspended' ? 'bg-orange-50 border border-orange-200 hover:bg-orange-100'
+                            : 'bg-muted/50 hover:bg-primary/10'
+                          }`}
                         >
                           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                             <Badge variant="secondary" className="text-xs sm:text-sm px-2 sm:px-3 py-1">

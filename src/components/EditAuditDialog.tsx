@@ -78,8 +78,7 @@ export function EditAuditDialog({ audit, open, onOpenChange }: EditAuditDialogPr
     }
 
     try {
-      const originalDate = new Date(audit.scheduled_date);
-      const daysDiff = differenceInCalendarDays(scheduledDate, originalDate);
+      const daysDiff = originalDate ? differenceInCalendarDays(scheduledDate, originalDate) : 0;
 
       await updateAudit.mutateAsync({
         id: audit.id,
