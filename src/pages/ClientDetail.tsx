@@ -167,6 +167,7 @@ const ClientDetail = () => {
       setParentClientId(client.parent_client_id || '');
       setIsActive((client as any).is_active !== false);
       setNotes((client as any).notes || '');
+      setAuditMode((client as any).audit_mode || 'on-site');
     }
   }, [client]);
 
