@@ -317,6 +317,16 @@ const ClientDetail = () => {
                     Inaktiv
                   </Badge>
                 )}
+                {(client as any).audit_mode && (client as any).audit_mode !== 'on-site' && (() => {
+                  const mode = AUDIT_MODE_LABELS[(client as any).audit_mode] || AUDIT_MODE_LABELS['on-site'];
+                  const ModeIcon = mode.icon;
+                  return (
+                    <Badge variant="outline" className="text-xs sm:text-sm gap-1">
+                      <ModeIcon className="h-3 w-3" />
+                      {mode.label}
+                    </Badge>
+                  );
+                })()}
               </div>
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground mt-1 text-xs sm:text-sm">
                 <Globe className="h-3.5 w-3.5" />
