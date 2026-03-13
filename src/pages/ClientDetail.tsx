@@ -6,6 +6,8 @@ import { ContactManagement } from '@/components/ContactManagement';
 import { useClientCertifications, useCreateClientCertification } from '@/hooks/useClientCertifications';
 import { ClientAuditHistory } from '@/components/ClientAuditHistory';
 import { useCertifications } from '@/hooks/useCertifications';
+import { useClientLock } from '@/hooks/useClientLock';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Dialog,
   DialogContent,
@@ -48,7 +50,10 @@ import {
   ChevronRight,
   Award,
   Plus,
-  AlertTriangle
+  AlertTriangle,
+  Lock,
+  Monitor,
+  Wifi
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -93,6 +98,12 @@ const ClientDetailSkeleton = () => (
   </Layout>
 );
 
+const AUDIT_MODE_LABELS: Record<string, { label: string; icon: typeof Monitor }> = {
+  'on-site': { label: 'Vor-Ort', icon: Building2 },
+  'remote': { label: 'Remote', icon: Wifi },
+  'hybrid': { label: 'Hybrid', icon: Monitor },
+};
+
 const ClientDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -103,6 +114,7 @@ const ClientDetail = () => {
   const createClientCertification = useCreateClientCertification();
   const updateClient = useUpdateClient();
   const deleteClient = useDeleteClient();
+  const { isLockedByOther, isLockedByMe, lockedByName, acquireLock, releaseLock } = useClientLock(id);
   
   const { data: parentClients = [] } = useParentClients();
   
@@ -122,7 +134,7 @@ const ClientDetail = () => {
   const [parentClientId, setParentClientId] = useState<string>('');
   const [isActive, setIsActive] = useState(true);
   const [notes, setNotes] = useState('');
-
+  const [auditMode, setAuditMode] = useState('on-site');
   // Filter certifications that client doesn't already have
   const availableCertsToAdd = useMemo(() => {
     const existingCertIds = clientCertifications.map(cc => cc.certification_id);
@@ -155,8 +167,19 @@ const ClientDetail = () => {
       setParentClientId(client.parent_client_id || '');
       setIsActive((client as any).is_active !== false);
       setNotes((client as any).notes || '');
+      setAuditMode((client as any).audit_mode || 'on-site');
     }
   }, [client]);
+
+  const handleStartEditing = useCallback(async () => {
+    if (isLockedByOther) return;
+    const acquired = await acquireLock();
+    if (acquired) {
+      setIsEditing(true);
+    } else {
+      toast.error('Kunde wird gerade von jemand anderem bearbeitet');
+    }
+  }, [isLockedByOther, acquireLock]);
 
   const handleSave = useCallback(async () => {
     if (!id || !name || !contactPerson) {
@@ -176,18 +199,19 @@ const ClientDetail = () => {
         address: address || null,
         country,
         parent_client_id: parentClientId || null,
-        // Note: certifications field is intentionally omitted - managed via client_certifications table
         is_active: isActive,
         notes: notes || null,
-      });
+        audit_mode: auditMode,
+      } as any);
 
       toast.success('Kunde erfolgreich aktualisiert');
       setIsEditing(false);
+      await releaseLock();
     } catch (error) {
       console.error('Error updating client:', error);
       toast.error('Fehler beim Aktualisieren des Kunden');
     }
-  }, [id, name, clientNumber, consultant, contactPerson, email, phone, address, country, parentClientId, isActive, notes, updateClient]);
+  }, [id, name, clientNumber, consultant, contactPerson, email, phone, address, country, parentClientId, isActive, notes, auditMode, updateClient, releaseLock]);
 
   const handleCancel = useCallback(() => {
     if (client) {
@@ -200,12 +224,13 @@ const ClientDetail = () => {
       setAddress(client.address || '');
       setCountry(client.country || 'Deutschland');
       setParentClientId(client.parent_client_id || '');
-      // Note: Certifications are managed via client_certifications table
       setIsActive((client as any).is_active !== false);
       setNotes((client as any).notes || '');
+      setAuditMode((client as any).audit_mode || 'on-site');
     }
     setIsEditing(false);
-  }, [client]);
+    releaseLock();
+  }, [client, releaseLock]);
 
   const handleDelete = useCallback(async () => {
     if (!id) return;
@@ -292,6 +317,16 @@ const ClientDetail = () => {
                     Inaktiv
                   </Badge>
                 )}
+                {(client as any).audit_mode && (client as any).audit_mode !== 'on-site' && (() => {
+                  const mode = AUDIT_MODE_LABELS[(client as any).audit_mode] || AUDIT_MODE_LABELS['on-site'];
+                  const ModeIcon = mode.icon;
+                  return (
+                    <Badge variant="outline" className="text-xs sm:text-sm gap-1">
+                      <ModeIcon className="h-3 w-3" />
+                      {mode.label}
+                    </Badge>
+                  );
+                })()}
               </div>
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground mt-1 text-xs sm:text-sm">
                 <Globe className="h-3.5 w-3.5" />
@@ -309,9 +344,14 @@ const ClientDetail = () => {
           </div>
           <div className="flex gap-2 self-start sm:self-auto shrink-0">
             {!isEditing ? (
-              <Button size="sm" className="sm:size-default gap-2" onClick={() => setIsEditing(true)}>
-                <Pencil className="h-4 w-4" />
-                <span className="hidden sm:inline">Bearbeiten</span>
+              <Button 
+                size="sm" 
+                className="sm:size-default gap-2" 
+                onClick={handleStartEditing}
+                disabled={isLockedByOther}
+              >
+                {isLockedByOther ? <Lock className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
+                <span className="hidden sm:inline">{isLockedByOther ? 'Gesperrt' : 'Bearbeiten'}</span>
               </Button>
             ) : (
               <>
@@ -327,6 +367,16 @@ const ClientDetail = () => {
             )}
           </div>
         </div>
+
+        {/* Lock Banner */}
+        {isLockedByOther && (
+          <Alert className="border-orange-300 bg-orange-50 dark:bg-orange-950/20">
+            <Lock className="h-4 w-4 text-orange-600" />
+            <AlertDescription className="text-orange-800 dark:text-orange-200">
+              Wird gerade von <span className="font-semibold">{lockedByName}</span> bearbeitet. Bearbeitung ist temporär gesperrt.
+            </AlertDescription>
+          </Alert>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Main Content */}
@@ -465,6 +515,20 @@ const ClientDetail = () => {
                         onChange={(e) => setAddress(e.target.value)}
                         placeholder="Adresse"
                       />
+                    </div>
+                    {/* Audit Mode */}
+                    <div className="space-y-2">
+                      <Label htmlFor="audit-mode">Audit-Modus</Label>
+                      <Select value={auditMode} onValueChange={setAuditMode}>
+                        <SelectTrigger id="audit-mode">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background border shadow-lg z-50">
+                          <SelectItem value="on-site">Vor-Ort</SelectItem>
+                          <SelectItem value="remote">Remote</SelectItem>
+                          <SelectItem value="hybrid">Hybrid</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="notes">Bemerkungen / Notizen</Label>

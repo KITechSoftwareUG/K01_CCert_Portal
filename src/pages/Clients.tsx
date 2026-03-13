@@ -176,6 +176,47 @@ const Clients = () => {
     }
   }, [countryGroups.length]); // only re-run when number of countries changes
 
+  // Auto-expand to highlight a specific client (e.g. after creation)
+  useEffect(() => {
+    const highlightId = sessionStorage.getItem('highlight-client-id');
+    if (!highlightId || clients.length === 0 || countryGroups.length === 0) return;
+    sessionStorage.removeItem('highlight-client-id');
+
+    const targetClient = clients.find(c => c.id === highlightId);
+    if (!targetClient) return;
+
+    const country = targetClient.country || 'Unbekannt';
+    setExpandedCountries(prev => {
+      const next = new Set(prev);
+      next.add(country);
+      sessionStorage.setItem('clients-expanded-countries', JSON.stringify([...next]));
+      return next;
+    });
+
+    // Find which group contains this client
+    for (const cg of countryGroups) {
+      for (const group of cg.companyGroups) {
+        const isInGroup = group.headerClient.id === highlightId || 
+          group.children.some(c => c.client.id === highlightId);
+        if (isInGroup) {
+          setExpandedGroups(prev => {
+            const next = new Set(prev);
+            next.add(group.id);
+            sessionStorage.setItem('clients-expanded-groups', JSON.stringify([...next]));
+            return next;
+          });
+          setExpandedClients(prev => {
+            const next = new Set(prev);
+            next.add(highlightId);
+            sessionStorage.setItem('clients-expanded-clients', JSON.stringify([...next]));
+            return next;
+          });
+          break;
+        }
+      }
+    }
+  }, [clients, countryGroups]);
+
   const toggleCountry = (country: string) => {
     setExpandedCountries(prev => {
       const next = new Set(prev);
@@ -348,6 +389,11 @@ const Clients = () => {
               )}
               <span className={cn('truncate', indent ? '' : 'font-medium')}>{client.name}</span>
               <ClientNumberBadge clientNumber={client.client_number} />
+              {(client as any).audit_mode && (client as any).audit_mode !== 'on-site' && (
+                <Badge variant="outline" className="text-xs gap-1">
+                  {(client as any).audit_mode === 'remote' ? '🌐 Remote' : '🔄 Hybrid'}
+                </Badge>
+              )}
             </div>
             {/* Mobile: show badges below name */}
             {isMobile && (
