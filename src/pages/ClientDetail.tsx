@@ -47,7 +47,8 @@ import {
   Users,
   ChevronRight,
   Award,
-  Plus
+  Plus,
+  AlertTriangle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
