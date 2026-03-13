@@ -616,6 +616,9 @@ const ClientDetail = () => {
                           }`}
                         >
                           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                            {(cc.status === 'expired' || cc.status === 'suspended') && (
+                              <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+                            )}
                             <Badge variant="secondary" className="text-xs sm:text-sm px-2 sm:px-3 py-1">
                               {cc.certifications?.name || 'Unbekannt'}
                             </Badge>
