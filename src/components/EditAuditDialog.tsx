@@ -54,17 +54,20 @@ export function EditAuditDialog({ audit, open, onOpenChange }: EditAuditDialogPr
   const updateTask = useUpdateAuditTask();
   
   const [scheduledDate, setScheduledDate] = useState<Date | undefined>(undefined);
+  const [originalDate, setOriginalDate] = useState<Date | undefined>(undefined);
   const [status, setStatus] = useState<string>('scheduled');
   const [auditorId, setAuditorId] = useState<string>('__none__');
 
-  // Reset form when audit changes
+  // Reset form only when a different audit is opened (keyed by audit.id)
   useEffect(() => {
     if (audit) {
-      setScheduledDate(new Date(audit.scheduled_date));
+      const d = new Date(audit.scheduled_date);
+      setScheduledDate(d);
+      setOriginalDate(d);
       setStatus(audit.status);
       setAuditorId(audit.auditor_id || '__none__');
     }
-  }, [audit]);
+  }, [audit?.id]);
 
   const sortedAuditors = sortAuditorsByLastName(auditors);
 
