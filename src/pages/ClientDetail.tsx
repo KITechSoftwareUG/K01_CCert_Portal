@@ -98,6 +98,12 @@ const ClientDetailSkeleton = () => (
   </Layout>
 );
 
+const AUDIT_MODE_LABELS: Record<string, { label: string; icon: typeof Monitor }> = {
+  'on-site': { label: 'Vor-Ort', icon: Building2 },
+  'remote': { label: 'Remote', icon: Wifi },
+  'hybrid': { label: 'Hybrid', icon: Monitor },
+};
+
 const ClientDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -108,6 +114,7 @@ const ClientDetail = () => {
   const createClientCertification = useCreateClientCertification();
   const updateClient = useUpdateClient();
   const deleteClient = useDeleteClient();
+  const { isLockedByOther, isLockedByMe, lockedByName, acquireLock, releaseLock } = useClientLock(id);
   
   const { data: parentClients = [] } = useParentClients();
   
@@ -127,7 +134,7 @@ const ClientDetail = () => {
   const [parentClientId, setParentClientId] = useState<string>('');
   const [isActive, setIsActive] = useState(true);
   const [notes, setNotes] = useState('');
-
+  const [auditMode, setAuditMode] = useState('on-site');
   // Filter certifications that client doesn't already have
   const availableCertsToAdd = useMemo(() => {
     const existingCertIds = clientCertifications.map(cc => cc.certification_id);
