@@ -197,6 +197,8 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
       toast.success(isCompanyGroup ? 'Unternehmensgruppe erfolgreich erstellt' : 'Kunde erfolgreich erstellt');
       onOpenChange(false);
       resetForm();
+      // Set highlight for auto-expand in clients list
+      sessionStorage.setItem('highlight-client-id', client.id);
       // Navigate to the newly created client
       navigate(`/clients/${client.id}`);
     } catch (error) {

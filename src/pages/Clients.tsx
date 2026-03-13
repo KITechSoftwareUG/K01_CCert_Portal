@@ -389,6 +389,11 @@ const Clients = () => {
               )}
               <span className={cn('truncate', indent ? '' : 'font-medium')}>{client.name}</span>
               <ClientNumberBadge clientNumber={client.client_number} />
+              {(client as any).audit_mode && (client as any).audit_mode !== 'on-site' && (
+                <Badge variant="outline" className="text-xs gap-1">
+                  {(client as any).audit_mode === 'remote' ? '🌐 Remote' : '🔄 Hybrid'}
+                </Badge>
+              )}
             </div>
             {/* Mobile: show badges below name */}
             {isMobile && (
