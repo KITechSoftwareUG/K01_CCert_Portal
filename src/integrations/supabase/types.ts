@@ -504,9 +504,45 @@ export type Database = {
           },
         ]
       }
+      client_locks: {
+        Row: {
+          client_id: string
+          expires_at: string
+          id: string
+          locked_at: string
+          locked_by: string
+          locked_by_name: string | null
+        }
+        Insert: {
+          client_id: string
+          expires_at?: string
+          id?: string
+          locked_at?: string
+          locked_by: string
+          locked_by_name?: string | null
+        }
+        Update: {
+          client_id?: string
+          expires_at?: string
+          id?: string
+          locked_at?: string
+          locked_by?: string
+          locked_by_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_locks_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           address: string | null
+          audit_mode: string | null
           certifications:
             | Database["public"]["Enums"]["certification_standard"][]
             | null
@@ -526,6 +562,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          audit_mode?: string | null
           certifications?:
             | Database["public"]["Enums"]["certification_standard"][]
             | null
@@ -545,6 +582,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          audit_mode?: string | null
           certifications?:
             | Database["public"]["Enums"]["certification_standard"][]
             | null
