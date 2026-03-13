@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -6,12 +6,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useAudits, AuditWithClient } from '@/hooks/useAudits';
-import { useAllAuditTasks } from '@/hooks/useAuditTasks';
+import { useAllAuditTasks, DbAuditTask } from '@/hooks/useAuditTasks';
 import { AUDIT_TYPE_LABELS, AUDIT_STATUS_LABELS, AUDIT_STATUS_COLORS } from '@/lib/constants';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { History, ChevronRight, Calendar, FileCheck, CalendarClock, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { History, ChevronRight, ChevronDown, Calendar, FileCheck, CalendarClock, CheckCircle2, AlertTriangle } from 'lucide-react';
 
 interface ClientAuditHistoryProps {
   clientId: string;
@@ -30,49 +31,94 @@ const SEVERITY_LABELS: Record<string, string> = {
   recommendation: 'Empfehlung',
 };
 
-const AuditRow = ({ audit, nkCount, onClick }: { audit: AuditWithClient; nkCount: number; onClick: () => void }) => {
-  const certName = getCertificationName(audit);
+const SEVERITY_COLORS: Record<string, string> = {
+  major: 'bg-red-100 text-red-800 border-red-300',
+  minor: 'bg-orange-100 text-orange-800 border-orange-300',
+  recommendation: 'bg-blue-100 text-blue-800 border-blue-300',
+};
+
+const FindingsList = ({ findings, auditId }: { findings: DbAuditTask[]; auditId: string }) => {
+  const navigate = useNavigate();
   return (
-    <div
-      onClick={onClick}
-      className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-primary/10 cursor-pointer transition-colors group"
-    >
-      <div className="flex items-center gap-3 flex-1 min-w-0">
-        <div className="p-2 bg-background rounded-lg shadow-sm">
-          <FileCheck className="h-4 w-4 text-muted-foreground" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="outline" className="text-xs">
-              {AUDIT_TYPE_LABELS[audit.type] || audit.type}
-            </Badge>
-            <Badge
-              variant="outline"
-              className={`text-xs ${AUDIT_STATUS_COLORS[audit.status] || ''}`}
-            >
-              {AUDIT_STATUS_LABELS[audit.status] || audit.status}
-            </Badge>
-            {nkCount > 0 && (
-              <Badge variant="destructive" className="text-xs">
-                {nkCount} NK offen
-              </Badge>
-            )}
-          </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-            <Calendar className="h-3 w-3" />
-            <span>
-              {format(new Date(audit.scheduled_date), 'dd.MM.yyyy', { locale: de })}
+    <div className="ml-12 mr-4 mb-2 space-y-1">
+      {findings.map(f => (
+        <div
+          key={f.id}
+          className="flex items-center gap-2 p-2 rounded text-xs bg-muted/30 hover:bg-muted/60 cursor-pointer transition-colors"
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/audits/${auditId}`);
+          }}
+        >
+          <Badge variant="outline" className={`text-[10px] px-1.5 ${SEVERITY_COLORS[f.severity || ''] || ''}`}>
+            {SEVERITY_LABELS[f.severity || ''] || f.severity || 'NK'}
+          </Badge>
+          <span className="truncate flex-1">{f.title}</span>
+          {f.due_date && (
+            <span className="text-muted-foreground shrink-0">
+              Frist: {format(new Date(f.due_date), 'dd.MM.yyyy', { locale: de })}
             </span>
-            {certName && (
-              <>
-                <span className="text-muted-foreground/50">•</span>
-                <span>{certName}</span>
-              </>
-            )}
+          )}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const AuditRow = ({ audit, nkCount, findings, onClick }: { audit: AuditWithClient; nkCount: number; findings: DbAuditTask[]; onClick: () => void }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const certName = getCertificationName(audit);
+  
+  return (
+    <div>
+      <div
+        onClick={nkCount > 0 ? () => setIsOpen(!isOpen) : onClick}
+        className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-primary/10 cursor-pointer transition-colors group"
+      >
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="p-2 bg-background rounded-lg shadow-sm">
+            <FileCheck className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="outline" className="text-xs">
+                {AUDIT_TYPE_LABELS[audit.type] || audit.type}
+              </Badge>
+              <Badge
+                variant="outline"
+                className={`text-xs ${AUDIT_STATUS_COLORS[audit.status] || ''}`}
+              >
+                {AUDIT_STATUS_LABELS[audit.status] || audit.status}
+              </Badge>
+              {nkCount > 0 && (
+                <Badge variant="destructive" className="text-xs gap-1">
+                  {isOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                  {nkCount} NK offen
+                </Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+              <Calendar className="h-3 w-3" />
+              <span>
+                {format(new Date(audit.scheduled_date), 'dd.MM.yyyy', { locale: de })}
+              </span>
+              {certName && (
+                <>
+                  <span className="text-muted-foreground/50">•</span>
+                  <span>{certName}</span>
+                </>
+              )}
+            </div>
           </div>
         </div>
+        <ChevronRight 
+          className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0 cursor-pointer"
+          onClick={(e) => { e.stopPropagation(); onClick(); }}
+        />
       </div>
-      <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
+      {isOpen && findings.length > 0 && (
+        <FindingsList findings={findings} auditId={audit.id} />
+      )}
     </div>
   );
 };
@@ -86,40 +132,47 @@ export const ClientAuditHistory = ({ clientId }: ClientAuditHistoryProps) => {
     return new Set(allAudits.filter(a => a.client_id === clientId).map(a => a.id));
   }, [allAudits, clientId]);
 
+  // Open findings grouped by audit
   const openFindingsByAudit = useMemo(() => {
-    const map: Record<string, number> = {};
+    const map: Record<string, DbAuditTask[]> = {};
     for (const task of allTasks) {
       if (
         task.category === 'finding' &&
         task.status !== 'completed' &&
         clientAuditIds.has(task.audit_id)
       ) {
-        map[task.audit_id] = (map[task.audit_id] || 0) + 1;
+        if (!map[task.audit_id]) map[task.audit_id] = [];
+        map[task.audit_id].push(task as DbAuditTask);
       }
     }
     return map;
   }, [allTasks, clientAuditIds]);
 
-  const totalOpenFindings = useMemo(() => {
-    return Object.values(openFindingsByAudit).reduce((sum, n) => sum + n, 0);
+  const openFindingsCount = useMemo(() => {
+    const map: Record<string, number> = {};
+    Object.entries(openFindingsByAudit).forEach(([auditId, findings]) => {
+      map[auditId] = findings.length;
+    });
+    return map;
   }, [openFindingsByAudit]);
+
+  const allOpenFindings = useMemo(() => {
+    return Object.values(openFindingsByAudit).flat();
+  }, [openFindingsByAudit]);
+
+  const totalOpenFindings = allOpenFindings.length;
 
   const openFindingsSummary = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const task of allTasks) {
-      if (
-        task.category === 'finding' &&
-        task.status !== 'completed' &&
-        clientAuditIds.has(task.audit_id) &&
-        task.severity
-      ) {
+    for (const task of allOpenFindings) {
+      if (task.severity) {
         counts[task.severity] = (counts[task.severity] || 0) + 1;
       }
     }
     return Object.entries(counts)
       .map(([sev, count]) => `${count} ${SEVERITY_LABELS[sev] || sev}`)
       .join(', ');
-  }, [allTasks, clientAuditIds]);
+  }, [allOpenFindings]);
 
   const { activeAudits, completedAudits } = useMemo(() => {
     const audits = allAudits.filter(audit => audit.client_id === clientId);
@@ -198,7 +251,13 @@ export const ClientAuditHistory = ({ clientId }: ClientAuditHistoryProps) => {
                     <Badge variant="outline" className="text-xs ml-1">{activeAudits.length}</Badge>
                   </div>
                   {activeAudits.map((audit) => (
-                    <AuditRow key={audit.id} audit={audit} nkCount={openFindingsByAudit[audit.id] || 0} onClick={() => navigate(`/audits/${audit.id}`)} />
+                    <AuditRow 
+                      key={audit.id} 
+                      audit={audit} 
+                      nkCount={openFindingsCount[audit.id] || 0} 
+                      findings={openFindingsByAudit[audit.id] || []}
+                      onClick={() => navigate(`/audits/${audit.id}`)} 
+                    />
                   ))}
                 </div>
               )}
@@ -215,7 +274,13 @@ export const ClientAuditHistory = ({ clientId }: ClientAuditHistoryProps) => {
                     <Badge variant="outline" className="text-xs ml-1">{completedAudits.length}</Badge>
                   </div>
                   {completedAudits.map((audit) => (
-                    <AuditRow key={audit.id} audit={audit} nkCount={openFindingsByAudit[audit.id] || 0} onClick={() => navigate(`/audits/${audit.id}`)} />
+                    <AuditRow 
+                      key={audit.id} 
+                      audit={audit} 
+                      nkCount={openFindingsCount[audit.id] || 0} 
+                      findings={openFindingsByAudit[audit.id] || []}
+                      onClick={() => navigate(`/audits/${audit.id}`)} 
+                    />
                   ))}
                 </div>
               )}
