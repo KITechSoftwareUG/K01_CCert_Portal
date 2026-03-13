@@ -50,7 +50,10 @@ import {
   ChevronRight,
   Award,
   Plus,
-  AlertTriangle
+  AlertTriangle,
+  Lock,
+  Monitor,
+  Wifi
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
