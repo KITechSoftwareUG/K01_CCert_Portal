@@ -6,6 +6,8 @@ import { ContactManagement } from '@/components/ContactManagement';
 import { useClientCertifications, useCreateClientCertification } from '@/hooks/useClientCertifications';
 import { ClientAuditHistory } from '@/components/ClientAuditHistory';
 import { useCertifications } from '@/hooks/useCertifications';
+import { useClientLock } from '@/hooks/useClientLock';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Dialog,
   DialogContent,
