@@ -101,11 +101,11 @@ const Dashboard = () => {
               <DataQualityWarningsCard />
             </div>
 
-            {/* Right: Alerts + Audit Year Stats + Suggested Audits */}
+            {/* Right: Alerts + Year Stats */}
             <div className="lg:col-span-7 space-y-5">
               <AlertsCard audits={audits} />
               <AuditYearStatsCard />
-              
+              <CertificationYearStatsCard />
             </div>
           </div>
         )}
