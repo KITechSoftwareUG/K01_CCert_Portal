@@ -7,6 +7,7 @@ import { DataQualityWarningsCard } from '@/components/DataQualityWarningsCard';
 
 import { CountryStatsCard } from '@/components/CountryStatsCard';
 import { AuditYearStatsCard } from '@/components/AuditYearStatsCard';
+import { CertificationYearStatsCard } from '@/components/CertificationYearStatsCard';
 import { DashboardAIChat } from '@/components/DashboardAIChat';
 import { useAudits } from '@/hooks/useAudits';
 import { useClients } from '@/hooks/useClients';
