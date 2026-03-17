@@ -9,7 +9,7 @@
 @layer base {
   :root {
     --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-
+    
     --background: 0 0% 100%;
     --foreground: 222 47% 11%;
 
@@ -44,7 +44,7 @@
     --input: 214 32% 91%;
     --ring: 221 83% 53%;
 
-    --radius: 0.8rem;
+    --radius: 0.5rem;
 
     --sidebar-background: 222 47% 11%;
     --sidebar-foreground: 210 40% 98%;
@@ -90,7 +90,7 @@
     --border: 217 33% 17%;
     --input: 217 33% 17%;
     --ring: 221 83% 53%;
-
+    
     --sidebar-background: 222 47% 11%;
     --sidebar-foreground: 210 40% 98%;
     --sidebar-primary: 221 83% 53%;
@@ -109,15 +109,11 @@
 
   html {
     font-family: var(--font-sans);
-    scroll-behavior: smooth;
   }
 
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-    background-image:
-      radial-gradient(circle at top, hsl(var(--primary) / 0.035), transparent 28%),
-      linear-gradient(180deg, hsl(var(--background)), hsl(var(--background)));
   }
 }
 
@@ -191,39 +187,14 @@
 /* Custom component styles */
 @layer components {
   .card-hover {
-    @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_40px_-22px_hsl(var(--foreground)/0.24)];
+    @apply transition-all duration-200 hover:shadow-md hover:-translate-y-0.5;
   }
 
   .interactive-element {
-    @apply cursor-pointer transition-colors duration-150;
+    @apply transition-colors duration-150 cursor-pointer;
   }
 
   .status-badge {
-    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.08em];
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium;
   }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-}
-
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-::-webkit-scrollbar-track {
-  background: hsl(var(--muted) / 0.45);
-}
-
-::-webkit-scrollbar-thumb {
-  background: hsl(var(--border));
-  border-radius: 999px;
-  border: 2px solid hsl(var(--muted) / 0.45);
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.4);
 }
