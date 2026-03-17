@@ -12,6 +12,8 @@ import { streamChat } from '@/lib/chatUtils';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { useNavigate } from 'react-router-dom';
 
+const DAILY_GREETING_HOUR = 5;
+
 const markdownLinkComponents = {
   a: ({ href, children }: { href?: string; children?: React.ReactNode }) => (
     <a
@@ -39,12 +41,57 @@ interface Message {
   content: string;
 }
 
+interface CachedGreeting {
+  content: string;
+  refreshKey: string;
+}
+
 const EXAMPLE_PROMPTS = [
   "Welche Zertifikate laufen in den nächsten 3 Monaten ab?",
   "Zeige alle Audits von Carsten Sellmann",
   "Welche Aufgaben sind überfällig?",
   "Erstelle eine Übersicht aller Kunden in Mecklenburg-Vorpommern",
 ];
+
+const getGreetingRefreshKey = (now: Date) => {
+  const refreshDate = new Date(now);
+  if (now.getHours() < DAILY_GREETING_HOUR) {
+    refreshDate.setDate(refreshDate.getDate() - 1);
+  }
+
+  const year = refreshDate.getFullYear();
+  const month = String(refreshDate.getMonth() + 1).padStart(2, '0');
+  const day = String(refreshDate.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getGreetingStorageKey = (userId?: string) => `dashboard-ai-greeting:${userId ?? 'anonymous'}`;
+
+const readCachedGreeting = (userId?: string): CachedGreeting | null => {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const raw = window.localStorage.getItem(getGreetingStorageKey(userId));
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as CachedGreeting;
+    if (!parsed.content || !parsed.refreshKey) return null;
+
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
+const writeCachedGreeting = (userId: string | undefined, cachedGreeting: CachedGreeting) => {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.localStorage.setItem(getGreetingStorageKey(userId), JSON.stringify(cachedGreeting));
+  } catch {
+    // ignore storage issues silently
+  }
+};
 
 export const DashboardAIChat = ({ className }: DashboardAIChatProps) => {
   const { user } = useAuth();
@@ -71,19 +118,28 @@ export const DashboardAIChat = ({ className }: DashboardAIChatProps) => {
   }, [user]);
 
   useEffect(() => {
+    const refreshKey = getGreetingRefreshKey(new Date());
+    const cachedGreeting = readCachedGreeting(user?.id);
+
+    if (cachedGreeting?.refreshKey === refreshKey && cachedGreeting.content) {
+      setGreeting(cachedGreeting.content);
+      setGreetingLoaded(true);
+      return;
+    }
+
     if (greetingLoaded) return;
-    
+
     const loadGreeting = async () => {
       const userName = getUserName();
-      let greetingContent = "";
-      
+      let greetingContent = '';
+
       setGreeting(null);
-      
+
       await streamChat({
         messages: [{
           role: 'user',
-          content: `Erstelle eine sehr kurze, freundliche Begrüßung (max. 2 Sätze) für ${userName}. 
-Erwähne dabei kurz die wichtigste anstehende Aufgabe oder das nächste Audit, das bald fällig ist. 
+          content: `Erstelle eine sehr kurze, freundliche Begrüßung (max. 2 Sätze) für ${userName}.
+Erwähne dabei kurz die wichtigste anstehende Aufgabe oder das nächste Audit, das bald fällig ist.
 Beginne mit "Hey ${userName}" und sei locker und persönlich. Keine formellen Floskeln.
 Wenn es überfällige Aufgaben gibt, erwähne das kurz als Erinnerung.
 Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
@@ -93,19 +149,25 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
           setGreeting(greetingContent);
         },
         onDone: () => {
+          const finalGreeting = greetingContent.trim();
+          if (finalGreeting) {
+            writeCachedGreeting(user?.id, { content: finalGreeting, refreshKey });
+            setGreeting(finalGreeting);
+          }
           setGreetingLoaded(true);
         },
         onError: () => {
           const fallbackGreeting = `Hey ${getUserName()}, willkommen zurück! 👋`;
+          writeCachedGreeting(user?.id, { content: fallbackGreeting, refreshKey });
           setGreeting(fallbackGreeting);
           setGreetingLoaded(true);
         },
       });
     };
 
-    const timer = setTimeout(loadGreeting, 500);
-    return () => clearTimeout(timer);
-  }, [getUserName, greetingLoaded]);
+    const timer = window.setTimeout(loadGreeting, 500);
+    return () => window.clearTimeout(timer);
+  }, [getUserName, greetingLoaded, user?.id]);
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
@@ -119,14 +181,14 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
 
     const userQuery = text.trim();
     const userMessage: Message = { role: 'user', content: userQuery };
-    
+
     setIsLoading(true);
     setCurrentResponse('');
 
     const updatedHistory = [...conversationHistory, userMessage];
     setConversationHistory(updatedHistory);
 
-    let responseContent = "";
+    let responseContent = '';
 
     await streamChat({
       messages: updatedHistory,
@@ -193,8 +255,6 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
   const handleReset = () => {
     setConversationHistory([]);
     setCurrentResponse(null);
-    setGreetingLoaded(false);
-    setGreeting(null);
   };
 
   const handleExampleClick = (prompt: string) => {
