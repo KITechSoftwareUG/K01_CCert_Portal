@@ -67,9 +67,14 @@ export default {
         },
       },
       borderRadius: {
+        xl: "calc(var(--radius) + 0.35rem)",
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      boxShadow: {
+        elegant: "0 20px 50px -24px hsl(var(--foreground) / 0.22)",
+        floating: "0 32px 90px -32px hsl(var(--foreground) / 0.35)",
       },
       keyframes: {
         "accordion-down": {
