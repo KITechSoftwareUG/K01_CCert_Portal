@@ -293,24 +293,24 @@ const AuditDetail = () => {
     });
   }, [updateTask]);
 
-  const handleExportCalendar = useCallback(() => {
-    if (audit) {
-      const localAudit = {
-        id: audit.id,
-        clientId: audit.client_id,
-        clientName: audit.clients?.name || 'Unbekannt',
-        type: audit.type,
-        certifications: (audit.certifications || []) as any,
-        scheduledDate: new Date(audit.scheduled_date),
-        status: audit.status,
-        tasks: [],
-        notes: audit.notes || undefined,
-        createdAt: new Date(audit.created_at),
-      };
-      exportAuditToCalendar(localAudit);
-      toast.success('ICS-Datei wurde heruntergeladen. Öffnen Sie diese, um den Termin in Outlook zu importieren.');
+  const handleExportCalendar = useCallback(async () => {
+    if (!audit) return;
+
+    const result = await syncSingleAudit({
+      id: audit.id,
+      clientName: audit.clients?.name || 'Unbekannt',
+      type: audit.type,
+      scheduledDate: audit.scheduled_date,
+      certifications: (audit.certifications || []) as string[],
+      notes: audit.notes || undefined,
+    });
+
+    if (result.success) {
+      return;
     }
-  }, [audit]);
+
+    toast.error('Kein Outlook-Kalender verbunden.');
+  }, [audit, syncSingleAudit]);
 
   const handleSaveNotes = useCallback(async () => {
     if (audit && id) {
