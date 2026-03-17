@@ -68,6 +68,13 @@ const SEVERITY_LABELS: Record<string, string> = {
   recommendation: 'Empfehlung',
 };
 
+const escapeHtml = (value: unknown) => String(value ?? '')
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;');
+
 const SEVERITY_COLORS: Record<string, string> = {
   major: 'bg-red-100 text-red-800 border-red-300',
   minor: 'bg-orange-100 text-orange-800 border-orange-300',
