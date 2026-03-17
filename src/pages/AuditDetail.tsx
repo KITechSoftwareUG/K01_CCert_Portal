@@ -240,6 +240,7 @@ const AuditDetail = () => {
   const deleteTask = useDeleteAuditTask();
   const updateAudit = useUpdateAudit();
   const deleteAudit = useDeleteAudit();
+  const { syncSingleAudit } = useOutlookSync();
   
   const [notes, setNotes] = useState('');
   const [showEditDialog, setShowEditDialog] = useState(false);
