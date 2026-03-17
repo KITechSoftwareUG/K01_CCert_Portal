@@ -653,11 +653,14 @@ const AuditDetail = () => {
                       return;
                     }
                     const taskRows = tasks.map((t: any, i: number) => 
-                      `<tr><td>${i+1}</td><td>${t.title}</td><td>${t.status === 'completed' ? '✅ Erledigt' : '⏳ Offen'}</td><td>${format(new Date(t.due_date), 'dd.MM.yyyy', { locale: de })}</td><td>${t.assigned_to || '-'}</td></tr>`
+                      `<tr><td>${i+1}</td><td>${escapeHtml(t.title)}</td><td>${escapeHtml(t.status === 'completed' ? '✅ Erledigt' : '⏳ Offen')}</td><td>${escapeHtml(format(new Date(t.due_date), 'dd.MM.yyyy', { locale: de }))}</td><td>${escapeHtml(t.assigned_to || '-')}</td></tr>`
                     ).join('');
                     const findingRows = findings.map((f: any, i: number) => 
-                      `<tr><td>${i+1}</td><td>${f.title}</td><td>${SEVERITY_LABELS[f.severity] || '-'}</td><td>${f.status === 'completed' ? '✅ Erledigt' : '⏳ Offen'}</td><td>${format(new Date(f.due_date), 'dd.MM.yyyy', { locale: de })}</td></tr>`
+                      `<tr><td>${i+1}</td><td>${escapeHtml(f.title)}</td><td>${escapeHtml(SEVERITY_LABELS[f.severity] || '-')}</td><td>${escapeHtml(f.status === 'completed' ? '✅ Erledigt' : '⏳ Offen')}</td><td>${escapeHtml(format(new Date(f.due_date), 'dd.MM.yyyy', { locale: de }))}</td></tr>`
                     ).join('');
+                    const notesHtml = audit.notes
+                      ? escapeHtml(audit.notes).replace(/\n/g, '<br>')
+                      : '';
                     reportWindow.document.write(`<!DOCTYPE html><html><head><title>Audit-Bericht</title><style>
                       body{font-family:Arial,sans-serif;margin:40px;color:#333}
                       h1{font-size:22px;border-bottom:2px solid #333;padding-bottom:8px}
@@ -669,18 +672,18 @@ const AuditDetail = () => {
                       .meta span{color:#666}
                       @media print{body{margin:20px}}
                     </style></head><body>
-                      <h1>Audit-Bericht: ${AUDIT_TYPE_LABELS[audit.type]}</h1>
+                      <h1>Audit-Bericht: ${escapeHtml(AUDIT_TYPE_LABELS[audit.type])}</h1>
                       <div class="meta">
-                        <div><span>Kunde:</span> <strong>${audit.clients?.name || 'Unbekannt'}</strong></div>
-                        <div><span>Datum:</span> <strong>${format(new Date(audit.scheduled_date), 'dd.MM.yyyy', { locale: de })}</strong></div>
-                        <div><span>Status:</span> <strong>${statusInfo.label}</strong></div>
+                        <div><span>Kunde:</span> <strong>${escapeHtml(audit.clients?.name || 'Unbekannt')}</strong></div>
+                        <div><span>Datum:</span> <strong>${escapeHtml(format(new Date(audit.scheduled_date), 'dd.MM.yyyy', { locale: de }))}</strong></div>
+                        <div><span>Status:</span> <strong>${escapeHtml(statusInfo.label)}</strong></div>
                       </div>
                       ${tasks.length > 0 ? `<h2>Aufgaben (${completedTasks}/${totalTasks} erledigt)</h2>
                       <table><tr><th>#</th><th>Aufgabe</th><th>Status</th><th>Frist</th><th>Zuständig</th></tr>${taskRows}</table>` : ''}
                       ${findings.length > 0 ? `<h2>Feststellungen / NK (${openFindings} offen)</h2>
                       <table><tr><th>#</th><th>Feststellung</th><th>Schweregrad</th><th>Status</th><th>Frist</th></tr>${findingRows}</table>` : ''}
-                      ${audit.notes ? `<h2>Notizen</h2><p>${audit.notes.replace(/\n/g, '<br>')}</p>` : ''}
-                      <p style="margin-top:32px;font-size:11px;color:#999">Erstellt am ${format(new Date(), 'dd.MM.yyyy HH:mm', { locale: de })}</p>
+                      ${notesHtml ? `<h2>Notizen</h2><p>${notesHtml}</p>` : ''}
+                      <p style="margin-top:32px;font-size:11px;color:#999">Erstellt am ${escapeHtml(format(new Date(), 'dd.MM.yyyy HH:mm', { locale: de }))}</p>
                     </body></html>`);
                     reportWindow.document.close();
                     reportWindow.print();
