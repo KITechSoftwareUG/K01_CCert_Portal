@@ -15,6 +15,9 @@ import { RecentActivityCard } from '@/components/RecentActivityCard';
 const Dashboard = () => {
   const { data: clients = [], isLoading: clientsLoading } = useClients();
 
+  const { data: auditsData = [] } = useAudits();
+  const audits = useMemo(() => auditsData.map(transformAuditToLocal), [auditsData]);
+
   const clientStats = useMemo(() => {
     const totalLocations = clients.length;
     const activeLocations = clients.filter((c: any) => c.is_active !== false).length;
