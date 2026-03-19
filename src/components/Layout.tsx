@@ -210,7 +210,7 @@ export const Layout = ({ children }: LayoutProps) => {
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-background">
       {/* Desktop Sidebar */}
       <aside className="w-64 glass-sidebar flex flex-col sticky top-0 h-screen">
         <SidebarContent
