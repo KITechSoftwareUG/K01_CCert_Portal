@@ -100,11 +100,10 @@ export const SuggestedAuditsCard = () => {
             {suggestions.map((suggestion) => (
               <div
                 key={suggestion.clientCertificationId}
-                className={`p-3 rounded-lg border transition-colors cursor-pointer hover:bg-muted/50 ${
-                  suggestion.priority === 'high' 
-                    ? 'border-destructive/30 bg-destructive/5' 
+                className={`p-3 rounded-lg border transition-colors cursor-pointer hover:bg-muted/50 ${suggestion.priority === 'high'
+                    ? 'border-destructive/30 bg-destructive/5'
                     : 'border-border'
-                }`}
+                  }`}
                 onClick={() => navigate(`/certifications/${suggestion.clientCertificationId}`)}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -122,7 +121,7 @@ export const SuggestedAuditsCard = () => {
                       {suggestion.clientName}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Vorschlag: {format(suggestion.suggestedDate, 'dd. MMM yyyy', { locale: de })}
+                      Vorschlag: {format(suggestion.suggestedDate, 'dd.MM.yyyy', { locale: de })}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {suggestion.reason}

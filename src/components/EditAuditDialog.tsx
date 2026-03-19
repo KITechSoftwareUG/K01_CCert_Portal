@@ -52,7 +52,7 @@ export function EditAuditDialog({ audit, open, onOpenChange }: EditAuditDialogPr
   const { data: auditors = [] } = useAuditors();
   const { data: auditTasks = [] } = useAuditTasks(audit?.id);
   const updateTask = useUpdateAuditTask();
-  
+
   const [scheduledDate, setScheduledDate] = useState<Date | undefined>(undefined);
   const [originalDate, setOriginalDate] = useState<Date | undefined>(undefined);
   const [status, setStatus] = useState<string>('scheduled');
@@ -101,7 +101,7 @@ export function EditAuditDialog({ audit, open, onOpenChange }: EditAuditDialogPr
       } else {
         toast.success('Audit wurde erfolgreich aktualisiert.');
       }
-      
+
       onOpenChange(false);
     } catch (error) {
       toast.error('Audit konnte nicht aktualisiert werden.');
@@ -119,7 +119,7 @@ export function EditAuditDialog({ audit, open, onOpenChange }: EditAuditDialogPr
             Ändern Sie Datum, Status und Auditor für dieses Audit.
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="space-y-4 py-4">
           {/* Scheduled Date */}
           <div className="space-y-2">
@@ -151,6 +151,13 @@ export function EditAuditDialog({ audit, open, onOpenChange }: EditAuditDialogPr
                 />
               </PopoverContent>
             </Popover>
+
+            {originalDate && scheduledDate && differenceInCalendarDays(scheduledDate, originalDate) !== 0 && auditTasks.length > 0 && (
+              <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-200 mt-2 flex items-center gap-2">
+                <CalendarIcon className="h-3 w-3" />
+                Hinweis: {auditTasks.length} Aufgabenfristen werden automatisch um {Math.abs(differenceInCalendarDays(scheduledDate, originalDate))} Tage {differenceInCalendarDays(scheduledDate, originalDate) > 0 ? 'nach hinten' : 'nach vorne'} verschoben.
+              </p>
+            )}
           </div>
 
           {/* Status */}

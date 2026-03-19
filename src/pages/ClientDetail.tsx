@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 import { Layout } from '@/components/Layout';
 import { useClient, useUpdateClient, useDeleteClient, useParentClients } from '@/hooks/useClients';
 import { ContactManagement } from '@/components/ContactManagement';
 import { useClientCertifications, useCreateClientCertification } from '@/hooks/useClientCertifications';
+import { useClientAuditTasks } from '@/hooks/useAuditTasks';
 import { ClientAuditHistory } from '@/components/ClientAuditHistory';
 import { useCertifications } from '@/hooks/useCertifications';
 import { useClientLock } from '@/hooks/useClientLock';
@@ -32,11 +34,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { 
-  Building2, 
-  Mail, 
-  Phone, 
-  MapPin, 
+import {
+  Building2,
+  Mail,
+  Phone,
+  MapPin,
   ArrowLeft,
   Pencil,
   Save,
@@ -53,7 +55,10 @@ import {
   AlertTriangle,
   Lock,
   Monitor,
-  Wifi
+  Wifi,
+  CheckCircle2,
+  Clock,
+  AlertCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -107,22 +112,23 @@ const AUDIT_MODE_LABELS: Record<string, { label: string; icon: typeof Monitor }>
 const ClientDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  
+
   const { data: client, isLoading } = useClient(id || '');
   const { data: clientCertifications = [], isLoading: certificationsLoading } = useClientCertifications(id);
+  const { data: clientTasks = [], isLoading: tasksLoading } = useClientAuditTasks(id || '');
   const { data: availableCertifications = [] } = useCertifications();
   const createClientCertification = useCreateClientCertification();
   const updateClient = useUpdateClient();
   const deleteClient = useDeleteClient();
   const { isLockedByOther, isLockedByMe, lockedByName, acquireLock, releaseLock } = useClientLock(id);
-  
+
   const { data: parentClients = [] } = useParentClients();
-  
+
   const [isEditing, setIsEditing] = useState(false);
   const [showAddCertDialog, setShowAddCertDialog] = useState(false);
   const [selectedCertificationId, setSelectedCertificationId] = useState<string>('');
   const [isAddingCert, setIsAddingCert] = useState(false);
-  
+
   const [name, setName] = useState('');
   const [clientNumber, setClientNumber] = useState('');
   const [consultant, setConsultant] = useState('');
@@ -135,6 +141,16 @@ const ClientDetail = () => {
   const [isActive, setIsActive] = useState(true);
   const [notes, setNotes] = useState('');
   const [auditMode, setAuditMode] = useState('on-site');
+
+  const openTasks = useMemo(() =>
+    clientTasks.filter(t => t.status !== 'completed'),
+    [clientTasks]
+  );
+
+  const findings = useMemo(() =>
+    clientTasks.filter(t => t.category === 'finding' && t.status !== 'completed'),
+    [clientTasks]
+  );
   // Filter certifications that client doesn't already have
   const availableCertsToAdd = useMemo(() => {
     const existingCertIds = clientCertifications.map(cc => cc.certification_id);
@@ -142,13 +158,13 @@ const ClientDetail = () => {
   }, [availableCertifications, clientCertifications]);
 
   // Filter out current client from parent options (can't be its own parent)
-  const sortedParentClients = useMemo(() => 
+  const sortedParentClients = useMemo(() =>
     [...parentClients].filter(p => p.id !== id).sort((a, b) => a.name.localeCompare(b.name)),
     [parentClients, id]
   );
 
   // Get parent client info
-  const parentClient = useMemo(() => 
+  const parentClient = useMemo(() =>
     parentClients.find(p => p.id === client?.parent_client_id),
     [parentClients, client?.parent_client_id]
   );
@@ -234,7 +250,7 @@ const ClientDetail = () => {
 
   const handleDelete = useCallback(async () => {
     if (!id) return;
-    
+
     try {
       await deleteClient.mutateAsync(id);
       toast.success('Kunde erfolgreich gelöscht');
@@ -293,8 +309,8 @@ const ClientDetail = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
           <div className="flex items-center gap-3 flex-1 min-w-0">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="icon"
               className="shrink-0"
               onClick={() => navigate(-1)}
@@ -344,9 +360,9 @@ const ClientDetail = () => {
           </div>
           <div className="flex gap-2 self-start sm:self-auto shrink-0">
             {!isEditing ? (
-              <Button 
-                size="sm" 
-                className="sm:size-default gap-2" 
+              <Button
+                size="sm"
+                className="sm:size-default gap-2"
                 onClick={handleStartEditing}
                 disabled={isLockedByOther}
               >
@@ -443,7 +459,7 @@ const ClientDetail = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-2 md:col-span-2">
-                        <Label htmlFor="name">Firmenname *</Label>
+                        <Label htmlFor="name">Firmenname <span className="text-destructive">*</span></Label>
                         <Input
                           id="name"
                           value={name}
@@ -463,7 +479,7 @@ const ClientDetail = () => {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="country">Land *</Label>
+                        <Label htmlFor="country">Land <span className="text-destructive">*</span></Label>
                         <Select value={country} onValueChange={setCountry}>
                           <SelectTrigger id="country">
                             <SelectValue placeholder="Land auswählen" />
@@ -545,7 +561,7 @@ const ClientDetail = () => {
                   <div className="space-y-4">
                     {/* Parent Company Display */}
                     {parentClient && (
-                      <div 
+                      <div
                         className="flex items-center gap-3 p-3 rounded-lg bg-primary/10 border border-primary/20 cursor-pointer hover:bg-primary/20 transition-colors"
                         onClick={() => navigate(`/clients/${parentClient.id}`)}
                       >
@@ -605,9 +621,9 @@ const ClientDetail = () => {
                 </CardTitle>
                 <Dialog open={showAddCertDialog} onOpenChange={setShowAddCertDialog}>
                   <DialogTrigger asChild>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
+                    <Button
+                      size="sm"
+                      variant="outline"
                       className="gap-2"
                       disabled={availableCertsToAdd.length === 0}
                     >
@@ -670,14 +686,13 @@ const ClientDetail = () => {
                         expired: 'Abgelaufen',
                       };
                       return (
-                        <div 
+                        <div
                           key={cc.id}
                           onClick={() => navigate(`/certifications/${cc.id}`)}
-                          className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg cursor-pointer transition-colors group gap-1 ${
-                            cc.status === 'expired' ? 'bg-red-50 border border-red-200 hover:bg-red-100' 
+                          className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg cursor-pointer transition-colors group gap-1 ${cc.status === 'expired' ? 'bg-red-50 border border-red-200 hover:bg-red-100'
                             : cc.status === 'suspended' ? 'bg-orange-50 border border-orange-200 hover:bg-orange-100'
-                            : 'bg-muted/50 hover:bg-primary/10'
-                          }`}
+                              : 'bg-muted/50 hover:bg-primary/10'
+                            }`}
                         >
                           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                             {(cc.status === 'expired' || cc.status === 'suspended') && (
@@ -704,6 +719,79 @@ const ClientDetail = () => {
                   </div>
                 ) : (
                   <p className="text-muted-foreground">Keine Zertifizierungen hinterlegt</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Open Tasks & Findings */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-primary" />
+                  Offene Aufgaben & Abweichungen
+                </CardTitle>
+                <div className="flex gap-2">
+                  {findings.length > 0 && (
+                    <Badge variant="destructive" className="animate-pulse">
+                      {findings.length} Abweichung{findings.length !== 1 ? 'en' : ''}
+                    </Badge>
+                  )}
+                  {openTasks.length > 0 && (
+                    <Badge variant="secondary">
+                      {openTasks.length} Aufgabe{openTasks.length !== 1 ? 'n' : ''}
+                    </Badge>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {tasksLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                  </div>
+                ) : openTasks.length > 0 ? (
+                  <div className="space-y-3">
+                    {openTasks.map((task) => (
+                      <div
+                        key={task.id}
+                        onClick={() => navigate(`/audits/${task.audit_id}`)}
+                        className={cn(
+                          "flex items-center justify-between p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors",
+                          task.category === 'finding' ? "border-destructive/30 bg-destructive/5" : "bg-muted/30"
+                        )}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          {task.category === 'finding' ? (
+                            <AlertCircle className="h-5 w-5 text-destructive shrink-0" />
+                          ) : (
+                            <Clock className="h-5 w-5 text-muted-foreground shrink-0" />
+                          )}
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm truncate">{task.title}</p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              Audit: {(task as any).audits?.type} am {format(new Date((task as any).audits?.date), 'dd.MM.yyyy')}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {task.due_date && (
+                            <span className={cn(
+                              "text-xs px-2 py-1 rounded-full",
+                              new Date(task.due_date) < new Date() ? "bg-red-100 text-red-700" : "bg-primary/10 text-primary"
+                            )}>
+                              {format(new Date(task.due_date), 'dd.MM.yyyy')}
+                            </span>
+                          )}
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <CheckCircle2 className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                    <p>Keine offenen Aufgaben für diesen Kunden</p>
+                  </div>
                 )}
               </CardContent>
             </Card>

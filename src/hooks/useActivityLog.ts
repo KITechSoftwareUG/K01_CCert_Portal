@@ -13,7 +13,7 @@ export interface ActivityLogEntry {
   created_at: string;
 }
 
-export const useActivityLog = (limit = 100) => {
+export const useActivityLog = (limit = 1000) => {
   return useQuery({
     queryKey: ['activity-log', limit],
     queryFn: async () => {

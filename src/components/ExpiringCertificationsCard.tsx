@@ -58,12 +58,12 @@ const KanbanColumn = ({
               <p className="text-[11px] text-muted-foreground truncate">{cert.certificationName}</p>
               <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-border/50">
                 <span className="text-[10px] text-muted-foreground">
-                  {format(cert.validUntil, 'dd. MMM yyyy', { locale: de })}
+                  {format(cert.validUntil, 'dd.MM.yyyy')}
                 </span>
                 <span className="text-[10px] font-semibold">
                   {cert.status === 'expired'
-                    ? `${Math.abs(cert.daysUntilExpiry)}d überfällig`
-                    : `${cert.daysUntilExpiry}d`}
+                    ? `${Math.abs(cert.daysUntilExpiry)} Tage überfällig`
+                    : `in ${cert.daysUntilExpiry} Tagen`}
                 </span>
               </div>
             </div>
@@ -88,8 +88,9 @@ export const ExpiringCertificationsCard = () => {
 
       const validUntil = new Date(cert.valid_until);
       const daysUntilExpiry = differenceInDays(validUntil, new Date());
-      
-      if (daysUntilExpiry > 90) continue;
+
+      // Auf 12 Monate (365 Tage) im Voraus anzeigen
+      if (daysUntilExpiry > 365) continue;
 
       let status: ExpiringCertification['status'] = 'ok';
       if (isPast(validUntil) && !isToday(validUntil)) {
@@ -151,7 +152,7 @@ export const ExpiringCertificationsCard = () => {
           <div className="text-center py-6">
             <ShieldCheck className="h-10 w-10 mx-auto text-muted-foreground/30 mb-2" />
             <p className="text-sm text-muted-foreground">
-              Keine Zertifikate laufen in den nächsten 90 Tagen ab
+              Keine Zertifikate laufen in den nächsten 12 Monaten ab
             </p>
           </div>
         </CardContent>

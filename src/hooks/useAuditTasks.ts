@@ -14,16 +14,41 @@ export const useAuditTasks = (auditId?: string) => {
         .from('audit_tasks')
         .select('*')
         .order('due_date', { ascending: true });
-      
+
       if (auditId) {
         query = query.eq('audit_id', auditId);
       }
-      
+
       const { data, error } = await query;
-      
+
       if (error) throw error;
       return data as DbAuditTask[];
     },
+  });
+};
+
+export const useClientAuditTasks = (clientId: string) => {
+  return useQuery({
+    queryKey: ['audit_tasks', 'client', clientId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('audit_tasks')
+        .select(`
+          *,
+          audits!inner (
+            id,
+            client_id,
+            type,
+            date
+          )
+        `)
+        .eq('audits.client_id', clientId)
+        .order('due_date', { ascending: true });
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!clientId,
   });
 };
 
@@ -41,7 +66,7 @@ export const useAllAuditTasks = () => {
           )
         `)
         .order('due_date', { ascending: true });
-      
+
       if (error) throw error;
       return data;
     },
@@ -50,7 +75,7 @@ export const useAllAuditTasks = () => {
 
 export const useCreateAuditTask = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (task: DbAuditTaskInsert) => {
       const { data, error } = await supabase
@@ -58,7 +83,7 @@ export const useCreateAuditTask = () => {
         .insert(task)
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
@@ -70,7 +95,7 @@ export const useCreateAuditTask = () => {
 
 export const useUpdateAuditTask = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<DbAuditTask> & { id: string }) => {
       const { data, error } = await supabase
@@ -79,7 +104,7 @@ export const useUpdateAuditTask = () => {
         .eq('id', id)
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
@@ -91,14 +116,14 @@ export const useUpdateAuditTask = () => {
 
 export const useDeleteAuditTask = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
         .from('audit_tasks')
         .delete()
         .eq('id', id);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -109,14 +134,14 @@ export const useDeleteAuditTask = () => {
 
 export const useCreateBulkAuditTasks = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (tasks: DbAuditTaskInsert[]) => {
       const { data, error } = await supabase
         .from('audit_tasks')
         .insert(tasks)
         .select();
-      
+
       if (error) throw error;
       return data;
     },

@@ -47,6 +47,7 @@ const auditTypeOptions: { value: AuditType; label: string }[] = [
   { value: 'recertification', label: AUDIT_TYPE_LABELS['recertification'] },
   { value: 'six-month', label: AUDIT_TYPE_LABELS['six-month'] },
   { value: 'internal', label: AUDIT_TYPE_LABELS['internal'] },
+  { value: 'training', label: AUDIT_TYPE_LABELS['training'] },
 ];
 
 const SEVERITY_LABELS: Record<string, string> = {
@@ -86,6 +87,11 @@ const getDefaultTasksForAuditType = (type: AuditType, scheduledDate: Date) => {
       { title: 'Internes Audit durchführen', description: 'Interne Prüfung der Prozesse und Dokumentation durchführen', dueDays: 0, assignedTo: 'Berater' },
       { title: 'Bericht erstellen', description: 'Ergebnisse dokumentieren und Maßnahmenplan erstellen', dueDays: 7, assignedTo: 'Berater' },
     ],
+    training: [
+      { title: 'Trainingsunterlagen vorbereiten', description: 'Präsentationen und Handouts für das Training erstellen', dueDays: -7, assignedTo: 'Berater' },
+      { title: 'Training durchführen', description: 'Schulung der Mitarbeiter vor Ort oder Remote durchführen', dueDays: 0, assignedTo: 'Berater' },
+      { title: 'Teilnahmebescheinigungen ausstellen', description: 'Zertifikate für die Teilnehmer erstellen und versenden', dueDays: 3, assignedTo: 'Berater' },
+    ],
   };
 
   return taskTemplates[type].map((task) => ({
@@ -112,7 +118,7 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
   const createAudit = useCreateAudit();
   const createTasks = useCreateBulkAuditTasks();
 
-  const sortedClients = useMemo(() => 
+  const sortedClients = useMemo(() =>
     [...clients].sort((a, b) => a.name.localeCompare(b.name)),
     [clients]
   );
@@ -172,7 +178,7 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!selectedClient || !scheduledDate || selectedCertifications.length === 0) {
       toast.error('Bitte füllen Sie alle Pflichtfelder aus');
       return;

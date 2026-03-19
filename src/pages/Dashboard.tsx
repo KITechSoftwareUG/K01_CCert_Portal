@@ -31,7 +31,7 @@ const Dashboard = () => {
   const { data: dbAudits = [], isLoading: auditsLoading } = useAudits();
   const { data: clients = [], isLoading: clientsLoading } = useClients();
 
-  const audits = useMemo(() => 
+  const audits = useMemo(() =>
     dbAudits
       .filter(audit => audit.clients?.is_active !== false)
       .map(audit => transformAuditToLocal(audit)),
@@ -39,10 +39,9 @@ const Dashboard = () => {
   );
 
   const clientStats = useMemo(() => {
-    const realClients = clients.filter(c => c.client_number !== null);
-    const total = realClients.length;
-    const active = realClients.filter(c => c.is_active !== false).length;
-    const inactive = realClients.filter(c => c.is_active === false).length;
+    const total = clients.length;
+    const active = clients.filter(c => c.is_active !== false).length;
+    const inactive = clients.filter(c => c.is_active === false).length;
     return { total, active, inactive };
   }, [clients]);
 
@@ -65,7 +64,7 @@ const Dashboard = () => {
           ) : (
             <>
               <StatCard
-                title="Kunden gesamt"
+                title="Gesamt"
                 value={clientStats.total}
                 icon={Users}
                 variant="default"
@@ -96,16 +95,18 @@ const Dashboard = () => {
         {!isLoading && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
             {/* Left: Expiring Certs + Data Quality */}
-            <div className="lg:col-span-5 space-y-5">
+            <div className="lg:col-span-12 xl:col-span-5 space-y-5">
               <ExpiringCertificationsCard />
               <DataQualityWarningsCard />
             </div>
 
-            {/* Right: Alerts + Year Stats */}
-            <div className="lg:col-span-7 space-y-5">
+            {/* Right: Year Stats + Alerts */}
+            <div className="lg:col-span-12 xl:col-span-7 space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <AuditYearStatsCard />
+                <CertificationYearStatsCard />
+              </div>
               <AlertsCard audits={audits} />
-              <AuditYearStatsCard />
-              <CertificationYearStatsCard />
             </div>
           </div>
         )}

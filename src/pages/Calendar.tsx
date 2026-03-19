@@ -54,7 +54,7 @@ const Calendar = () => {
   const { data: dbAudits = [], isLoading, error } = useAudits();
   const { data: allTasks = [] } = useAllAuditTasks();
 
-  const audits = useMemo(() => 
+  const audits = useMemo(() =>
     dbAudits.map(audit => transformAuditToLocal(audit)),
     [dbAudits]
   );
@@ -300,13 +300,17 @@ const Calendar = () => {
                     </p>
                   ) : (
                     upcomingAudits.map((audit) => (
-                      <div key={audit.id} className="space-y-2 pb-4 border-b last:border-0">
+                      <div
+                        key={audit.id}
+                        className="space-y-2 pb-4 border-b last:border-0 cursor-pointer hover:bg-muted/50 rounded p-2 -m-2 transition-colors"
+                        onClick={() => navigate(`/audits/${audit.id}`)}
+                      >
                         <div className="flex items-start justify-between">
                           <div className="space-y-1 flex-1">
                             <p className="font-medium text-sm text-foreground">{audit.clientName}</p>
                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
                               <Clock className="h-3 w-3" />
-                              {format(audit.scheduledDate, 'dd. MMM yyyy', { locale: de })}
+                              {format(audit.scheduledDate, 'dd.MM.yyyy')}
                             </div>
                           </div>
                           {audit.certifications.length > 0 && (
@@ -332,15 +336,15 @@ const Calendar = () => {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {upcomingFindings.map((finding) => (
-                      <div 
-                        key={finding.id} 
+                      <div
+                        key={finding.id}
                         className="space-y-1 pb-3 border-b last:border-0 cursor-pointer hover:bg-muted/50 rounded p-2 -m-2 transition-colors"
                         onClick={() => navigate(`/audits/${finding.auditId}`)}
                       >
                         <p className="font-medium text-sm text-foreground truncate">{finding.title}</p>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <Clock className="h-3 w-3" />
-                          {format(finding.dueDate, 'dd. MMM yyyy', { locale: de })}
+                          {format(finding.dueDate, 'dd.MM.yyyy')}
                           <span>•</span>
                           <span>{finding.clientName}</span>
                         </div>

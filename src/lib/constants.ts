@@ -7,27 +7,28 @@ export const AUDIT_TYPE_LABELS: Record<AuditType, string> = {
   recertification: 'Re-Zertifizierung',
   'six-month': '6-Monats-Überwachung',
   internal: 'Internes Audit',
+  training: 'Training',
 } as const;
 
 // Audit status configuration
 export const AUDIT_STATUS_CONFIG = {
-  scheduled: { 
-    label: 'Geplant', 
+  scheduled: {
+    label: 'Geplant',
     variant: 'secondary' as const,
     className: '',
   },
-  'in-progress': { 
-    label: 'In Bearbeitung', 
+  'in-progress': {
+    label: 'In Bearbeitung',
     variant: 'default' as const,
     className: 'bg-warning text-warning-foreground',
   },
-  completed: { 
-    label: 'Abgeschlossen', 
+  completed: {
+    label: 'Abgeschlossen',
     variant: 'default' as const,
     className: 'bg-success text-success-foreground',
   },
-  cancelled: { 
-    label: 'Abgebrochen', 
+  cancelled: {
+    label: 'Abgebrochen',
     variant: 'destructive' as const,
     className: '',
   },
@@ -91,23 +92,23 @@ export const TIMELINE_STATUS_CONFIG = {
 
 // Urgency configuration for tasks - subtle/informational styling
 export const URGENCY_CONFIG = {
-  overdue: { 
-    bg: 'bg-muted/50 border-muted-foreground/20', 
+  overdue: {
+    bg: 'bg-muted/50 border-muted-foreground/20',
     text: 'text-muted-foreground',
     badge: 'Überfällig',
   },
-  critical: { 
-    bg: 'bg-muted/30 border-border', 
+  critical: {
+    bg: 'bg-muted/30 border-border',
     text: 'text-muted-foreground',
     badge: 'Dringend',
   },
-  warning: { 
-    bg: 'bg-card border-border', 
+  warning: {
+    bg: 'bg-card border-border',
     text: 'text-muted-foreground',
     badge: null,
   },
-  normal: { 
-    bg: 'bg-card border-border', 
+  normal: {
+    bg: 'bg-card border-border',
     text: 'text-muted-foreground',
     badge: null,
   },

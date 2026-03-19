@@ -10,13 +10,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '@/components/ui/table';
 import {
   Select,
@@ -25,13 +25,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Search, ChevronRight, Calendar, Building2, ClipboardCheck, Users } from 'lucide-react';
+import { Plus, Search, ChevronRight, Calendar, Building2, ClipboardCheck, Users, Trash2, X } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Audit } from '@/types/audit';
 import { AUDIT_TYPE_LABELS, AUDIT_STATUS_CONFIG } from '@/lib/constants';
-import { format } from 'date-fns';
+import { toast } from 'sonner';
+import { format, isSameMonth } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
 
 type StatusFilter = 'all' | 'scheduled' | 'in-progress' | 'completed';
 type GroupBy = 'month' | 'client' | 'type' | 'none';
@@ -53,18 +55,33 @@ interface AuditRowProps {
   onClick: () => void;
   showClient?: boolean;
   showType?: boolean;
+  isSelected: boolean;
+  onSelectChange: (selected: boolean) => void;
 }
 
-const AuditRow = ({ audit, onClick, showClient = true, showType = true }: AuditRowProps) => {
+const AuditRow = ({
+  audit,
+  onClick,
+  showClient = true,
+  showType = true,
+  isSelected,
+  onSelectChange
+}: AuditRowProps) => {
   const statusConfig = AUDIT_STATUS_CONFIG[audit.status];
   const pendingTasks = audit.tasks.filter(t => t.status !== 'completed').length;
   const overdueTasks = audit.tasks.filter(t => t.status === 'overdue' || (t.status !== 'completed' && t.dueDate < new Date())).length;
 
   return (
-    <TableRow 
-      className="cursor-pointer hover:bg-muted/50 transition-colors"
+    <TableRow
+      className={cn("cursor-pointer hover:bg-muted/50 transition-colors", isSelected && "bg-primary/5")}
       onClick={onClick}
     >
+      <TableCell onClick={(e) => e.stopPropagation()}>
+        <Checkbox
+          checked={isSelected}
+          onCheckedChange={(checked) => onSelectChange(!!checked)}
+        />
+      </TableCell>
       {showClient && (
         <TableCell className="font-medium text-left">{audit.clientName}</TableCell>
       )}
@@ -87,11 +104,11 @@ const AuditRow = ({ audit, onClick, showClient = true, showType = true }: AuditR
       <TableCell>
         <div className="flex items-center gap-2 text-sm">
           <Calendar className="h-4 w-4 text-muted-foreground" />
-          {format(audit.scheduledDate, 'dd. MMM yyyy', { locale: de })}
+          {format(audit.scheduledDate, 'dd.MM.yyyy')}
         </div>
       </TableCell>
       <TableCell>
-        <Badge 
+        <Badge
           variant={statusConfig.variant}
           className={cn("text-xs", statusConfig.className)}
         >
@@ -99,18 +116,25 @@ const AuditRow = ({ audit, onClick, showClient = true, showType = true }: AuditR
         </Badge>
       </TableCell>
       <TableCell>
-        {pendingTasks > 0 ? (
-          <div className="flex items-center gap-1">
-            <span className={cn(
-              "text-sm",
-              overdueTasks > 0 ? "text-destructive font-medium" : "text-muted-foreground"
-            )}>
-              {overdueTasks > 0 ? `${overdueTasks} überfällig` : `${pendingTasks} offen`}
-            </span>
-          </div>
-        ) : (
-          <span className="text-sm text-success">✓ Fertig</span>
-        )}
+        <div className="flex flex-col gap-1">
+          {audit.tasks.some(t => t.category === 'finding' && t.status !== 'completed') && (
+            <Badge variant="destructive" className="text-[10px] py-0 h-4 w-fit">
+              {audit.tasks.filter(t => t.category === 'finding' && t.status !== 'completed').length} NCs
+            </Badge>
+          )}
+          {pendingTasks > 0 ? (
+            <div className="flex items-center gap-1">
+              <span className={cn(
+                "text-sm",
+                overdueTasks > 0 ? "text-destructive font-medium" : "text-muted-foreground"
+              )}>
+                {overdueTasks > 0 ? `${overdueTasks} überfällig` : `${pendingTasks} Aufgabe${pendingTasks !== 1 ? 'n' : ''}`}
+              </span>
+            </div>
+          ) : (
+            <span className="text-sm text-green-600 font-medium whitespace-nowrap">✓ Fertig</span>
+          )}
+        </div>
       </TableCell>
       <TableCell>
         <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -143,6 +167,7 @@ const Audits = () => {
   const [showNewAuditDialog, setShowNewAuditDialog] = useState(false);
   const [clientStatusFilter, setClientStatusFilter] = useState<'all' | 'active' | 'inactive'>('active');
   const [consultantFilter, setConsultantFilter] = useState<string>('all');
+  const [selectedAuditIds, setSelectedAuditIds] = useState<Set<string>>(new Set());
 
   const { data: dbAudits = [], isLoading: auditsLoading, error: auditsError } = useAudits();
   const { data: tasks = [], isLoading: tasksLoading } = useAuditTasks();
@@ -160,7 +185,7 @@ const Audits = () => {
     return Array.from(set).sort((a, b) => a.localeCompare(b, 'de'));
   }, [clients]);
 
-  const audits = useMemo(() => 
+  const audits = useMemo(() =>
     dbAudits.map(audit => transformAuditToLocal(audit, tasks)),
     [dbAudits, tasks]
   );
@@ -174,13 +199,13 @@ const Audits = () => {
       .filter(audit => {
         const matchesSearch = audit.clientName.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesStatus = statusFilter === 'all' || audit.status === statusFilter;
-        
+
         const clientInfo = clientMap.get(audit.clientId);
-        const matchesClientStatus = clientStatusFilter === 'all' 
+        const matchesClientStatus = clientStatusFilter === 'all'
           || (clientStatusFilter === 'active' && clientInfo?.is_active === true)
           || (clientStatusFilter === 'inactive' && clientInfo?.is_active === false);
         const matchesConsultant = consultantFilter === 'all' || clientInfo?.consultant === consultantFilter;
-        
+
         return matchesSearch && matchesStatus && matchesClientStatus && matchesConsultant;
       })
       .sort((a, b) => a.scheduledDate.getTime() - b.scheduledDate.getTime());
@@ -224,6 +249,38 @@ const Audits = () => {
       .sort((a, b) => groupBy === 'month' ? a.sortKey.localeCompare(b.sortKey) : a.title.localeCompare(b.title, 'de'));
   }, [filteredAudits, groupBy]);
 
+  const scrollToCurrentMonth = useCallback(() => {
+    const currentMonthKey = format(new Date(), 'yyyy-MM');
+    const element = document.getElementById(`month-${currentMonthKey}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      toast.info('Keine Audits im aktuellen Monat geplant');
+    }
+  }, []);
+
+  const toggleAuditSelection = (auditId: string) => {
+    setSelectedAuditIds(prev => {
+      const next = new Set(prev);
+      if (next.has(auditId)) next.delete(auditId);
+      else next.add(auditId);
+      return next;
+    });
+  };
+
+  const toggleAllInGroup = (auditIds: string[]) => {
+    setSelectedAuditIds(prev => {
+      const next = new Set(prev);
+      const allSelected = auditIds.every(id => next.has(id));
+      if (allSelected) {
+        auditIds.forEach(id => next.delete(id));
+      } else {
+        auditIds.forEach(id => next.add(id));
+      }
+      return next;
+    });
+  };
+
   const isLoading = auditsLoading || tasksLoading;
 
   return (
@@ -254,7 +311,7 @@ const Audits = () => {
               className="pl-10"
             />
           </div>
-          
+
           <div className="flex items-center gap-2 flex-wrap">
             <Select value={clientStatusFilter} onValueChange={(v) => setClientStatusFilter(v as 'all' | 'active' | 'inactive')}>
               <SelectTrigger className="w-[150px]">
@@ -280,37 +337,50 @@ const Audits = () => {
             </Select>
 
             <span className="text-sm text-muted-foreground hidden sm:inline">Gruppieren:</span>
-            <Select value={groupBy} onValueChange={(v) => setGroupBy(v as GroupBy)}>
-              <SelectTrigger className="w-[160px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="month">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    Nach Monat
-                  </div>
-                </SelectItem>
-                <SelectItem value="client">
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    Nach Kunde
-                  </div>
-                </SelectItem>
-                <SelectItem value="type">
-                  <div className="flex items-center gap-2">
-                    <ClipboardCheck className="h-4 w-4" />
-                    Nach Auditart
-                  </div>
-                </SelectItem>
-                <SelectItem value="none">
-                  <div className="flex items-center gap-2">
-                    <Building2 className="h-4 w-4" />
-                    Keine Gruppierung
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-1">
+              <Select value={groupBy} onValueChange={(v) => setGroupBy(v as GroupBy)}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="month">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      Nach Monat
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="client">
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      Nach Kunde
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="type">
+                    <div className="flex items-center gap-2">
+                      <ClipboardCheck className="h-4 w-4" />
+                      Nach Auditart
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="none">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4" />
+                      Keine Gruppierung
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              {groupBy === 'month' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="px-2"
+                  onClick={scrollToCurrentMonth}
+                  title="Zum aktuellen Monat springen"
+                >
+                  Heute
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -333,6 +403,7 @@ const Audits = () => {
                 <Table className="table-fixed w-full">
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-[40px]"></TableHead>
                       <TableHead className="w-[25%]">Kunde</TableHead>
                       <TableHead className="w-[15%]">Zertifikat</TableHead>
                       <TableHead className="w-[15%]">Auditart</TableHead>
@@ -366,41 +437,51 @@ const Audits = () => {
                 {groupedAudits.map((group) => (
                   <div key={group.key} className="border rounded-lg overflow-hidden bg-card">
                     {groupBy !== 'none' && (
-                      <GroupHeader 
-                        title={group.title} 
+                      <GroupHeader
+                        title={group.title}
                         count={group.audits.length}
                         icon={groupBy === 'month'
                           ? <Calendar className="h-4 w-4 text-primary" />
-                          : groupBy === 'client' 
+                          : groupBy === 'client'
                             ? <Users className="h-4 w-4 text-primary" />
                             : <ClipboardCheck className="h-4 w-4 text-primary" />
                         }
                       />
                     )}
-                    <Table className="table-fixed w-full">
-                      <TableHeader>
-                        <TableRow>
-                          {groupBy !== 'client' && <TableHead className="text-left w-[25%]">Kunde</TableHead>}
-                          <TableHead className="text-left w-[15%]">Zertifikat</TableHead>
-                          {groupBy !== 'type' && <TableHead className="text-left w-[15%]">Auditart</TableHead>}
-                          <TableHead className="text-left w-[15%]">Termin</TableHead>
-                          <TableHead className="text-left w-[12%]">Status</TableHead>
-                          <TableHead className="text-left w-[12%]">Aufgaben</TableHead>
-                          <TableHead className="w-[6%]"></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {group.audits.map((audit) => (
-                          <AuditRow
-                            key={audit.id}
-                            audit={audit}
-                            onClick={() => handleViewDetails(audit)}
-                            showClient={groupBy !== 'client'}
-                            showType={groupBy !== 'type'}
-                          />
-                        ))}
-                      </TableBody>
-                    </Table>
+                    <div id={groupBy === 'month' ? `month-${group.key}` : undefined} className="scroll-mt-20">
+                      <Table className="table-fixed w-full">
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-[40px]">
+                              <Checkbox
+                                checked={group.audits.every(a => selectedAuditIds.has(a.id))}
+                                onCheckedChange={() => toggleAllInGroup(group.audits.map(a => a.id))}
+                              />
+                            </TableHead>
+                            {groupBy !== 'client' && <TableHead className="text-left w-[25%]">Kunde</TableHead>}
+                            <TableHead className="text-left w-[15%]">Zertifikat</TableHead>
+                            {groupBy !== 'type' && <TableHead className="text-left w-[15%]">Auditart</TableHead>}
+                            <TableHead className="text-left w-[15%]">Termin</TableHead>
+                            <TableHead className="text-left w-[12%]">Status</TableHead>
+                            <TableHead className="text-left w-[12%]">Aufgaben</TableHead>
+                            <TableHead className="w-[6%]"></TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {group.audits.map((audit) => (
+                            <AuditRow
+                              key={audit.id}
+                              audit={audit}
+                              onClick={() => handleViewDetails(audit)}
+                              showClient={groupBy !== 'client'}
+                              showType={groupBy !== 'type'}
+                              isSelected={selectedAuditIds.has(audit.id)}
+                              onSelectChange={() => toggleAuditSelection(audit.id)}
+                            />
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -408,8 +489,48 @@ const Audits = () => {
           </TabsContent>
         </Tabs>
       </div>
-      
+
       <NewAuditDialog open={showNewAuditDialog} onOpenChange={setShowNewAuditDialog} />
+
+      {/* Bulk Action Bar */}
+      {selectedAuditIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="bg-foreground text-background px-6 py-3 rounded-full shadow-2xl flex items-center gap-6 border border-primary/20">
+            <div className="flex items-center gap-2 border-r border-background/20 pr-6">
+              <span className="text-sm font-bold">{selectedAuditIds.size}</span>
+              <span className="text-sm opacity-80">Audit{selectedAuditIds.size !== 1 ? 's' : ''} ausgewählt</span>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-background hover:bg-background/10 gap-2 h-8"
+                onClick={() => {
+                  if (confirm(`${selectedAuditIds.size} Audits wirklich löschen?`)) {
+                    // Bulk delete logic would go here
+                    toast.error('Bulk Delete noch nicht implementiert (Vorsicht!)');
+                  }
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+                Löschen
+              </Button>
+
+              <div className="h-4 w-[1px] bg-background/20 mx-2" />
+
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-background hover:bg-background/10 h-8 p-1"
+                onClick={() => setSelectedAuditIds(new Set())}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 };

@@ -20,7 +20,7 @@ const OUTLOOK_SCOPE = 'offline_access Calendars.ReadWrite';
 
 async function refreshAccessToken(supabase: any, userId: string, refreshToken: string): Promise<string | null> {
   console.log('Refreshing access token for user:', userId);
-  
+
   const tokenResponse = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
     method: 'POST',
     headers: {
@@ -99,7 +99,7 @@ serve(async (req) => {
     // Get user from token
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    
+
     if (userError || !user) {
       console.error('User auth error:', userError);
       return new Response(JSON.stringify({ error: 'Invalid token' }), {
@@ -175,7 +175,7 @@ serve(async (req) => {
             showAs: 'busy',
             categories: ['Zertifikat'],
             importance: audit.type === 'certification-expiry' ? 'high' : 'normal',
-            reminderMinutesBeforeStart: 1440,
+            isReminderOn: false,
           };
         } else {
           // Regular audit event (not all-day)
@@ -202,18 +202,19 @@ serve(async (req) => {
               `,
             },
             start: {
-              dateTime: new Date(audit.scheduledDate).toISOString(),
+              dateTime: new Date(new Date(audit.scheduledDate).setHours(5, 0, 0, 0)).toISOString(),
               timeZone: 'Europe/Berlin',
             },
             end: {
               // Assume 2 hour duration if not specified
-              dateTime: new Date(new Date(audit.scheduledDate).getTime() + 2 * 60 * 60 * 1000).toISOString(),
+              dateTime: new Date(new Date(audit.scheduledDate).setHours(7, 0, 0, 0)).toISOString(),
               timeZone: 'Europe/Berlin',
             },
             location: {
               displayName: audit.clientAddress || '',
             },
             categories: ['Audit'],
+            isReminderOn: false,
           };
         }
 
@@ -243,11 +244,11 @@ serve(async (req) => {
     }
 
     return new Response(JSON.stringify({
-      success: true, 
+      success: true,
       synced: results.length,
       failed: errors.length,
       results,
-      errors 
+      errors
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

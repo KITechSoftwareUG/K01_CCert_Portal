@@ -16,6 +16,8 @@ import { useAuditors } from '@/hooks/useAuditors';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { format } from 'date-fns';
+import { de } from 'date-fns/locale';
 
 import { Skeleton } from '@/components/ui/skeleton';
 import { ClientNumberBadge, GroupClientNumbers } from '@/components/ClientNumberBadge';
@@ -29,17 +31,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { 
-  Plus, 
-  Search, 
-  ChevronDown, 
-  ChevronRight, 
-  FolderTree, 
+import {
+  Plus,
+  Search,
+  ChevronDown,
+  ChevronRight,
+  FolderTree,
   Award,
   Building2,
-  
+
   Eye,
-  
+
   AlertTriangle,
   User,
   Globe,
@@ -47,7 +49,8 @@ import {
   ExternalLink,
   ArrowRightLeft,
   Trash2,
-  Pencil
+  Pencil,
+  Monitor
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -73,9 +76,9 @@ import { toast } from 'sonner';
 const Clients = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(() => sessionStorage.getItem('clients-search-query') || '');
   const [showNewClientDialog, setShowNewClientDialog] = useState(false);
-  
+
   const [moveDialogClient, setMoveDialogClient] = useState<DbClient | null>(null);
   const [deleteGroupClient, setDeleteGroupClient] = useState<{ client: DbClient; childCount: number } | null>(null);
   const [renameGroup, setRenameGroup] = useState<{ client: DbClient; newName: string } | null>(null);
@@ -97,9 +100,13 @@ const Clients = () => {
       return saved ? new Set(JSON.parse(saved)) : new Set();
     } catch { return new Set(); }
   });
-  const [statusFilter, setStatusFilter] = useState<'active' | 'inactive' | 'all'>('active');
-  const [auditorFilter, setAuditorFilter] = useState<string>('all');
-  
+  const [statusFilter, setStatusFilter] = useState<'active' | 'inactive' | 'all'>(() =>
+    (sessionStorage.getItem('clients-status-filter') as 'active' | 'inactive' | 'all') || 'active'
+  );
+  const [auditorFilter, setAuditorFilter] = useState<string>(() =>
+    sessionStorage.getItem('clients-auditor-filter') || 'all'
+  );
+
   const { data: clients = [], isLoading, error } = useClients();
   const deleteClient = useDeleteClient();
   const updateClient = useUpdateClient();
@@ -109,7 +116,7 @@ const Clients = () => {
   // Get all client IDs for bulk contact fetch
   const clientIds = useMemo(() => clients.map(c => c.id), [clients]);
   const { data: contactsMap = {} } = useContactsByClientIds(clientIds);
-  
+
   // Get auditors for all certifications
   const { data: auditorsByClientCertification = {} } = useAuditorsForCertifications();
   // Client certifications grouped by certificate_number
@@ -118,14 +125,14 @@ const Clients = () => {
   // Filter clients by active status, search, and auditor
   const filteredClients = useMemo(() => {
     let result = clients;
-    
+
     // Filter by active status
     if (statusFilter === 'active') {
       result = result.filter(client => client.is_active !== false);
     } else if (statusFilter === 'inactive') {
       result = result.filter(client => client.is_active === false && client.is_active !== null);
     }
-    
+
     // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -140,7 +147,7 @@ const Clients = () => {
     // Filter by auditor
     if (auditorFilter && auditorFilter !== 'all') {
       const clientIdsWithAuditor = new Set<string>();
-      
+
       if (auditorFilter === 'none') {
         // Find clients that have at least one certification WITHOUT an auditor
         Object.entries(certificationsByClient).forEach(([clientId, certRows]) => {
@@ -157,10 +164,10 @@ const Clients = () => {
           if (hasAuditor) clientIdsWithAuditor.add(clientId);
         });
       }
-      
+
       result = result.filter(client => clientIdsWithAuditor.has(client.id));
     }
-    
+
     return result;
   }, [searchQuery, clients, statusFilter, auditorFilter, certificationsByClient, auditorsByClientCertification]);
 
@@ -196,7 +203,7 @@ const Clients = () => {
     // Find which group contains this client
     for (const cg of countryGroups) {
       for (const group of cg.companyGroups) {
-        const isInGroup = group.headerClient.id === highlightId || 
+        const isInGroup = group.headerClient.id === highlightId ||
           group.children.some(c => c.client.id === highlightId);
         if (isInGroup) {
           setExpandedGroups(prev => {
@@ -249,11 +256,11 @@ const Clients = () => {
 
   const renderCertificationRows = (clientId: string, client: DbClient) => {
     const certRows = certificationsByClient[clientId] || [];
-    
+
     // Check for legacy certifications that are not yet migrated
     const legacyCerts = (client.certifications || []) as string[];
     const hasLegacyCerts = legacyCerts.length > 0 && certRows.length === 0;
-    
+
     if (certRows.length === 0 && !hasLegacyCerts) {
       return (
         <div className="pl-16 py-2 text-sm text-muted-foreground italic">
@@ -293,7 +300,7 @@ const Clients = () => {
     return certRows.map((row, idx) => {
       // Get auditor for the first certification in this row
       const auditorInfo = auditorsByClientCertification[row.primaryCertificationId];
-      
+
       return (
         <div
           key={`${row.clientId}-${idx}`}
@@ -320,7 +327,7 @@ const Clients = () => {
             )}
             {row.earliestValidUntil && (
               <span className="text-muted-foreground">
-                bis {new Date(row.earliestValidUntil).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                bis {format(new Date(row.earliestValidUntil), 'dd.MM.yyyy', { locale: de })}
               </span>
             )}
             {row.certifications.map(c => c.status).filter(Boolean).map((status, i) => {
@@ -342,7 +349,7 @@ const Clients = () => {
           </div>
           {/* Auditor on the right side - show warning if missing */}
           {auditorInfo ? (
-            <AuditorPopover 
+            <AuditorPopover
               auditor={{
                 id: auditorInfo.auditorId,
                 name: auditorInfo.auditorName,
@@ -368,7 +375,7 @@ const Clients = () => {
     const isExpanded = expandedClients.has(client.id);
     const contacts = contactsMap[client.id] || [];
     const clientIsActive = (client as any).is_active !== false;
-    
+
     return (
       <div key={client.id}>
         <div
@@ -389,11 +396,22 @@ const Clients = () => {
               )}
               <span className={cn('truncate', indent ? '' : 'font-medium')}>{client.name}</span>
               <ClientNumberBadge clientNumber={client.client_number} />
-              {(client as any).audit_mode && (client as any).audit_mode !== 'on-site' && (
-                <Badge variant="outline" className="text-xs gap-1">
-                  {(client as any).audit_mode === 'remote' ? '🌐 Remote' : '🔄 Hybrid'}
-                </Badge>
-              )}
+              {(() => {
+                const mode = (client as any).audit_mode || 'on-site';
+                if (mode === 'remote') {
+                  return <Badge variant="outline" className="text-[10px] sm:text-xs gap-1 bg-blue-50 text-blue-700 border-blue-200">
+                    <Globe className="h-3 w-3" /> Remote
+                  </Badge>;
+                } else if (mode === 'hybrid') {
+                  return <Badge variant="outline" className="text-[10px] sm:text-xs gap-1 bg-purple-50 text-purple-700 border-purple-200">
+                    <Monitor className="h-3 w-3" /> Hybrid
+                  </Badge>;
+                } else {
+                  return <Badge variant="outline" className="text-[10px] sm:text-xs gap-1 bg-slate-50 text-slate-600 border-slate-200">
+                    <Building2 className="h-3 w-3" /> Präsenz
+                  </Badge>;
+                }
+              })()}
             </div>
             {/* Mobile: show badges below name */}
             {isMobile && (
@@ -515,11 +533,11 @@ const Clients = () => {
         </div>
 
         <NewClientDialog open={showNewClientDialog} onOpenChange={setShowNewClientDialog} />
-        
+
         {moveDialogClient && (
-          <MoveClientDialog 
-            open={!!moveDialogClient} 
-            onOpenChange={(open) => !open && setMoveDialogClient(null)} 
+          <MoveClientDialog
+            open={!!moveDialogClient}
+            onOpenChange={(open) => !open && setMoveDialogClient(null)}
             client={moveDialogClient}
           />
         )}
@@ -531,14 +549,23 @@ const Clients = () => {
             <Input
               placeholder="Suchen..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                sessionStorage.setItem('clients-search-query', e.target.value);
+              }}
               className="pl-10"
             />
           </div>
-          
+
           <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
             {/* Auditor Filter */}
-            <Select value={auditorFilter} onValueChange={setAuditorFilter}>
+            <Select
+              value={auditorFilter}
+              onValueChange={(val) => {
+                setAuditorFilter(val);
+                sessionStorage.setItem('clients-auditor-filter', val);
+              }}
+            >
               <SelectTrigger className="w-[140px] sm:w-[180px] h-9">
                 <User className="h-4 w-4 text-muted-foreground mr-1 sm:mr-2 shrink-0" />
                 <SelectValue placeholder="Alle Auditoren" />
@@ -559,7 +586,14 @@ const Clients = () => {
               </SelectContent>
             </Select>
 
-            <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val as 'active' | 'inactive' | 'all')}>
+            <Select
+              value={statusFilter}
+              onValueChange={(val) => {
+                const filter = val as 'active' | 'inactive' | 'all';
+                setStatusFilter(filter);
+                sessionStorage.setItem('clients-status-filter', filter);
+              }}
+            >
               <SelectTrigger className="w-[140px] sm:w-[180px] h-9">
                 <Eye className="h-4 w-4 text-muted-foreground mr-1 sm:mr-2 shrink-0" />
                 <SelectValue />
@@ -588,7 +622,7 @@ const Clients = () => {
             {countryGroups.map(countryGroup => {
               const isCountryExpanded = expandedCountries.has(countryGroup.country);
               const totalCompanies = countryGroup.companyGroups.length;
-              
+
               return (
                 <div key={countryGroup.country} className="border rounded-lg overflow-hidden">
                   {/* Country Header */}
@@ -620,7 +654,7 @@ const Clients = () => {
 
                         const headerClient = group.headerClient;
                         const headerContacts = contactsMap[headerClient.id] || [];
-                        
+
                         return (
                           <div key={group.id}>
                             {/* Group Header */}
@@ -646,8 +680,8 @@ const Clients = () => {
                                       {isMultiClient ? (
                                         <>
                                           <Badge variant="outline" className="text-xs">Gruppe</Badge>
-                                          <GroupClientNumbers 
-                                            clientNumbers={group.children.map(c => c.client.client_number)} 
+                                          <GroupClientNumbers
+                                            clientNumbers={group.children.map(c => c.client.client_number)}
                                           />
                                         </>
                                       ) : (
@@ -764,7 +798,7 @@ const Clients = () => {
                                     const contacts = contactsMap[client.id] || [];
                                     const isClientExpanded = expandedClients.has(client.id);
                                     const clientIsActive = (client as any).is_active !== false;
-                                    
+
                                     return (
                                       <div key={client.id}>
                                         {/* Client Row */}
@@ -853,14 +887,14 @@ const Clients = () => {
                                             </div>
                                           </div>
                                         ) : null}
-                                        
+
                                         {/* Certification Rows */}
                                         {(!isMultiClient || isClientExpanded) && (
                                           <>
                                             {certifications.length > 0 ? (
                                               certifications.map((row, idx) => {
                                                 const auditorInfo = auditorsByClientCertification[row.primaryCertificationId];
-                                                
+
                                                 return (
                                                   <div
                                                     key={`${row.clientId}-${idx}`}
@@ -906,7 +940,7 @@ const Clients = () => {
                                                     </div>
                                                     <div className="shrink-0">
                                                       {auditorInfo ? (
-                                                        <AuditorPopover 
+                                                        <AuditorPopover
                                                           auditor={{
                                                             id: auditorInfo.auditorId,
                                                             name: auditorInfo.auditorName,

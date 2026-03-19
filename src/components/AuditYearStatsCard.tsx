@@ -5,7 +5,7 @@ import { useAudits } from '@/hooks/useAudits';
 import { AUDIT_TYPE_LABELS } from '@/lib/constants';
 import { AuditType } from '@/types/audit';
 
-const AUDIT_TYPES: AuditType[] = ['initial', 'surveillance', 'recertification', 'six-month', 'internal'];
+const AUDIT_TYPES: AuditType[] = ['initial', 'surveillance', 'recertification', 'six-month', 'internal', 'training'];
 
 export const AuditYearStatsCard = () => {
   const { data: dbAudits = [], isLoading } = useAudits();

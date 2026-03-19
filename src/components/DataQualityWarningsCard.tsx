@@ -19,7 +19,7 @@ interface DataQualityIssue {
 const TYPE_CONFIG = {
   missing_both: {
     icon: FileWarning,
-    label: 'Beides fehlt',
+    label: 'Kritische Lücken',
     badgeVariant: 'destructive' as const,
   },
   missing_auditor: {
@@ -46,7 +46,7 @@ export const DataQualityWarningsCard = () => {
       if ((cert as any).clients?.is_active === false) continue;
       const hasAuditor = !!cert.auditor_id;
       const hasValidity = !!cert.valid_until;
-      
+
       if (!hasAuditor && !hasValidity) {
         result.push({
           id: `both-${cert.id}`,
@@ -146,9 +146,8 @@ export const DataQualityWarningsCard = () => {
                 return (
                   <TableRow
                     key={issue.id}
-                    className={`cursor-pointer text-xs ${
-                      issue.type === 'missing_both' ? 'bg-destructive/[0.04]' : ''
-                    }`}
+                    className={`cursor-pointer text-xs ${issue.type === 'missing_both' ? 'bg-destructive/[0.04]' : ''
+                      }`}
                     onClick={() => navigate(`/certifications/${issue.clientCertificationId}`)}
                   >
                     <TableCell className="py-2 px-2 w-8">

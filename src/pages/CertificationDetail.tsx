@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
-import { 
-  useClientCertification, 
+import {
+  useClientCertification,
   useUpdateClientCertification,
-  useDeleteClientCertification 
+  useDeleteClientCertification
 } from '@/hooks/useClientCertifications';
 import { useClient } from '@/hooks/useClients';
-import { 
-  useCertificationDocuments, 
+import {
+  useCertificationDocuments,
   useUploadCertificationDocument,
   useDeleteCertificationDocument,
   getDocumentUrl,
@@ -30,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { 
+import {
   ArrowLeft,
   Pencil,
   Save,
@@ -101,17 +101,17 @@ const CertificationDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const { data: certification, isLoading } = useClientCertification(id);
   const { data: client } = useClient(certification?.client_id || '');
   const { data: documents = [], isLoading: documentsLoading } = useCertificationDocuments(id);
   const { data: auditors = [] } = useAuditors();
-  
+
   const updateCertification = useUpdateClientCertification();
   const deleteCertification = useDeleteClientCertification();
   const uploadDocument = useUploadCertificationDocument();
   const deleteDocument = useDeleteCertificationDocument();
-  
+
   const [isEditing, setIsEditing] = useState(false);
   const [certificateNumber, setCertificateNumber] = useState('');
   const [validFrom, setValidFrom] = useState('');
@@ -184,7 +184,7 @@ const CertificationDetail = () => {
       console.error('Error uploading document:', error);
       toast.error('Fehler beim Hochladen des Dokuments');
     }
-    
+
     // Reset input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -210,7 +210,7 @@ const CertificationDetail = () => {
 
   const handleDeleteDocument = async (docId: string, filePath: string) => {
     if (!id) return;
-    
+
     try {
       await deleteDocument.mutateAsync({
         id: docId,
@@ -235,15 +235,15 @@ const CertificationDetail = () => {
       expired: 'bg-red-100 text-red-800 border-red-300',
       pending: 'bg-yellow-100 text-yellow-800 border-yellow-300',
     };
-    
+
     return (
-      <Badge 
+      <Badge
         variant="outline"
         className={`gap-1 ${colorMap[statusValue] || ''}`}
       >
-        {statusValue === 'active' || statusValue === 'valid' ? <CheckCircle className="h-3 w-3" /> : 
-         statusValue === 'expired' ? <AlertCircle className="h-3 w-3" /> : 
-         <Clock className="h-3 w-3" />}
+        {statusValue === 'active' || statusValue === 'valid' ? <CheckCircle className="h-3 w-3" /> :
+          statusValue === 'expired' ? <AlertCircle className="h-3 w-3" /> :
+            <Clock className="h-3 w-3" />}
         {statusOption.label}
       </Badge>
     );
@@ -283,8 +283,8 @@ const CertificationDetail = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
           <div className="flex items-center gap-3 flex-1 min-w-0">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="icon"
               className="shrink-0"
               onClick={() => navigate(-1)}
@@ -301,7 +301,7 @@ const CertificationDetail = () => {
                 {getStatusBadge(certification.status || 'active')}
               </div>
               {client && (
-                <div 
+                <div
                   className="flex items-center gap-2 text-muted-foreground mt-1 text-xs sm:text-sm cursor-pointer hover:text-primary transition-colors"
                   onClick={() => navigate(`/clients/${client.id}`)}
                 >
@@ -448,7 +448,7 @@ const CertificationDetail = () => {
                         <div>
                           <p className="text-sm text-muted-foreground">Gültig ab</p>
                           <p className="font-medium">
-                            {certification.valid_from 
+                            {certification.valid_from
                               ? format(new Date(certification.valid_from), 'dd.MM.yyyy', { locale: de })
                               : 'Nicht festgelegt'}
                           </p>
@@ -459,7 +459,7 @@ const CertificationDetail = () => {
                         <div>
                           <p className="text-sm text-muted-foreground">Gültig bis</p>
                           <p className="font-medium">
-                            {certification.valid_until 
+                            {certification.valid_until
                               ? format(new Date(certification.valid_until), 'dd.MM.yyyy', { locale: de })
                               : 'Nicht festgelegt'}
                           </p>
@@ -475,7 +475,7 @@ const CertificationDetail = () => {
                           const currentAuditor = auditors.find(a => a.id === (certification as any).auditor_id);
                           return currentAuditor ? (
                             <div className="flex items-center gap-2">
-                              <AuditorPopover 
+                              <AuditorPopover
                                 auditor={{
                                   id: currentAuditor.id,
                                   name: currentAuditor.name,
@@ -532,8 +532,8 @@ const CertificationDetail = () => {
                     onChange={handleFileUpload}
                     accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
                   />
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploadDocument.isPending}
                     className="gap-2"
@@ -558,7 +558,7 @@ const CertificationDetail = () => {
                 ) : (
                   <div className="space-y-2">
                     {documents.map((doc) => (
-                      <div 
+                      <div
                         key={doc.id}
                         className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
                       >
@@ -567,7 +567,7 @@ const CertificationDetail = () => {
                           <div>
                             <p className="font-medium">{doc.file_name}</p>
                             <p className="text-sm text-muted-foreground">
-                              {formatFileSize(doc.file_size)} • {format(new Date(doc.created_at), 'dd.MM.yyyy HH:mm', { locale: de })}
+                              {formatFileSize(doc.file_size)} • {format(new Date(doc.created_at), 'dd.MM.yyyy', { locale: de })}
                             </p>
                           </div>
                         </div>
@@ -649,8 +649,8 @@ const CertificationDetail = () => {
               </CardHeader>
               <CardContent className="space-y-2">
                 {client && (
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     className="w-full justify-start gap-2"
                     onClick={() => navigate(`/clients/${client.id}`)}
                   >
@@ -658,19 +658,19 @@ const CertificationDetail = () => {
                     Zum Kunden
                   </Button>
                 )}
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full justify-start gap-2"
                   onClick={() => navigate('/audits')}
                 >
                   <Calendar className="h-4 w-4" />
                   Audits anzeigen
                 </Button>
-                
+
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       className="w-full justify-start gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -681,7 +681,7 @@ const CertificationDetail = () => {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Zertifikat löschen?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Das Zertifikat "{certName}" für {client?.name || 'diesen Kunden'} wird dauerhaft gelöscht. 
+                        Das Zertifikat "{certName}" für {client?.name || 'diesen Kunden'} wird dauerhaft gelöscht.
                         Alle verknüpften Dokumente und Audits bleiben erhalten, verlieren aber die Verknüpfung.
                       </AlertDialogDescription>
                     </AlertDialogHeader>

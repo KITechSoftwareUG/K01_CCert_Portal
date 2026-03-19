@@ -1,4 +1,4 @@
-export type AuditType = 'initial' | 'surveillance' | 'recertification' | 'six-month' | 'internal';
+export type AuditType = 'initial' | 'surveillance' | 'recertification' | 'six-month' | 'internal' | 'training';
 
 export type CertificationStandard = string;
 

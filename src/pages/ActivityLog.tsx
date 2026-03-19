@@ -61,7 +61,7 @@ const getEntityLink = (entityType: string, entityId: string | null): string | nu
 };
 
 const ActivityLog = () => {
-  const { data: activities = [], isLoading } = useActivityLog(500);
+  const { data: activities = [], isLoading } = useActivityLog(2000);
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [entityFilter, setEntityFilter] = useState<string>('all');
@@ -150,7 +150,7 @@ const ActivityLog = () => {
                     <div key={day} className="space-y-2">
                       <div className="sticky top-0 bg-card z-10 py-1">
                         <span className="text-sm font-semibold text-muted-foreground">
-                          {format(new Date(day), 'EEEE, dd. MMMM yyyy', { locale: de })}
+                          {format(new Date(day), 'EEEE, dd.MM.yyyy', { locale: de })}
                         </span>
                       </div>
                       {entries.map((activity) => {

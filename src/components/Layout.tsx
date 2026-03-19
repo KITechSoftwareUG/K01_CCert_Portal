@@ -1,10 +1,10 @@
 import { ReactNode, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { 
-  LayoutDashboard, 
-  Users, 
-  ClipboardCheck, 
+import {
+  LayoutDashboard,
+  Users,
+  ClipboardCheck,
   Calendar,
   Building2,
   UserCheck,
@@ -42,6 +42,7 @@ const mainNavigation = [
   { name: 'Audits', href: '/audits', icon: ClipboardCheck },
   { name: 'Zertifizierer', href: '/certification-bodies', icon: Building2 },
   { name: 'Auditoren', href: '/auditors', icon: UserCheck },
+  { name: 'Berater', href: '/consultants', icon: UserCheck },
   { name: 'Kalender', href: '/calendar', icon: Calendar },
   { name: 'Aktivitäten', href: '/activity-log', icon: History },
 ];
@@ -51,11 +52,11 @@ const settingsNavigation = [
   { name: 'Audit-Vorlagen', href: '/settings/audit-templates', icon: ListChecks },
 ];
 
-const SidebarContent = ({ 
-  location, 
-  settingsOpen, 
-  setSettingsOpen, 
-  user, 
+const SidebarContent = ({
+  location,
+  settingsOpen,
+  setSettingsOpen,
+  user,
   handleSignOut,
   onNavClick,
 }: {
@@ -138,7 +139,7 @@ const SidebarContent = ({
           </CollapsibleContent>
         </Collapsible>
       </nav>
-      
+
       <div className="p-4 border-t border-sidebar-border space-y-2">
         <div className="text-sm text-muted-foreground truncate px-2">
           {user?.email}
