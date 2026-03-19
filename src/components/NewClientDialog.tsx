@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { useCreateClient, useParentClients, CertificationStandard } from '@/hooks/useClients';
+import { useConsultants } from '@/hooks/useConsultants';
 import { getCountryPrefix } from '@/lib/clientNumberUtils';
 
 import { useCertifications } from '@/hooks/useCertifications';
@@ -65,6 +66,7 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
   const { data: parentClients = [] } = useParentClients();
   const { data: certifications = [] } = useCertifications();
   const { data: auditors = [] } = useAuditors();
+  const { data: consultants = [] } = useConsultants();
 
   const sortedParentClients = useMemo(() =>
     [...parentClients].sort((a, b) => a.name.localeCompare(b.name)),
@@ -370,12 +372,18 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
                 {/* Consultant - MANDATORY for clients */}
                 <div className="space-y-2">
                   <Label htmlFor="consultant">Berater <span className="text-destructive">*</span></Label>
-                  <Input
-                    id="consultant"
-                    value={consultant}
-                    onChange={(e) => setConsultant(e.target.value)}
-                    placeholder="z.B. JP"
-                  />
+                  <Select value={consultant} onValueChange={setConsultant}>
+                    <SelectTrigger id="consultant">
+                      <SelectValue placeholder="Berater auswählen" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border shadow-lg z-50">
+                      {consultants.filter(c => c.is_active).map((c) => (
+                        <SelectItem key={c.id} value={c.name}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 

@@ -9,6 +9,7 @@ import { useClientAuditTasks } from '@/hooks/useAuditTasks';
 import { ClientAuditHistory } from '@/components/ClientAuditHistory';
 import { useCertifications } from '@/hooks/useCertifications';
 import { useClientLock } from '@/hooks/useClientLock';
+import { useConsultants } from '@/hooks/useConsultants';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Dialog,
@@ -121,7 +122,7 @@ const ClientDetail = () => {
   const updateClient = useUpdateClient();
   const deleteClient = useDeleteClient();
   const { isLockedByOther, isLockedByMe, lockedByName, acquireLock, releaseLock } = useClientLock(id);
-
+  const { data: consultants = [] } = useConsultants();
   const { data: parentClients = [] } = useParentClients();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -495,12 +496,18 @@ const ClientDetail = () => {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="consultant">Berater <span className="text-destructive">*</span></Label>
-                        <Input
-                          id="consultant"
-                          value={consultant}
-                          onChange={(e) => setConsultant(e.target.value)}
-                          placeholder="z.B. JP"
-                        />
+                        <Select value={consultant} onValueChange={setConsultant}>
+                          <SelectTrigger id="consultant">
+                            <SelectValue placeholder="Berater auswählen" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border shadow-lg z-50">
+                            {consultants.filter(c => c.is_active || c.name === consultant).map((c) => (
+                              <SelectItem key={c.id} value={c.name}>
+                                {c.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                     <div className="space-y-2">
