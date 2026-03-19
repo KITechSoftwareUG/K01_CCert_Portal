@@ -16,8 +16,7 @@ export const OpenTasksCard = () => {
     const openTasks = useMemo(() => {
         return allTasks
             .filter((task: any) => task.status !== 'completed')
-            .sort((a: any, b: any) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())
-            .slice(0, 10); // Show top 10 most urgent
+            .sort((a: any, b: any) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
     }, [allTasks]);
 
     if (isLoading) {
@@ -91,12 +90,12 @@ export const OpenTasksCard = () => {
                                 );
                             })}
 
-                            {allTasks.filter((t: any) => t.status !== 'completed').length > 10 && (
+                            {openTasks.length > 0 && (
                                 <button
                                     onClick={() => navigate('/audits')}
                                     className="w-full py-2 text-[11px] text-muted-foreground hover:text-primary transition-colors flex items-center justify-center gap-1 border border-dashed rounded-lg mt-2"
                                 >
-                                    Alle Aufgaben in Audits anzeigen
+                                    Zur Auditübersicht
                                     <ChevronRight className="h-3 w-3" />
                                 </button>
                             )}

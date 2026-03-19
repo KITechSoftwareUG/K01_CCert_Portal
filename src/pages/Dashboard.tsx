@@ -69,31 +69,24 @@ const Dashboard = () => {
       <DashboardAIChat />
 
       {/* Main Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-primary/5 border-primary/20">
-          <CardHeader className="flex flex-row items-center justify-between pb-1 space-y-0 text-primary">
-            <CardTitle className="text-sm font-medium">Unternehmen</CardTitle>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+        <Card className="bg-primary/5 border-primary/20 flex flex-col justify-center">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 text-primary">
+            <CardTitle className="text-sm font-medium">Kundenübersicht</CardTitle>
             <Building2 className="h-4 w-4" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{clientStats.totalCompanies}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Gruppen & Einzelgesellschaften
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-1 space-y-0">
-            <CardTitle className="text-sm font-medium">Standorte (Gesamt)</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{clientStats.totalLocations}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              <span className="text-green-600 font-medium">{clientStats.activeLocations} aktiv</span>
-              {clientStats.inactiveLocations > 0 && ` • ${clientStats.inactiveLocations} inaktiv`}
-            </p>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-bold">{clientStats.totalCompanies}</span>
+              <span className="text-sm font-medium text-muted-foreground">Unternehmen</span>
+            </div>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-lg font-semibold">{clientStats.totalLocations}</span>
+              <span className="text-xs text-muted-foreground">
+                Standorte ({clientStats.activeLocations} aktiv
+                {clientStats.inactiveLocations > 0 ? `, ${clientStats.inactiveLocations} inaktiv` : ''})
+              </span>
+            </div>
           </CardContent>
         </Card>
 
@@ -102,15 +95,23 @@ const Dashboard = () => {
       </div>
 
       {/* Second Row: Alerts and Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-5 space-y-6">
           <AlertsCard audits={audits} />
-          <ExpiringCertificationsCard />
-          <DataQualityWarningsCard />
         </div>
-        <div className="space-y-6">
+        <div className="lg:col-span-7 space-y-6">
           <OpenTasksCard />
         </div>
+      </div>
+
+      {/* Third Row: Expiring Certifications */}
+      <div className="grid grid-cols-1 gap-6">
+        <ExpiringCertificationsCard />
+      </div>
+
+      {/* Fourth Row: Data Quality */}
+      <div className="grid grid-cols-1 gap-6">
+        <DataQualityWarningsCard />
       </div>
     </div>
   );
