@@ -1,6 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Layout } from '@/components/Layout';
 import { NewAuditDialog } from '@/components/NewAuditDialog';
 import { useAudits } from '@/hooks/useAudits';
 import { useAuditTasks } from '@/hooks/useAuditTasks';
@@ -161,12 +160,20 @@ const GroupHeader = ({ title, count, icon }: GroupHeaderProps) => (
 
 const Audits = () => {
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [groupBy, setGroupBy] = useState<GroupBy>('month');
+  const [searchQuery, setSearchQuery] = useState(() => sessionStorage.getItem('audits-search-query') || '');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(() =>
+    (sessionStorage.getItem('audits-status-filter') as StatusFilter) || 'all'
+  );
+  const [groupBy, setGroupBy] = useState<GroupBy>(() =>
+    (sessionStorage.getItem('audits-group-by') as GroupBy) || 'month'
+  );
   const [showNewAuditDialog, setShowNewAuditDialog] = useState(false);
-  const [clientStatusFilter, setClientStatusFilter] = useState<'all' | 'active' | 'inactive'>('active');
-  const [consultantFilter, setConsultantFilter] = useState<string>('all');
+  const [clientStatusFilter, setClientStatusFilter] = useState<'all' | 'active' | 'inactive'>(() =>
+    (sessionStorage.getItem('audits-client-status-filter') as 'all' | 'active' | 'inactive') || 'active'
+  );
+  const [consultantFilter, setConsultantFilter] = useState<string>(() =>
+    sessionStorage.getItem('audits-consultant-filter') || 'all'
+  );
   const [selectedAuditIds, setSelectedAuditIds] = useState<Set<string>>(new Set());
 
   const { data: dbAudits = [], isLoading: auditsLoading, error: auditsError } = useAudits();
@@ -284,7 +291,7 @@ const Audits = () => {
   const isLoading = auditsLoading || tasksLoading;
 
   return (
-    <Layout>
+    <>
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 animate-fade-in">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -307,28 +314,44 @@ const Audits = () => {
             <Input
               placeholder="Kunde suchen..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                sessionStorage.setItem('audits-search-query', e.target.value);
+              }}
               className="pl-10"
             />
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            <Select value={clientStatusFilter} onValueChange={(v) => setClientStatusFilter(v as 'all' | 'active' | 'inactive')}>
+            <Select
+              value={clientStatusFilter}
+              onValueChange={(v) => {
+                const val = v as 'all' | 'active' | 'inactive';
+                setClientStatusFilter(val);
+                sessionStorage.setItem('audits-client-status-filter', val);
+              }}
+            >
               <SelectTrigger className="w-[150px]">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-background border shadow-lg z-50">
                 <SelectItem value="all">Alle Kunden</SelectItem>
                 <SelectItem value="active">Nur aktive</SelectItem>
                 <SelectItem value="inactive">Nur inaktive</SelectItem>
               </SelectContent>
             </Select>
 
-            <Select value={consultantFilter} onValueChange={setConsultantFilter}>
+            <Select
+              value={consultantFilter}
+              onValueChange={(v) => {
+                setConsultantFilter(v);
+                sessionStorage.setItem('audits-consultant-filter', v);
+              }}
+            >
               <SelectTrigger className="w-[160px]">
                 <SelectValue placeholder="Berater..." />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-background border shadow-lg z-50">
                 <SelectItem value="all">Alle Berater</SelectItem>
                 {consultants.map(c => (
                   <SelectItem key={c} value={c}>{c}</SelectItem>
@@ -338,11 +361,18 @@ const Audits = () => {
 
             <span className="text-sm text-muted-foreground hidden sm:inline">Gruppieren:</span>
             <div className="flex items-center gap-1">
-              <Select value={groupBy} onValueChange={(v) => setGroupBy(v as GroupBy)}>
+              <Select
+                value={groupBy}
+                onValueChange={(v) => {
+                  const val = v as GroupBy;
+                  setGroupBy(val);
+                  sessionStorage.setItem('audits-group-by', val);
+                }}
+              >
                 <SelectTrigger className="w-[160px]">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-background border shadow-lg z-50">
                   <SelectItem value="month">
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4" />
@@ -385,7 +415,14 @@ const Audits = () => {
         </div>
 
         {/* Status Tabs */}
-        <Tabs defaultValue="all" onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
+        <Tabs
+          value={statusFilter}
+          onValueChange={(v) => {
+            const val = v as StatusFilter;
+            setStatusFilter(val);
+            sessionStorage.setItem('audits-status-filter', val);
+          }}
+        >
           <TabsList>
             <TabsTrigger value="all">Alle</TabsTrigger>
             <TabsTrigger value="scheduled">Geplant</TabsTrigger>
@@ -531,7 +568,7 @@ const Audits = () => {
           </div>
         </div>
       )}
-    </Layout>
+    </>
   );
 };
 

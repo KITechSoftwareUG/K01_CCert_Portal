@@ -1,4 +1,3 @@
-import { Layout } from '@/components/Layout';
 import { useActivityLog } from '@/hooks/useActivityLog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -93,7 +92,7 @@ const ActivityLog = () => {
   }, [filtered]);
 
   return (
-    <Layout>
+    <>
       <div className="p-4 sm:p-6 lg:p-8 space-y-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-1">Aktivitäten-Protokoll</h1>
@@ -205,7 +204,7 @@ const ActivityLog = () => {
           </CardContent>
         </Card>
       </div>
-    </Layout>
+    </>
   );
 };
 

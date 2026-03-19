@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Layout } from '@/components/Layout';
 import { useCertificationBodies, useCreateCertificationBody, useUpdateCertificationBody, useDeleteCertificationBody, useClientsByCertificationBody, CertificationBody } from '@/hooks/useCertificationBodies';
 import { toast } from 'sonner';
 import {
@@ -28,9 +27,9 @@ import {
 const LinkedClients = ({ certificationBodyId }: { certificationBodyId: string }) => {
   const navigate = useNavigate();
   const { data: linkedClients = [] } = useClientsByCertificationBody(certificationBodyId);
-  
+
   if (linkedClients.length === 0) return null;
-  
+
   return (
     <div className="flex flex-wrap gap-1.5 mt-2">
       <span className="text-xs text-muted-foreground flex items-center gap-1">
@@ -38,9 +37,9 @@ const LinkedClients = ({ certificationBodyId }: { certificationBodyId: string })
         Kunden:
       </span>
       {linkedClients.map((item: any) => (
-        <Badge 
-          key={item.id} 
-          variant="secondary" 
+        <Badge
+          key={item.id}
+          variant="secondary"
           className="text-xs cursor-pointer hover:bg-primary/20 transition-colors"
           onClick={() => navigate(`/clients/${item.client_id}`)}
         >
@@ -61,7 +60,7 @@ const CertificationBodies = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  
+
   const [formData, setFormData] = useState({
     name: '',
     short_name: '',
@@ -241,193 +240,193 @@ const CertificationBodies = () => {
 
   if (isLoading) {
     return (
-      <Layout>
+      <>
         <div className="p-8 flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
-      </Layout>
+      </>
     );
   }
 
   return (
-    <Layout>
+    <>
       <div className="p-4 sm:p-8 space-y-4">
-      <div className="flex justify-between items-center gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Zertifizierungsgesellschaften</h1>
-          <p className="text-sm text-muted-foreground">Verwalten Sie Ihre Zertifizierungspartner</p>
+        <div className="flex justify-between items-center gap-3">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Zertifizierungsgesellschaften</h1>
+            <p className="text-sm text-muted-foreground">Verwalten Sie Ihre Zertifizierungspartner</p>
+          </div>
+          {!isAdding && !editingId && (
+            <Button onClick={handleAdd} size="sm">
+              <Plus className="h-4 w-4 mr-1" />
+              Hinzufügen
+            </Button>
+          )}
         </div>
-        {!isAdding && !editingId && (
-          <Button onClick={handleAdd} size="sm">
-            <Plus className="h-4 w-4 mr-1" />
-            Hinzufügen
-          </Button>
-        )}
-      </div>
 
-      {/* Add Form */}
-      {isAdding && (
-        <Card className="border-primary/50">
-          <CardHeader className="pb-3 pt-4">
-            <CardTitle className="text-base">Neue Zertifizierungsgesellschaft</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 pb-4">
-            {renderFormFields(true)}
-            <div className="flex gap-2 pt-1">
-              <Button size="sm" onClick={handleSave} disabled={createBody.isPending}>
-                <Check className="h-3 w-3 mr-1" />
-                Speichern
-              </Button>
-              <Button size="sm" variant="outline" onClick={handleCancel}>
-                <X className="h-3 w-3 mr-1" />
-                Abbrechen
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* List */}
-      <div className="space-y-2">
-        {bodies.map((body) => (
-          <Card key={body.id} className={editingId === body.id ? 'border-primary/50' : ''}>
-            {editingId === body.id ? (
-              <CardContent className="pt-4 pb-4 space-y-3">
-                {renderFormFields(true)}
-                <div className="flex gap-2 pt-1">
-                  <Button size="sm" onClick={handleSave} disabled={updateBody.isPending}>
-                    <Check className="h-3 w-3 mr-1" />
-                    Speichern
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={handleCancel}>
-                    <X className="h-3 w-3 mr-1" />
-                    Abbrechen
-                  </Button>
-                </div>
-              </CardContent>
-            ) : (
-              <Collapsible open={expandedId === body.id} onOpenChange={() => setExpandedId(expandedId === body.id ? null : body.id)}>
-                <CardContent className="py-3 px-4">
-                  <div className="flex items-center justify-between">
-                    <CollapsibleTrigger className="flex items-center gap-3 flex-1 text-left hover:text-primary transition-colors">
-                      {expandedId === body.id ? (
-                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                      )}
-                      <Building2 className="h-4 w-4 text-primary" />
-                      <span className="font-medium">{body.name}</span>
-                      {body.short_name && (
-                        <span className="text-xs text-muted-foreground">({body.short_name})</span>
-                      )}
-                      {/* Compact inline info */}
-                      {body.contact_person && (
-                        <span className="text-xs text-muted-foreground hidden sm:inline">• {body.contact_person}</span>
-                      )}
-                      {body.email && (
-                        <span className="text-xs text-muted-foreground hidden md:inline">• {body.email}</span>
-                      )}
-                    </CollapsibleTrigger>
-                    
-                    <div className="flex gap-1 ml-2">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => handleEdit(body, e)}>
-                        <Pencil className="h-3 w-3" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); setDeleteId(body.id); }}>
-                        <Trash2 className="h-3 w-3 text-destructive" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  <CollapsibleContent>
-                    <div className="mt-3 pt-3 border-t space-y-2">
-                      <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3 text-sm">
-                        {body.contact_person && (
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <User className="h-3.5 w-3.5" />
-                            <span>{body.contact_person}</span>
-                          </div>
-                        )}
-                        {body.email && (
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <Mail className="h-3.5 w-3.5" />
-                            <a href={`mailto:${body.email}`} className="hover:text-primary hover:underline">
-                              {body.email}
-                            </a>
-                          </div>
-                        )}
-                        {body.phone && (
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <Phone className="h-3.5 w-3.5" />
-                            <a href={`tel:${body.phone}`} className="hover:text-primary">
-                              {body.phone}
-                            </a>
-                          </div>
-                        )}
-                        {body.website && (
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <Globe className="h-3.5 w-3.5" />
-                            <a href={body.website} target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline truncate">
-                              {body.website}
-                            </a>
-                          </div>
-                        )}
-                        {body.address && (
-                          <div className="flex items-center gap-2 text-muted-foreground md:col-span-2">
-                            <MapPin className="h-3.5 w-3.5" />
-                            <span>{body.address}</span>
-                          </div>
-                        )}
-                      </div>
-                      
-                      {body.notes && (
-                        <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
-                          {body.notes}
-                        </p>
-                      )}
-                      
-                      <LinkedClients certificationBodyId={body.id} />
-                    </div>
-                  </CollapsibleContent>
-                </CardContent>
-              </Collapsible>
-            )}
-          </Card>
-        ))}
-
-        {bodies.length === 0 && !isAdding && (
-          <Card>
-            <CardContent className="py-8 text-center">
-              <Building2 className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
-              <p className="text-muted-foreground text-sm">Keine Zertifizierungsgesellschaften vorhanden</p>
-              <Button variant="outline" size="sm" className="mt-3" onClick={handleAdd}>
-                <Plus className="h-3 w-3 mr-1" />
-                Erste hinzufügen
-              </Button>
+        {/* Add Form */}
+        {isAdding && (
+          <Card className="border-primary/50">
+            <CardHeader className="pb-3 pt-4">
+              <CardTitle className="text-base">Neue Zertifizierungsgesellschaft</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 pb-4">
+              {renderFormFields(true)}
+              <div className="flex gap-2 pt-1">
+                <Button size="sm" onClick={handleSave} disabled={createBody.isPending}>
+                  <Check className="h-3 w-3 mr-1" />
+                  Speichern
+                </Button>
+                <Button size="sm" variant="outline" onClick={handleCancel}>
+                  <X className="h-3 w-3 mr-1" />
+                  Abbrechen
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}
-      </div>
 
-      {/* Delete Dialog */}
-      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Zertifizierungsgesellschaft löschen?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Diese Aktion kann nicht rückgängig gemacht werden. Die Zuordnungen zu Kunden werden ebenfalls entfernt.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Löschen
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        {/* List */}
+        <div className="space-y-2">
+          {bodies.map((body) => (
+            <Card key={body.id} className={editingId === body.id ? 'border-primary/50' : ''}>
+              {editingId === body.id ? (
+                <CardContent className="pt-4 pb-4 space-y-3">
+                  {renderFormFields(true)}
+                  <div className="flex gap-2 pt-1">
+                    <Button size="sm" onClick={handleSave} disabled={updateBody.isPending}>
+                      <Check className="h-3 w-3 mr-1" />
+                      Speichern
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={handleCancel}>
+                      <X className="h-3 w-3 mr-1" />
+                      Abbrechen
+                    </Button>
+                  </div>
+                </CardContent>
+              ) : (
+                <Collapsible open={expandedId === body.id} onOpenChange={() => setExpandedId(expandedId === body.id ? null : body.id)}>
+                  <CardContent className="py-3 px-4">
+                    <div className="flex items-center justify-between">
+                      <CollapsibleTrigger className="flex items-center gap-3 flex-1 text-left hover:text-primary transition-colors">
+                        {expandedId === body.id ? (
+                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        )}
+                        <Building2 className="h-4 w-4 text-primary" />
+                        <span className="font-medium">{body.name}</span>
+                        {body.short_name && (
+                          <span className="text-xs text-muted-foreground">({body.short_name})</span>
+                        )}
+                        {/* Compact inline info */}
+                        {body.contact_person && (
+                          <span className="text-xs text-muted-foreground hidden sm:inline">• {body.contact_person}</span>
+                        )}
+                        {body.email && (
+                          <span className="text-xs text-muted-foreground hidden md:inline">• {body.email}</span>
+                        )}
+                      </CollapsibleTrigger>
+
+                      <div className="flex gap-1 ml-2">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => handleEdit(body, e)}>
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); setDeleteId(body.id); }}>
+                          <Trash2 className="h-3 w-3 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <CollapsibleContent>
+                      <div className="mt-3 pt-3 border-t space-y-2">
+                        <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3 text-sm">
+                          {body.contact_person && (
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <User className="h-3.5 w-3.5" />
+                              <span>{body.contact_person}</span>
+                            </div>
+                          )}
+                          {body.email && (
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Mail className="h-3.5 w-3.5" />
+                              <a href={`mailto:${body.email}`} className="hover:text-primary hover:underline">
+                                {body.email}
+                              </a>
+                            </div>
+                          )}
+                          {body.phone && (
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Phone className="h-3.5 w-3.5" />
+                              <a href={`tel:${body.phone}`} className="hover:text-primary">
+                                {body.phone}
+                              </a>
+                            </div>
+                          )}
+                          {body.website && (
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Globe className="h-3.5 w-3.5" />
+                              <a href={body.website} target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline truncate">
+                                {body.website}
+                              </a>
+                            </div>
+                          )}
+                          {body.address && (
+                            <div className="flex items-center gap-2 text-muted-foreground md:col-span-2">
+                              <MapPin className="h-3.5 w-3.5" />
+                              <span>{body.address}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {body.notes && (
+                          <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+                            {body.notes}
+                          </p>
+                        )}
+
+                        <LinkedClients certificationBodyId={body.id} />
+                      </div>
+                    </CollapsibleContent>
+                  </CardContent>
+                </Collapsible>
+              )}
+            </Card>
+          ))}
+
+          {bodies.length === 0 && !isAdding && (
+            <Card>
+              <CardContent className="py-8 text-center">
+                <Building2 className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
+                <p className="text-muted-foreground text-sm">Keine Zertifizierungsgesellschaften vorhanden</p>
+                <Button variant="outline" size="sm" className="mt-3" onClick={handleAdd}>
+                  <Plus className="h-3 w-3 mr-1" />
+                  Erste hinzufügen
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Delete Dialog */}
+        <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Zertifizierungsgesellschaft löschen?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Diese Aktion kann nicht rückgängig gemacht werden. Die Zuordnungen zu Kunden werden ebenfalls entfernt.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Löschen
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
-    </Layout>
+    </>
   );
 };
 

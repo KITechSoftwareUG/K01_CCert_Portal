@@ -1,25 +1,25 @@
-import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { Layout } from "./components/Layout";
+import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
+import Auth from "./pages/Auth";
 import Clients from "./pages/Clients";
 import ClientDetail from "./pages/ClientDetail";
-import CertificationDetail from "./pages/CertificationDetail";
 import Audits from "./pages/Audits";
 import AuditDetail from "./pages/AuditDetail";
-import Calendar from "./pages/Calendar";
 import CertificationBodies from "./pages/CertificationBodies";
 import Auditors from "./pages/Auditors";
+import Consultants from "./pages/Consultants";
+import Calendar from "./pages/Calendar";
+import ActivityLog from "./pages/ActivityLog";
 import CertificationsManagement from "./pages/CertificationsManagement";
 import AuditTemplates from "./pages/AuditTemplates";
-import ActivityLog from "./pages/ActivityLog";
-import Consultants from "./pages/Consultants";
-import Auth from "./pages/Auth";
-import NotFound from "./pages/NotFound";
+import CertificationDetail from "./pages/CertificationDetail";
 
 const queryClient = new QueryClient();
 
@@ -27,26 +27,31 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <TooltipProvider>
-        <Toaster />
         <Sonner />
         <BrowserRouter>
           <Routes>
             <Route path="/auth" element={<Auth />} />
-            <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/clients" element={<ProtectedRoute><Clients /></ProtectedRoute>} />
-            <Route path="/clients/:id" element={<ProtectedRoute><ClientDetail /></ProtectedRoute>} />
-            <Route path="/certifications/:id" element={<ProtectedRoute><CertificationDetail /></ProtectedRoute>} />
-            <Route path="/audits" element={<ProtectedRoute><Audits /></ProtectedRoute>} />
-            <Route path="/audits/:id" element={<ProtectedRoute><AuditDetail /></ProtectedRoute>} />
-            <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
-            <Route path="/certification-bodies" element={<ProtectedRoute><CertificationBodies /></ProtectedRoute>} />
-            <Route path="/auditors" element={<ProtectedRoute><Auditors /></ProtectedRoute>} />
-            <Route path="/consultants" element={<ProtectedRoute><Consultants /></ProtectedRoute>} />
-            <Route path="/settings/certifications" element={<ProtectedRoute><CertificationsManagement /></ProtectedRoute>} />
-            <Route path="/settings/audit-templates" element={<ProtectedRoute><AuditTemplates /></ProtectedRoute>} />
-            <Route path="/activity-log" element={<ProtectedRoute><ActivityLog /></ProtectedRoute>} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
+
+            {/* Protected Routes with Persistent Layout */}
+            <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/clients" element={<Clients />} />
+              <Route path="/clients/:id" element={<ClientDetail />} />
+              <Route path="/audits" element={<Audits />} />
+              <Route path="/audits/:id" element={<AuditDetail />} />
+              <Route path="/certification-bodies" element={<CertificationBodies />} />
+              <Route path="/auditors" element={<Auditors />} />
+              <Route path="/consultants" element={<Consultants />} />
+              <Route path="/calendar" element={<Calendar />} />
+              <Route path="/activity-log" element={<ActivityLog />} />
+              <Route path="/certifications/:id" element={<CertificationDetail />} />
+
+              {/* Settings Routes */}
+              <Route path="/settings/certifications" element={<CertificationsManagement />} />
+              <Route path="/settings/audit-templates" element={<AuditTemplates />} />
+            </Route>
+
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>

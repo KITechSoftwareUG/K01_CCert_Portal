@@ -2,7 +2,6 @@ import { useState, useMemo, useEffect } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { Layout } from '@/components/Layout';
 import { NewClientDialog } from '@/components/NewClientDialog';
 import { useCertificationsByClient, useCountryGroups } from '@/hooks/useClientGroups';
 
@@ -491,7 +490,7 @@ const Clients = () => {
   };
 
   return (
-    <Layout>
+    <>
       <div className="p-4 sm:p-8 space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -1074,7 +1073,7 @@ const Clients = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Layout>
+    </>
   );
 };
 

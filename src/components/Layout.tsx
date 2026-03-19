@@ -1,5 +1,5 @@
 import { ReactNode, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, Outlet } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard,
@@ -34,7 +34,7 @@ import {
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface LayoutProps {
-  children: ReactNode;
+  children?: ReactNode;
 }
 
 const mainNavigation = [
@@ -49,7 +49,7 @@ const mainNavigation = [
 ];
 
 const settingsNavigation = [
-  { name: 'Zertifizierungen', href: '/settings/certifications', icon: Award },
+  { name: 'Systeme', href: '/settings/certifications', icon: Award },
   { name: 'Audit-Vorlagen', href: '/settings/audit-templates', icon: ListChecks },
 ];
 
@@ -72,7 +72,7 @@ const SidebarContent = ({
 
   return (
     <>
-      <div className="flex items-center justify-center p-4 bg-white border-b border-sidebar-border">
+      <div className="flex items-center justify-center p-6 bg-transparent border-b border-white/10">
         <img src={logo} alt="cert consulting" className="h-16 w-auto" />
       </div>
       <nav className="p-4 space-y-2 flex-1 overflow-y-auto">
@@ -84,10 +84,10 @@ const SidebarContent = ({
               to={item.href}
               onClick={onNavClick}
               className={cn(
-                'flex items-center gap-3 px-4 py-3 rounded-lg transition-colors',
+                'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group',
                 isActive
-                  ? 'bg-sidebar-primary text-sidebar-primary-foreground'
-                  : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                  ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/30 scale-[1.02]'
+                  : 'text-sidebar-foreground hover:bg-white/10 dark:hover:bg-white/5 hover:translate-x-1'
               )}
             >
               <item.icon className="h-5 w-5" />
@@ -100,10 +100,10 @@ const SidebarContent = ({
           <CollapsibleTrigger asChild>
             <button
               className={cn(
-                'flex items-center justify-between w-full px-4 py-3 rounded-lg transition-colors',
+                'flex items-center justify-between w-full px-4 py-3 rounded-xl transition-all duration-300',
                 isSettingsActive
-                  ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                  : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                  ? 'bg-white/10 dark:bg-white/5 text-sidebar-accent-foreground'
+                  : 'text-sidebar-foreground hover:bg-white/10 dark:hover:bg-white/5 hover:translate-x-1'
               )}
             >
               <div className="flex items-center gap-3">
@@ -126,10 +126,10 @@ const SidebarContent = ({
                   to={item.href}
                   onClick={onNavClick}
                   className={cn(
-                    'flex items-center gap-3 px-4 py-2 rounded-lg transition-colors text-sm',
+                    'flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-300 text-sm group',
                     isActive
-                      ? 'bg-sidebar-primary text-sidebar-primary-foreground'
-                      : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                      ? 'bg-primary/20 text-primary border border-primary/30'
+                      : 'text-sidebar-foreground/70 hover:bg-white/5 hover:text-sidebar-foreground hover:translate-x-1'
                   )}
                 >
                   <item.icon className="h-4 w-4" />
@@ -178,14 +178,14 @@ export const Layout = ({ children }: LayoutProps) => {
     return (
       <div className="flex flex-col min-h-screen bg-background">
         {/* Mobile Header */}
-        <header className="sticky top-0 z-40 flex items-center gap-3 px-4 py-3 bg-sidebar border-b border-sidebar-border">
+        <header className="sticky top-0 z-40 flex items-center gap-3 px-4 py-3 glass border-b border-white/10">
           <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="text-sidebar-foreground hover:bg-sidebar-accent">
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-72 p-0 bg-sidebar border-sidebar-border">
+            <SheetContent side="left" className="w-72 p-0 glass-sidebar">
               <div className="flex flex-col h-full">
                 <SidebarContent
                   location={location}
@@ -203,16 +203,16 @@ export const Layout = ({ children }: LayoutProps) => {
 
         {/* Main Content */}
         <main className="flex-1 overflow-auto">
-          {children}
+          {children || <Outlet />}
         </main>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen">
       {/* Desktop Sidebar */}
-      <aside className="w-64 bg-sidebar border-r border-sidebar-border flex flex-col sticky top-0 h-screen">
+      <aside className="w-64 glass-sidebar flex flex-col sticky top-0 h-screen">
         <SidebarContent
           location={location}
           settingsOpen={settingsOpen}
@@ -224,7 +224,7 @@ export const Layout = ({ children }: LayoutProps) => {
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
-        {children}
+        {children || <Outlet />}
       </main>
     </div>
   );

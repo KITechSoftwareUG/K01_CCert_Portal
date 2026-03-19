@@ -1,6 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Layout } from '@/components/Layout';
 import { useAudits } from '@/hooks/useAudits';
 import { useAllAuditTasks } from '@/hooks/useAuditTasks';
 import { transformAuditToLocal } from '@/lib/auditUtils';
@@ -161,7 +159,7 @@ const Calendar = () => {
   }, [activeAudits, findingDeadlines]);
 
   return (
-    <Layout>
+    <>
       <div className="p-4 sm:p-8 space-y-4 sm:space-y-8 animate-fade-in">
         {/* Header */}
         <div className="flex flex-col gap-4">
@@ -366,7 +364,7 @@ const Calendar = () => {
           </div>
         )}
       </div>
-    </Layout>
+    </>
   );
 };
 

@@ -1,5 +1,4 @@
 import { useState, useMemo } from 'react';
-import { Layout } from '@/components/Layout';
 import { useAuditors, useCreateAuditor, useUpdateAuditor, useDeleteAuditor, AuditorWithCertificationBody } from '@/hooks/useAuditors';
 import { useCertificationBodies } from '@/hooks/useCertificationBodies';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -50,7 +49,7 @@ const Auditors = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showDialog, setShowDialog] = useState(false);
   const [editingAuditor, setEditingAuditor] = useState<AuditorWithCertificationBody | null>(null);
-  
+
   // Form state
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -100,7 +99,7 @@ const Auditors = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!name) {
       toast.error('Bitte geben Sie einen Namen ein');
       return;
@@ -146,7 +145,7 @@ const Auditors = () => {
   };
 
   return (
-    <Layout>
+    <>
       <div className="p-4 sm:p-8 space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between gap-3">
@@ -358,7 +357,7 @@ const Auditors = () => {
           </DialogContent>
         </Dialog>
       </div>
-    </Layout>
+    </>
   );
 };
 

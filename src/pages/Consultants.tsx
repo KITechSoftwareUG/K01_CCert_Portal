@@ -1,5 +1,4 @@
 import { useState, useMemo } from 'react';
-import { Layout } from '@/components/Layout';
 import { useConsultants, useCreateConsultant, useUpdateConsultant, useDeleteConsultant, DbConsultant } from '@/hooks/useConsultants';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,8 +33,9 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { Plus, Pencil, Trash2, Search, User, Mail, Phone } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, User, Mail, Phone, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
+import { useClients } from '@/hooks/useClients';
 
 const Consultants = () => {
     const [searchQuery, setSearchQuery] = useState('');
@@ -49,9 +49,11 @@ const Consultants = () => {
     const [notes, setNotes] = useState('');
 
     const { data: consultants = [], isLoading } = useConsultants();
+    const { data: allClients = [] } = useClients();
     const createConsultant = useCreateConsultant();
     const updateConsultant = useUpdateConsultant();
     const deleteConsultant = useDeleteConsultant();
+    const [isSyncing, setIsSyncing] = useState(false);
 
     const filteredConsultants = useMemo(() => {
         return consultants.filter(consultant =>
@@ -129,17 +131,57 @@ const Consultants = () => {
     };
 
     return (
-        <Layout>
+        <>
             <div className="p-4 sm:p-8 space-y-4 sm:space-y-6">
                 <div className="flex items-center justify-between gap-3">
                     <div>
                         <h1 className="text-2xl sm:text-3xl font-bold">Berater</h1>
                         <p className="text-muted-foreground text-sm">{consultants.length} Einträge</p>
                     </div>
-                    <Button size="sm" onClick={openCreateDialog}>
-                        <Plus className="h-4 w-4 sm:mr-2" />
-                        <span className="hidden sm:inline">Neuer Berater</span>
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                                setIsSyncing(true);
+                                try {
+                                    const uniqueNames = Array.from(new Set(
+                                        allClients
+                                            .map(c => c.consultant)
+                                            .filter(n => n && n.trim() !== '' && n !== '0000')
+                                    )) as string[];
+
+                                    const existingNames = new Set(consultants.map(c => c.name));
+                                    const toAdd = uniqueNames.filter(name => !existingNames.has(name));
+
+                                    if (toAdd.length === 0) {
+                                        toast.info('Keine neuen Berater zum Synchronisieren gefunden');
+                                        return;
+                                    }
+
+                                    let count = 0;
+                                    for (const name of toAdd) {
+                                        await createConsultant.mutateAsync({ name });
+                                        count++;
+                                    }
+                                    toast.success(`${count} Berater erfolgreich synchronisiert`);
+                                } catch (err) {
+                                    console.error('Sync failed:', err);
+                                    toast.error('Synchronisierung fehlgeschlagen');
+                                } finally {
+                                    setIsSyncing(false);
+                                }
+                            }}
+                            disabled={isSyncing || allClients.length === 0}
+                        >
+                            <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+                            Sync von Kunden
+                        </Button>
+                        <Button size="sm" onClick={openCreateDialog}>
+                            <Plus className="h-4 w-4 sm:mr-2" />
+                            <span className="hidden sm:inline">Neuer Berater</span>
+                        </Button>
+                    </div>
                 </div>
 
                 <div className="relative sm:max-w-md">
@@ -306,7 +348,7 @@ const Consultants = () => {
                     </DialogContent>
                 </Dialog>
             </div>
-        </Layout>
+        </>
     );
 };
 

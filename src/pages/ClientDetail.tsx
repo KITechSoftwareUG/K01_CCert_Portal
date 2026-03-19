@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { Layout } from '@/components/Layout';
 import { useClient, useUpdateClient, useDeleteClient, useParentClients } from '@/hooks/useClients';
 import { ContactManagement } from '@/components/ContactManagement';
 import { useClientCertifications, useCreateClientCertification } from '@/hooks/useClientCertifications';
@@ -79,7 +78,7 @@ import {
 import { COUNTRIES } from '@/lib/constants';
 
 const ClientDetailSkeleton = () => (
-  <Layout>
+  <>
     <div className="p-8 space-y-6">
       <div className="flex items-center gap-4">
         <Skeleton className="h-10 w-10 rounded" />
@@ -101,7 +100,7 @@ const ClientDetailSkeleton = () => (
         </div>
       </div>
     </div>
-  </Layout>
+  </>
 );
 
 const AUDIT_MODE_LABELS: Record<string, { label: string; icon: typeof Monitor }> = {
@@ -199,8 +198,18 @@ const ClientDetail = () => {
   }, [isLockedByOther, acquireLock]);
 
   const handleSave = useCallback(async () => {
-    if (!id || !name || !contactPerson) {
-      toast.error('Bitte füllen Sie alle Pflichtfelder aus');
+    if (!id || !name) {
+      toast.error('Name ist ein Pflichtfeld');
+      return;
+    }
+
+    if (!clientNumber) {
+      toast.error('Kundennummer ist ein Pflichtfeld');
+      return;
+    }
+
+    if (!consultant) {
+      toast.error('Berater ist ein Pflichtfeld');
       return;
     }
 
@@ -291,7 +300,7 @@ const ClientDetail = () => {
 
   if (!client) {
     return (
-      <Layout>
+      <>
         <div className="p-8">
           <div className="text-center py-12">
             <p className="text-muted-foreground">Kunde nicht gefunden</p>
@@ -300,12 +309,12 @@ const ClientDetail = () => {
             </Button>
           </div>
         </div>
-      </Layout>
+      </>
     );
   }
 
   return (
-    <Layout>
+    <>
       <div className="p-4 sm:p-8 space-y-4 sm:space-y-6 animate-fade-in">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
@@ -624,7 +633,7 @@ const ClientDetail = () => {
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <Award className="h-5 w-5" />
-                  Zertifizierungen
+                  Systeme
                 </CardTitle>
                 <Dialog open={showAddCertDialog} onOpenChange={setShowAddCertDialog}>
                   <DialogTrigger asChild>
@@ -877,7 +886,7 @@ const ClientDetail = () => {
           </div>
         </div>
       </div>
-    </Layout>
+    </>
   );
 };
 

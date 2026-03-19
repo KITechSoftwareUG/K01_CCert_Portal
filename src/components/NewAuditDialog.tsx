@@ -67,19 +67,19 @@ const getDefaultTasksForAuditType = (type: AuditType, scheduledDate: Date) => {
     initial: [
       { title: 'Registrierung beim Zertifizierer', description: 'Registrierung beim Zertifizierer und im SURE-EU-System durchführen', dueDays: -20, assignedTo: 'Auditor' },
       { title: 'Training und Dokumentation', description: 'Schulung der Mitarbeiter durchführen und vollständige Dokumentation erstellen', dueDays: -2, assignedTo: 'Auditor' },
-      { title: 'Zertifizierungsaudit und Umsetzung', description: 'Vollständiges Zertifizierungsaudit durchführen und Umsetzung der Standards prüfen', dueDays: 2, assignedTo: 'Auditor' },
+      { title: 'Systemaudit und Umsetzung', description: 'Vollständiges Systemaudit durchführen und Umsetzung der Standards prüfen', dueDays: 2, assignedTo: 'Auditor' },
     ],
     surveillance: [
       { title: 'Zusendung der Unterlagen', description: 'Alle relevanten Unterlagen für die interne Überprüfung zusenden', dueDays: 1, assignedTo: 'Auditor' },
       { title: 'Austausch und Korrektur', description: 'Feedback vom Zertifizierer besprechen und notwendige Korrekturen durchführen', dueDays: 8, assignedTo: 'Auditor' },
     ],
     recertification: [
-      { title: 'Vorbereitung Re-Zertifizierung', description: 'Alle Dokumente aktualisieren und für Re-Zertifizierung vorbereiten', dueDays: 20, assignedTo: 'Auditor' },
+      { title: 'Vorbereitung Re-System audit', description: 'Alle Dokumente aktualisieren und für Re-System audit vorbereiten', dueDays: 20, assignedTo: 'Auditor' },
       { title: 'Interne Überprüfung', description: 'Internes Audit zur Sicherstellung der Standards durchführen', dueDays: 35, assignedTo: 'Auditor' },
-      { title: 'Re-Zertifizierungsaudit', description: 'Vollständiges Re-Zertifizierungsaudit durchführen', dueDays: 42, assignedTo: 'Auditor' },
+      { title: 'Re-System audit', description: 'Vollständiges Re-System audit durchführen', dueDays: 42, assignedTo: 'Auditor' },
     ],
     'six-month': [
-      { title: 'Statusbericht erstellen', description: '6-Monats-Bericht über die Umsetzung der Zertifizierungsanforderungen erstellen', dueDays: 5, assignedTo: 'Auditor' },
+      { title: 'Statusbericht erstellen', description: '6-Monats-Bericht über die Umsetzung der Systemanforderungen erstellen', dueDays: 5, assignedTo: 'Auditor' },
       { title: 'Dokumentation prüfen', description: 'Vollständigkeit und Aktualität der Dokumentation überprüfen', dueDays: 15, assignedTo: 'Auditor' },
     ],
     internal: [
@@ -339,7 +339,7 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
 
           {/* Certifications */}
           <div className="space-y-2">
-            <Label>Zertifizierungen *</Label>
+            <Label>Systeme *</Label>
             <div className="grid grid-cols-2 gap-3 p-4 border rounded-lg max-h-60 overflow-y-auto">
               {certifications.map((cert) => (
                 <div key={cert.id} className="flex items-center space-x-2">

@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,10 +50,10 @@ import {
   AuditTemplateTask,
 } from '@/hooks/useAuditTemplates';
 import { toast } from 'sonner';
-import { 
-  Plus, 
-  Trash2, 
-  FileText, 
+import {
+  Plus,
+  Trash2,
+  FileText,
   Loader2,
   ListChecks,
   Clock,
@@ -233,7 +232,7 @@ function TemplateTaskList({ template }: { template: AuditTemplate }) {
   const createTask = useCreateAuditTemplateTask();
   const updateTask = useUpdateAuditTemplateTask();
   const deleteTask = useDeleteAuditTemplateTask();
-  
+
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [newTask, setNewTask] = useState({
@@ -264,9 +263,9 @@ function TemplateTaskList({ template }: { template: AuditTemplate }) {
     if (over && active.id !== over.id && tasks) {
       const oldIndex = tasks.findIndex((t) => t.id === active.id);
       const newIndex = tasks.findIndex((t) => t.id === over.id);
-      
+
       const reorderedTasks = arrayMove(tasks, oldIndex, newIndex);
-      
+
       // Update sort_order for all affected tasks
       try {
         await Promise.all(
@@ -449,10 +448,10 @@ function TemplateTaskList({ template }: { template: AuditTemplate }) {
 }
 
 // Editable Template Card Component
-function EditableTemplateCard({ 
-  template, 
-  onDelete 
-}: { 
+function EditableTemplateCard({
+  template,
+  onDelete
+}: {
   template: AuditTemplate;
   onDelete: (template: AuditTemplate) => void;
 }) {
@@ -641,7 +640,7 @@ export default function AuditTemplates() {
   const isLoading = loadingCerts || loadingTemplates;
 
   return (
-    <Layout>
+    <>
       <div className="p-4 sm:p-8">
         <div className="mb-6 sm:mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Audit-Vorlagen</h1>
@@ -685,8 +684,8 @@ export default function AuditTemplates() {
                     <AccordionContent>
                       <div className="space-y-4 pt-2">
                         {certTemplates.map((template) => (
-                          <EditableTemplateCard 
-                            key={template.id} 
+                          <EditableTemplateCard
+                            key={template.id}
                             template={template}
                             onDelete={setDeleteDialogTemplate}
                           />
@@ -811,6 +810,6 @@ export default function AuditTemplates() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Layout>
+    </>
   );
 }

@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect, memo, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Layout } from '@/components/Layout';
 import { useAudit, useUpdateAudit, useDeleteAudit } from '@/hooks/useAudits';
 import { useAuditTasks, useUpdateAuditTask, useDeleteAuditTask } from '@/hooks/useAuditTasks';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,11 +21,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { 
-  Calendar, 
-  Building2, 
-  CheckCircle2, 
-  Clock, 
+import {
+  Calendar,
+  Building2,
+  CheckCircle2,
+  Clock,
   AlertCircle,
   ArrowLeft,
   Users,
@@ -97,7 +96,7 @@ const TaskItem = memo(({ task, index, onToggle, onDelete, onEdit, onSetCompleted
   const taskOverdue = task.status !== 'completed' && isOverdue(dueDate);
   const displayStatus = taskOverdue ? TASK_STATUS_CONFIG.overdue : TASK_STATUS_CONFIG[task.status];
   const isFinding = task.category === 'finding';
-  
+
   return (
     <div className="flex items-start gap-4 p-4 border rounded-lg hover:bg-accent/50 transition-colors">
       <Checkbox
@@ -127,7 +126,7 @@ const TaskItem = memo(({ task, index, onToggle, onDelete, onEdit, onSetCompleted
                 {SEVERITY_LABELS[task.severity] || task.severity}
               </Badge>
             )}
-            <Badge 
+            <Badge
               variant="outline"
               className={cn(displayStatus.bg, displayStatus.color)}
             >
@@ -202,7 +201,7 @@ const TaskItem = memo(({ task, index, onToggle, onDelete, onEdit, onSetCompleted
 TaskItem.displayName = 'TaskItem';
 
 const AuditDetailSkeleton = () => (
-  <Layout>
+  <>
     <div className="p-8 space-y-6">
       <div className="flex items-center gap-4">
         <Skeleton className="h-10 w-10 rounded" />
@@ -227,13 +226,13 @@ const AuditDetailSkeleton = () => (
         </div>
       </div>
     </div>
-  </Layout>
+  </>
 );
 
 const AuditDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  
+
   const { data: audit, isLoading: auditLoading } = useAudit(id || '');
   const { data: allItems = [], isLoading: tasksLoading } = useAuditTasks(id);
   const updateTask = useUpdateAuditTask();
@@ -241,7 +240,7 @@ const AuditDetail = () => {
   const updateAudit = useUpdateAudit();
   const deleteAudit = useDeleteAudit();
   const { syncSingleAudit } = useOutlookSync();
-  
+
   const [notes, setNotes] = useState('');
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showNewTaskDialog, setShowNewTaskDialog] = useState(false);
@@ -249,12 +248,12 @@ const AuditDetail = () => {
   const [editingTask, setEditingTask] = useState<DbAuditTask | null>(null);
 
   // Separate tasks and findings
-  const tasks = useMemo(() => 
+  const tasks = useMemo(() =>
     allItems.filter((t: any) => !t.category || t.category === 'task'),
     [allItems]
   );
-  
-  const findings = useMemo(() => 
+
+  const findings = useMemo(() =>
     allItems.filter((t: any) => t.category === 'finding'),
     [allItems]
   );
@@ -340,7 +339,7 @@ const AuditDetail = () => {
 
   if (!audit) {
     return (
-      <Layout>
+      <>
         <div className="p-8">
           <div className="text-center py-12">
             <p className="text-muted-foreground">Audit nicht gefunden</p>
@@ -349,13 +348,13 @@ const AuditDetail = () => {
             </Button>
           </div>
         </div>
-      </Layout>
+      </>
     );
   }
 
   const statusInfo = AUDIT_STATUS_CONFIG[audit.status];
   const Icon = StatusIcon[audit.status];
-  
+
   const completedTasks = tasks.filter(t => t.status === 'completed').length;
   const totalTasks = tasks.length;
   const percentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
@@ -363,16 +362,16 @@ const AuditDetail = () => {
   const openFindings = findings.filter(f => f.status !== 'completed').length;
 
   // Get certification name for breadcrumb
-  const certificationName = audit.client_certifications?.certifications?.name || 
+  const certificationName = audit.client_certifications?.certifications?.name ||
     (audit.certifications && audit.certifications.length > 0 ? audit.certifications[0] : null);
 
   return (
-    <Layout>
+    <>
       <div className="p-4 sm:p-8 space-y-4 sm:space-y-6 animate-fade-in">
         {/* Back Navigation + Breadcrumb */}
         <div className="flex items-center gap-3 sm:gap-4">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="icon"
             className="shrink-0"
             onClick={() => navigate(-1)}
@@ -381,8 +380,8 @@ const AuditDetail = () => {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <nav className="flex items-center text-sm text-muted-foreground overflow-x-auto">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               size="sm"
               onClick={() => navigate('/clients')}
               className="text-muted-foreground hover:text-foreground px-2"
@@ -390,8 +389,8 @@ const AuditDetail = () => {
               Kunden
             </Button>
             <ChevronRight className="h-4 w-4 mx-1" />
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               size="sm"
               onClick={() => navigate(`/clients/${audit.client_id}`)}
               className="text-muted-foreground hover:text-foreground px-2"
@@ -401,8 +400,8 @@ const AuditDetail = () => {
             {certificationName && audit.client_certification_id && (
               <>
                 <ChevronRight className="h-4 w-4 mx-1" />
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   size="sm"
                   onClick={() => navigate(`/certifications/${audit.client_certification_id}`)}
                   className="text-muted-foreground hover:text-foreground px-2"
@@ -426,7 +425,7 @@ const AuditDetail = () => {
               {format(new Date(audit.scheduled_date), 'dd.MM.yyyy', { locale: de })}
             </p>
           </div>
-          <Badge 
+          <Badge
             variant={statusInfo.variant}
             className={cn('flex items-center gap-1 text-sm px-4 py-2', statusInfo.className)}
           >
@@ -475,10 +474,10 @@ const AuditDetail = () => {
                   </p>
                 ) : (
                   tasks.map((task, index) => (
-                    <TaskItem 
-                      key={task.id} 
-                      task={task as any} 
-                      index={index} 
+                    <TaskItem
+                      key={task.id}
+                      task={task as any}
+                      index={index}
                       onToggle={toggleTaskStatus}
                       onDelete={handleDeleteTask}
                       onEdit={setEditingTask}
@@ -519,10 +518,10 @@ const AuditDetail = () => {
                   </div>
                 ) : (
                   findings.map((finding, index) => (
-                    <TaskItem 
-                      key={finding.id} 
-                      task={finding as any} 
-                      index={index} 
+                    <TaskItem
+                      key={finding.id}
+                      task={finding as any}
+                      index={index}
                       onToggle={toggleTaskStatus}
                       onDelete={handleDeleteTask}
                       onEdit={setEditingTask}
@@ -547,8 +546,8 @@ const AuditDetail = () => {
                   placeholder="Notizen zum Audit hinzufügen..."
                   className="min-h-32"
                 />
-                <Button 
-                  className="mt-4" 
+                <Button
+                  className="mt-4"
                   onClick={handleSaveNotes}
                   disabled={updateAudit.isPending}
                 >
@@ -587,7 +586,7 @@ const AuditDetail = () => {
                 {audit.client_certifications?.certifications ? (
                   <div className="pt-4 border-t">
                     <p className="text-sm font-medium text-muted-foreground mb-2">
-                      Zertifizierung
+                      System
                     </p>
                     <div className="flex flex-wrap gap-2">
                       <Badge variant="secondary">
@@ -598,7 +597,7 @@ const AuditDetail = () => {
                 ) : audit.certifications && audit.certifications.length > 0 && (
                   <div className="pt-4 border-t">
                     <p className="text-sm font-medium text-muted-foreground mb-2">
-                      Zertifizierungen
+                      Systeme
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {audit.certifications.map((cert) => (
@@ -627,24 +626,24 @@ const AuditDetail = () => {
                 <CardTitle>Aktionen</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full justify-start"
                   onClick={handleExportCalendar}
                 >
                   <CalendarPlus className="h-4 w-4 mr-2" />
                   Zu Outlook hinzufügen
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full justify-start"
                   onClick={() => setShowEditDialog(true)}
                 >
                   <Pencil className="h-4 w-4 mr-2" />
                   Audit bearbeiten
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full justify-start"
                   disabled
                   title="Berichtsfunktion derzeit nicht verfügbar"
@@ -654,8 +653,8 @@ const AuditDetail = () => {
                 </Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       className="w-full justify-start text-destructive"
                       disabled={audit.status === 'cancelled'}
                     >
@@ -707,7 +706,7 @@ const AuditDetail = () => {
           task={editingTask}
         />
       </div>
-    </Layout>
+    </>
   );
 };
 

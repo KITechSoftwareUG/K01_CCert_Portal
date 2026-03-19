@@ -52,7 +52,7 @@ const KanbanColumn = ({
             <div
               key={cert.id}
               onClick={() => onItemClick(cert.id)}
-              className="group rounded-md border bg-card p-2.5 cursor-pointer transition-all hover:shadow-sm hover:border-primary/30 hover:-translate-y-px"
+              className="group rounded-lg border border-white/10 bg-white/10 dark:bg-black/20 backdrop-blur-sm p-3 cursor-pointer transition-all duration-300 hover:shadow-lg hover:bg-white/20 dark:hover:bg-black/30 hover:border-primary/40 hover:-translate-y-1"
             >
               <p className="text-xs font-medium truncate leading-tight">{cert.clientName}</p>
               <p className="text-[11px] text-muted-foreground truncate">{cert.certificationName}</p>
@@ -89,15 +89,16 @@ export const ExpiringCertificationsCard = () => {
       const validUntil = new Date(cert.valid_until);
       const daysUntilExpiry = differenceInDays(validUntil, new Date());
 
-      // Auf 12 Monate (365 Tage) im Voraus anzeigen
-      if (daysUntilExpiry > 365) continue;
+      // Show certifications expiring within the next 90 days (approx. 3 months)
+      // This makes the list more actionable as requested by the user.
+      if (daysUntilExpiry > 90) continue;
 
       let status: ExpiringCertification['status'] = 'ok';
       if (isPast(validUntil) && !isToday(validUntil)) {
         status = 'expired';
-      } else if (daysUntilExpiry <= 14) {
-        status = 'critical';
       } else if (daysUntilExpiry <= 30) {
+        status = 'critical';
+      } else if (daysUntilExpiry <= 90) {
         status = 'warning';
       }
 
@@ -152,7 +153,7 @@ export const ExpiringCertificationsCard = () => {
           <div className="text-center py-6">
             <ShieldCheck className="h-10 w-10 mx-auto text-muted-foreground/30 mb-2" />
             <p className="text-sm text-muted-foreground">
-              Keine Zertifikate laufen in den nächsten 12 Monaten ab
+              Keine Zertifikate laufen in den nächsten 90 Tagen ab
             </p>
           </div>
         </CardContent>
@@ -167,7 +168,7 @@ export const ExpiringCertificationsCard = () => {
           <ShieldAlert className="h-4 w-4 text-amber-500" />
           Ablaufende Zertifikate
           <Badge variant="secondary" className="text-[10px] px-1.5 py-0 ml-auto">
-            {expiringCertifications.length}
+            nächste 90 Tage
           </Badge>
         </CardTitle>
       </CardHeader>
@@ -183,7 +184,7 @@ export const ExpiringCertificationsCard = () => {
             onItemClick={handleClick}
           />
           <KanbanColumn
-            title="Kritisch (≤14d)"
+            title="Kritisch (≤30d)"
             icon={Clock}
             items={columns.critical}
             accentClass="border-amber-500 text-amber-600 dark:text-amber-400"
@@ -192,7 +193,7 @@ export const ExpiringCertificationsCard = () => {
             onItemClick={handleClick}
           />
           <KanbanColumn
-            title="Bald fällig"
+            title="Bald fällig (≤90d)"
             icon={CalendarClock}
             items={columns.upcoming}
             accentClass="border-muted-foreground/30 text-muted-foreground"

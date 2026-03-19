@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Layout } from '@/components/Layout';
 import {
   useClientCertification,
   useUpdateClientCertification,
@@ -72,7 +71,7 @@ const STATUS_OPTIONS = [
 ];
 
 const CertificationDetailSkeleton = () => (
-  <Layout>
+  <>
     <div className="p-8 space-y-6">
       <div className="flex items-center gap-4">
         <Skeleton className="h-10 w-10 rounded" />
@@ -94,7 +93,7 @@ const CertificationDetailSkeleton = () => (
         </div>
       </div>
     </div>
-  </Layout>
+  </>
 );
 
 const CertificationDetail = () => {
@@ -262,23 +261,23 @@ const CertificationDetail = () => {
 
   if (!certification) {
     return (
-      <Layout>
+      <>
         <div className="p-8">
           <div className="text-center py-12">
-            <p className="text-muted-foreground">Zertifikat nicht gefunden</p>
+            <p className="text-muted-foreground">System nicht gefunden</p>
             <Button onClick={() => navigate('/clients')} className="mt-4">
               Zurück zu Kunden
             </Button>
           </div>
         </div>
-      </Layout>
+      </>
     );
   }
 
-  const certName = certification.certifications?.name || 'Zertifikat';
+  const certName = certification.certifications?.name || 'System';
 
   return (
-    <Layout>
+    <>
       <div className="p-4 sm:p-8 space-y-4 sm:space-y-6 animate-fade-in">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
@@ -344,7 +343,7 @@ const CertificationDetail = () => {
             {/* Certificate Details Card */}
             <Card>
               <CardHeader>
-                <CardTitle>Zertifikatdaten</CardTitle>
+                <CardTitle>Systemdaten</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {isEditing ? (
@@ -674,14 +673,14 @@ const CertificationDetail = () => {
                       className="w-full justify-start gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
                     >
                       <Trash2 className="h-4 w-4" />
-                      Zertifikat löschen
+                      System löschen
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Zertifikat löschen?</AlertDialogTitle>
+                      <AlertDialogTitle>System löschen?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Das Zertifikat "{certName}" für {client?.name || 'diesen Kunden'} wird dauerhaft gelöscht.
+                        Das System "{certName}" für {client?.name || 'diesen Kunden'} wird dauerhaft gelöscht.
                         Alle verknüpften Dokumente und Audits bleiben erhalten, verlieren aber die Verknüpfung.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
@@ -691,7 +690,7 @@ const CertificationDetail = () => {
                         onClick={async () => {
                           try {
                             await deleteCertification.mutateAsync(id!);
-                            toast.success('Zertifikat erfolgreich gelöscht');
+                            toast.success('System erfolgreich gelöscht');
                             navigate(client ? `/clients/${client.id}` : '/clients');
                           } catch (error) {
                             console.error('Error deleting certification:', error);
@@ -710,7 +709,7 @@ const CertificationDetail = () => {
           </div>
         </div>
       </div>
-    </Layout>
+    </>
   );
 };
 

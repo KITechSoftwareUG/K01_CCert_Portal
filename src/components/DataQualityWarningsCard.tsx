@@ -19,7 +19,7 @@ interface DataQualityIssue {
 const TYPE_CONFIG = {
   missing_both: {
     icon: FileWarning,
-    label: 'Kritische Lücken',
+    label: 'Kritisch: Auditor & Datum fehlen',
     badgeVariant: 'destructive' as const,
   },
   missing_auditor: {
@@ -54,7 +54,7 @@ export const DataQualityWarningsCard = () => {
           clientName: (cert as any).clients?.name || 'Unbekannt',
           certificationName: cert.certifications?.name || 'Unbekannt',
           type: 'missing_both',
-          description: 'Auditor und Gültigkeit fehlen',
+          description: 'Auditor und Gültigkeitsdatum fehlen',
         });
       } else if (!hasAuditor) {
         result.push({
@@ -146,7 +146,7 @@ export const DataQualityWarningsCard = () => {
                 return (
                   <TableRow
                     key={issue.id}
-                    className={`cursor-pointer text-xs ${issue.type === 'missing_both' ? 'bg-destructive/[0.04]' : ''
+                    className={`cursor-pointer text-xs transition-colors hover:bg-white/10 dark:hover:bg-white/5 ${issue.type === 'missing_both' ? 'bg-destructive/[0.08]' : ''
                       }`}
                     onClick={() => navigate(`/certifications/${issue.clientCertificationId}`)}
                   >

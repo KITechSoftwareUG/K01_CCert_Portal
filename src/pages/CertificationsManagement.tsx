@@ -1,16 +1,15 @@
 import { useState } from 'react';
-import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '@/components/ui/table';
 import {
   Dialog,
@@ -45,7 +44,7 @@ type CertificationFormData = {
 export default function CertificationsManagement() {
   const { data: certifications, isLoading } = useCertifications();
   const queryClient = useQueryClient();
-  
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [editingCertification, setEditingCertification] = useState<DbCertification | null>(null);
@@ -139,12 +138,12 @@ export default function CertificationsManagement() {
   };
 
   return (
-    <Layout>
+    <>
       <div className="p-4 sm:p-8">
         <div className="mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Zertifizierungen</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Systeme</h1>
           <p className="text-muted-foreground mt-1">
-            Verwalten Sie die verfügbaren Zertifizierungsstandards
+            Verwalten Sie die verfügbaren Managementsysteme
           </p>
         </div>
 
@@ -153,15 +152,15 @@ export default function CertificationsManagement() {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Award className="h-5 w-5" />
-                Zertifizierungsstandards
+                Systeme
               </CardTitle>
               <CardDescription>
-                Liste aller verfügbaren Zertifizierungen im System
+                Liste aller verfügbaren Systeme im Portal
               </CardDescription>
             </div>
             <Button onClick={openCreateDialog}>
               <Plus className="h-4 w-4 mr-2" />
-              Neue Zertifizierung
+              Neues System
             </Button>
           </CardHeader>
           <CardContent>
@@ -224,12 +223,12 @@ export default function CertificationsManagement() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {editingCertification ? 'Zertifizierung bearbeiten' : 'Neue Zertifizierung'}
+              {editingCertification ? 'System bearbeiten' : 'Neues System'}
             </DialogTitle>
             <DialogDescription>
               {editingCertification
-                ? 'Ändern Sie die Details der Zertifizierung'
-                : 'Erstellen Sie eine neue Zertifizierung im System'}
+                ? 'Ändern Sie die Details des Systems'
+                : 'Erstellen Sie ein neues System'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -269,9 +268,9 @@ export default function CertificationsManagement() {
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Zertifizierung löschen?</AlertDialogTitle>
+            <AlertDialogTitle>System löschen?</AlertDialogTitle>
             <AlertDialogDescription>
-              Möchten Sie die Zertifizierung "{deletingCertification?.name}" wirklich löschen?
+              Möchten Sie das System "{deletingCertification?.name}" wirklich löschen?
               Diese Aktion kann nicht rückgängig gemacht werden.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -286,6 +285,6 @@ export default function CertificationsManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Layout>
+    </>
   );
 }
