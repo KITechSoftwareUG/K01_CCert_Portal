@@ -5,8 +5,10 @@ import { AlertTriangle, Bell, Calendar, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { AUDIT_TYPE_LABELS, ALERT_SEVERITY_CONFIG } from '@/lib/constants';
-import { getActiveAudits, getOverdueTasks, getPendingTasks } from '@/lib/auditUtils';
+import { getActiveAudits, getOverdueTasks, getPendingTasks, transformAuditToLocal } from '@/lib/auditUtils';
 import { getDaysUntil, isOverdue } from '@/lib/dateUtils';
+import { useAudits } from '@/hooks/useAudits';
+import { useAuditTasks } from '@/hooks/useAuditTasks';
 
 interface Alert {
   id: string;
