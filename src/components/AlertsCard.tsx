@@ -39,7 +39,6 @@ export const AlertsCard = memo(({ audits: propAudits }: AlertsCardProps) => {
     if (!dbAudits) return [];
     return dbAudits.map(a => transformAuditToLocal(a, tasks || []));
   }, [propAudits, dbAudits, tasks]);
-  const navigate = useNavigate();
 
   const sortedAlerts = useMemo(() => {
     const alerts: Alert[] = [];
