@@ -23,6 +23,8 @@ export interface AuditTask {
   dueDate: Date;
   assignedTo?: string;
   completedAt?: Date;
+  category?: string;
+  severity?: string;
 }
 
 export interface Audit {

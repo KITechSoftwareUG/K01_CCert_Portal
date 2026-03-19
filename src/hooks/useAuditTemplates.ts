@@ -86,7 +86,7 @@ export const useAuditTemplateByType = (
 // Fetch template tasks directly by certification and audit type
 export const fetchTemplateTasksForAudit = async (
   certificationId: string,
-  auditType: 'initial' | 'surveillance' | 'recertification' | 'six-month' | 'internal'
+  auditType: 'initial' | 'surveillance' | 'recertification' | 'six-month' | 'internal' | 'training'
 ): Promise<AuditTemplateTask[]> => {
   // First find the template
   const { data: template, error: templateError } = await supabase
