@@ -43,7 +43,7 @@ const mainNavigation = [
   { name: 'Audits', href: '/audits', icon: ClipboardCheck },
   { name: 'Zertifizierer', href: '/certification-bodies', icon: Building2 },
   { name: 'Auditoren', href: '/auditors', icon: UserCheck },
-  { name: 'Berater', href: '/consultants', icon: UserCheck },
+  { name: 'Berater', href: '/consultants', icon: UserStar },
   { name: 'Kalender', href: '/calendar', icon: Calendar },
   { name: 'Aktivitäten', href: '/activity-log', icon: History },
 ];
