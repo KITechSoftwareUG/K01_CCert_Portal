@@ -71,10 +71,10 @@ const SidebarContent = ({
 
   return (
     <>
-      <div className="flex items-center justify-center p-4 bg-white border-b border-sidebar-border">
-        <img src={logo} alt="cert consulting" className="h-16 w-auto" />
+      <div className="flex items-center justify-center p-4 bg-white border-b border-sidebar-border shrink-0">
+        <img src={logo} alt="cert consulting" className="h-12 w-auto" />
       </div>
-      <nav className="p-4 space-y-2 flex-1 overflow-y-auto">
+      <nav className="p-4 space-y-1 flex-1 overflow-hidden">
         {mainNavigation.map((item) => {
           const isActive = location.pathname === item.href;
           return (
@@ -83,14 +83,14 @@ const SidebarContent = ({
               to={item.href}
               onClick={onNavClick}
               className={cn(
-                'flex items-center gap-3 px-4 py-3 rounded-lg transition-colors',
+                'flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm',
                 isActive
                   ? 'bg-sidebar-primary text-sidebar-primary-foreground'
                   : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
               )}
             >
-              <item.icon className="h-5 w-5" />
-              <span className="font-medium">{item.name}</span>
+              <item.icon className="h-4 w-4 shrink-0" />
+              <span className="font-medium truncate">{item.name}</span>
             </Link>
           );
         })}
@@ -99,15 +99,15 @@ const SidebarContent = ({
           <CollapsibleTrigger asChild>
             <button
               className={cn(
-                'flex items-center justify-between w-full px-4 py-3 rounded-lg transition-colors',
+                'flex items-center justify-between w-full px-3 py-2 rounded-lg transition-colors text-sm',
                 isSettingsActive
                   ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                   : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
               )}
             >
               <div className="flex items-center gap-3">
-                <ListChecks className="h-5 w-5" />
-                <span className="font-medium">Vorlagen</span>
+                <ListChecks className="h-4 w-4 shrink-0" />
+                <span className="font-medium truncate">Vorlagen</span>
               </div>
               {settingsOpen ? (
                 <ChevronDown className="h-4 w-4" />
@@ -125,14 +125,14 @@ const SidebarContent = ({
                   to={item.href}
                   onClick={onNavClick}
                   className={cn(
-                    'flex items-center gap-3 px-4 py-2 rounded-lg transition-colors text-sm',
+                    'flex items-center gap-3 px-3 py-1.5 rounded-lg transition-colors text-sm',
                     isActive
                       ? 'bg-sidebar-primary text-sidebar-primary-foreground'
                       : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                   )}
                 >
-                  <item.icon className="h-4 w-4" />
-                  <span>{item.name}</span>
+                  <item.icon className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{item.name}</span>
                 </Link>
               );
             })}
