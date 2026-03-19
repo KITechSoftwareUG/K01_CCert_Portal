@@ -227,7 +227,6 @@
     background-color: hsla(222, 47%, 11%, 0.98);
     @apply backdrop-blur-2xl border-r border-white/5 shadow-xl;
   }
-  }
 
   .card-hover {
     @apply transition-all duration-200 hover:shadow-md hover:-translate-y-0.5;
