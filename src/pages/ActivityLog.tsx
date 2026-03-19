@@ -144,7 +144,7 @@ const ActivityLog = () => {
                 <p className="text-muted-foreground">Keine Aktivitäten gefunden</p>
               </div>
             ) : (
-              <ScrollArea className="max-h-[700px]">
+              <ScrollArea className="h-[calc(100vh-320px)]">
                 <div className="space-y-6">
                   {Object.entries(grouped).map(([day, entries]) => (
                     <div key={day} className="space-y-2">
