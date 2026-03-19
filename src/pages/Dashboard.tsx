@@ -84,15 +84,15 @@ const Dashboard = () => {
           <CardContent className="pt-0 flex-1">
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground truncate mr-2">Unternehmen gesamt</span>
+                <span className="text-muted-foreground truncate mr-2">Unternehmensgruppen</span>
                 <span className="font-semibold tabular-nums">{clientStats.totalCompanies}</span>
               </div>
               <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground truncate mr-2">Standorte (aktiv)</span>
+                <span className="text-muted-foreground truncate mr-2">Kunden (aktiv)</span>
                 <span className="font-semibold text-green-600 tabular-nums">{clientStats.activeLocations}</span>
               </div>
               <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground truncate mr-2">Standorte (inaktiv)</span>
+                <span className="text-muted-foreground truncate mr-2">Kunden (inaktiv)</span>
                 <span className="font-semibold text-destructive tabular-nums">{clientStats.inactiveLocations}</span>
               </div>
             </div>
