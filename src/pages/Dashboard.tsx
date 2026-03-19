@@ -16,7 +16,7 @@ const Dashboard = () => {
   const { data: clients = [], isLoading: clientsLoading } = useClients();
 
   const { data: auditsData = [] } = useAudits();
-  const audits = useMemo(() => auditsData.map(transformAuditToLocal), [auditsData]);
+  const audits = useMemo(() => auditsData.map(a => transformAuditToLocal(a)), [auditsData]);
 
   const clientStats = useMemo(() => {
     const totalLocations = clients.length;
