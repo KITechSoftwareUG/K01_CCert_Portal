@@ -1,4 +1,6 @@
 import { useMemo } from 'react';
+import { useAudits } from '@/hooks/useAudits';
+import { transformAuditToLocal } from '@/lib/auditUtils';
 import { useClients } from '@/hooks/useClients';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Building2 } from 'lucide-react';
@@ -12,6 +14,9 @@ import { RecentActivityCard } from '@/components/RecentActivityCard';
 
 const Dashboard = () => {
   const { data: clients = [], isLoading: clientsLoading } = useClients();
+
+  const { data: auditsData = [] } = useAudits();
+  const audits = useMemo(() => auditsData.map(a => transformAuditToLocal(a)), [auditsData]);
 
   const clientStats = useMemo(() => {
     const totalLocations = clients.length;
@@ -92,7 +97,7 @@ const Dashboard = () => {
       {/* Second Row: Alerts and Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <AlertsCard />
+          <AlertsCard audits={audits} />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <ExpiringCertificationsCard />
             <DataQualityWarningsCard />
