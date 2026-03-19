@@ -1,5 +1,8 @@
 import { useMemo } from 'react';
 import { useClients } from '@/hooks/useClients';
+import { useAudits } from '@/hooks/useAudits';
+import { useAllAuditTasks } from '@/hooks/useAuditTasks';
+import { transformAuditToLocal } from '@/lib/auditUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Building2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -9,9 +12,16 @@ import { AlertsCard } from '@/components/AlertsCard';
 import { AuditYearStatsCard } from '@/components/AuditYearStatsCard';
 import { CertificationYearStatsCard } from '@/components/CertificationYearStatsCard';
 import { OpenTasksCard } from '@/components/OpenTasksCard';
+import { DashboardAIChat } from '@/components/DashboardAIChat';
 
 const Dashboard = () => {
   const { data: clients = [], isLoading: clientsLoading } = useClients();
+  const { data: dbAudits = [], isLoading: auditsLoading } = useAudits();
+  const { data: dbTasks = [], isLoading: tasksLoading } = useAllAuditTasks();
+
+  const audits = useMemo(() => {
+    return dbAudits.map(audit => transformAuditToLocal(audit, dbTasks));
+  }, [dbAudits, dbTasks]);
 
   const clientStats = useMemo(() => {
     const totalLocations = clients.length;
@@ -37,7 +47,7 @@ const Dashboard = () => {
     };
   }, [clients]);
 
-  if (clientsLoading) {
+  if (clientsLoading || auditsLoading || tasksLoading) {
     return (
       <div className="p-4 sm:p-8 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -55,6 +65,8 @@ const Dashboard = () => {
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground">Willkommen zurück im CCert Portal.</p>
       </div>
+
+      <DashboardAIChat />
 
       {/* Main Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -92,7 +104,7 @@ const Dashboard = () => {
       {/* Second Row: Alerts and Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <AlertsCard />
+          <AlertsCard audits={audits} />
           <ExpiringCertificationsCard />
           <DataQualityWarningsCard />
         </div>
