@@ -77,15 +77,15 @@ const Dashboard = () => {
                 <Building2 className="h-4 w-4" />
                 Kundenübersicht
               </div>
-              <span className="text-2xl font-bold text-primary">{clientStats.totalCompanies}</span>
+              <span className="text-2xl font-bold text-primary">{clientStats.totalLocations}</span>
             </CardTitle>
             <p className="text-[10px] text-primary/70 -mt-1">Aktueller Stand</p>
           </CardHeader>
           <CardContent className="pt-0 flex-1">
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground truncate mr-2">Unternehmensgruppen</span>
-                <span className="font-semibold tabular-nums">{clientStats.totalCompanies}</span>
+                <span className="text-muted-foreground truncate mr-2">Kunden (gesamt)</span>
+                <span className="font-semibold tabular-nums">{clientStats.totalLocations}</span>
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground truncate mr-2">Kunden (aktiv)</span>
