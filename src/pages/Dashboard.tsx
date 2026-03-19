@@ -10,7 +10,7 @@ import { DataQualityWarningsCard } from '@/components/DataQualityWarningsCard';
 import { AlertsCard } from '@/components/AlertsCard';
 import { AuditYearStatsCard } from '@/components/AuditYearStatsCard';
 import { CertificationYearStatsCard } from '@/components/CertificationYearStatsCard';
-import { RecentActivityCard } from '@/components/RecentActivityCard';
+import { OpenTasksCard } from '@/components/OpenTasksCard';
 
 const Dashboard = () => {
   const { data: clients = [], isLoading: clientsLoading } = useClients();
@@ -98,13 +98,11 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <AlertsCard audits={audits} />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <ExpiringCertificationsCard />
-            <DataQualityWarningsCard />
-          </div>
+          <ExpiringCertificationsCard />
         </div>
         <div className="space-y-6">
-          <RecentActivityCard />
+          <OpenTasksCard />
+          <DataQualityWarningsCard />
         </div>
       </div>
     </div>

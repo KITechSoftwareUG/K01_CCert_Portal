@@ -130,7 +130,7 @@ export const ExpiringCertificationsCard = () => {
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
             <ShieldAlert className="h-4 w-4 text-amber-500" />
-            Ablaufende Zertifikate
+            Ablaufende Systeme
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -146,7 +146,7 @@ export const ExpiringCertificationsCard = () => {
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
             <ShieldCheck className="h-4 w-4 text-green-500" />
-            Ablaufende Zertifikate
+            Ablaufende Systeme
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -166,7 +166,7 @@ export const ExpiringCertificationsCard = () => {
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
           <ShieldAlert className="h-4 w-4 text-amber-500" />
-          Ablaufende Zertifikate
+          Ablaufende Systeme
           <Badge variant="secondary" className="text-[10px] px-1.5 py-0 ml-auto">
             nächste 90 Tage
           </Badge>

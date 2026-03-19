@@ -11,7 +11,10 @@
     --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
 
     --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
+    --primary-foreground: 0 0% 100%;
+
+    --hover-bg: 210 40% 96%;
+    --hover-text: 222 47% 11%;
 
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
@@ -29,7 +32,7 @@
     --muted-foreground: 215 16% 47%;
 
     --accent: 174 72% 56%;
-    --accent-foreground: 0 0% 100%;
+    --accent-foreground: 222 47% 11%;
 
     --success: 142 76% 36%;
     --success-foreground: 0 0% 100%;
@@ -37,7 +40,7 @@
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 214 32% 91%;
@@ -221,7 +224,7 @@
   }
 
   .glass-sidebar {
-    @apply bg-white/90 dark:bg-black/70 backdrop-blur-2xl border-r border-slate-200/50 dark:border-white/5;
+    @apply bg-[hsla(222, 47%, 11%, 0.98)] backdrop-blur-2xl border-r border-white/5 shadow-xl;
   }
 
   .card-hover {
