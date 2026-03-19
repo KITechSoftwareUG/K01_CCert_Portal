@@ -5,7 +5,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Layout } from "./components/Layout";
-import Index from "./pages/Index";
+
 import Dashboard from "./pages/Dashboard";
 import Auth from "./pages/Auth";
 import Clients from "./pages/Clients";

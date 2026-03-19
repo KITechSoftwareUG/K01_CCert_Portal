@@ -1,4 +1,6 @@
 import { useMemo } from 'react';
+import { useAudits } from '@/hooks/useAudits';
+import { transformAuditToLocal } from '@/lib/auditUtils';
 import { useClients } from '@/hooks/useClients';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Building2 } from 'lucide-react';
