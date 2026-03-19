@@ -56,5 +56,5 @@ export const getPendingTasks = (tasks: AuditTask[]): AuditTask[] => {
  * Filter active audits (not completed or cancelled)
  */
 export const getActiveAudits = (audits: Audit[]): Audit[] => {
-  return audits.filter(a => a.status !== 'completed' && a.status !== 'cancelled');
+  return (audits || []).filter(a => a.status !== 'completed' && a.status !== 'cancelled');
 };
