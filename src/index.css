@@ -216,7 +216,7 @@
 /* Custom component styles */
 @layer components {
   .glass {
-    @apply bg-white/80 dark:bg-black/40 backdrop-blur-xl border border-white/40 dark:border-white/10 shadow-[0_8px_32px_0_rgba(31, 38, 135, 0.05)] dark:shadow-[0_8px_32px_0_rgba(0, 0, 0, 0.37)];
+    @apply bg-white/80 dark:bg-black/40 backdrop-blur-xl border border-white/40 dark:border-white/10 shadow-lg dark:shadow-2xl;
   }
 
   .glass-card {
