@@ -20,7 +20,7 @@ interface Alert {
 }
 
 interface AlertsCardProps {
-  audits: Audit[];
+  audits?: Audit[];
 }
 
 const AlertIcon = {
@@ -29,7 +29,16 @@ const AlertIcon = {
   info: Calendar,
 };
 
-export const AlertsCard = memo(({ audits }: AlertsCardProps) => {
+export const AlertsCard = memo(({ audits: propAudits }: AlertsCardProps) => {
+  const navigate = useNavigate();
+  const { data: dbAudits } = useAudits();
+  const { data: tasks } = useAuditTasks();
+
+  const audits = useMemo(() => {
+    if (propAudits) return propAudits;
+    if (!dbAudits) return [];
+    return dbAudits.map(a => transformAuditToLocal(a, tasks || []));
+  }, [propAudits, dbAudits, tasks]);
   const navigate = useNavigate();
 
   const sortedAlerts = useMemo(() => {
