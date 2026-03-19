@@ -70,22 +70,31 @@ const Dashboard = () => {
 
       {/* Main Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-        <Card className="bg-primary/5 border-primary/20 flex flex-col justify-center">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 text-primary">
-            <CardTitle className="text-sm font-medium">Kundenübersicht</CardTitle>
-            <Building2 className="h-4 w-4" />
+        <Card className="flex flex-col h-full bg-primary/5 border-primary/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center justify-between text-base">
+              <div className="flex items-center gap-2 text-primary">
+                <Building2 className="h-4 w-4" />
+                Kundenübersicht
+              </div>
+              <span className="text-2xl font-bold text-primary">{clientStats.totalCompanies}</span>
+            </CardTitle>
+            <p className="text-[10px] text-primary/70 -mt-1">Aktueller Stand</p>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold">{clientStats.totalCompanies}</span>
-              <span className="text-sm font-medium text-muted-foreground">Unternehmen</span>
-            </div>
-            <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-lg font-semibold">{clientStats.totalLocations}</span>
-              <span className="text-xs text-muted-foreground">
-                Standorte ({clientStats.activeLocations} aktiv
-                {clientStats.inactiveLocations > 0 ? `, ${clientStats.inactiveLocations} inaktiv` : ''})
-              </span>
+          <CardContent className="pt-0 flex-1">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground truncate mr-2">Unternehmen gesamt</span>
+                <span className="font-semibold tabular-nums">{clientStats.totalCompanies}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground truncate mr-2">Standorte (aktiv)</span>
+                <span className="font-semibold text-green-600 tabular-nums">{clientStats.activeLocations}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground truncate mr-2">Standorte (inaktiv)</span>
+                <span className="font-semibold text-destructive tabular-nums">{clientStats.inactiveLocations}</span>
+              </div>
             </div>
           </CardContent>
         </Card>

@@ -48,28 +48,31 @@ export const AuditYearStatsCard = () => {
   if (isLoading) return null;
 
   return (
-    <Card>
+    <Card className="flex flex-col h-full">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base">
             <BarChart3 className="h-4 w-4 text-primary" />
-            Audits: {stats.total}
+            Audits
           </CardTitle>
-          <Select value={viewMode} onValueChange={(val: any) => setViewMode(val)}>
-            <SelectTrigger className="h-7 w-[130px] text-[10px]">
-              <Calendar className="h-3 w-3 mr-1" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="bg-background border shadow-lg z-50">
-              <SelectItem value="calendar">Aktuelles Jahr</SelectItem>
-              <SelectItem value="rolling">Rollend (12M)</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-3">
+            <Select value={viewMode} onValueChange={(val: any) => setViewMode(val)}>
+              <SelectTrigger className="h-6 w-[120px] text-[10px]">
+                <Calendar className="h-3 w-3 mr-1" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-background border shadow-lg z-50">
+                <SelectItem value="calendar" className="text-xs">Aktuelles Jahr</SelectItem>
+                <SelectItem value="rolling" className="text-xs">Rollend (12M)</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-2xl font-bold">{stats.total}</span>
+          </div>
         </div>
         <p className="text-[10px] text-muted-foreground -mt-1">{stats.label}</p>
       </CardHeader>
-      <CardContent className="pt-0">
-        <div className="space-y-1.5">
+      <CardContent className="pt-0 flex-1">
+        <div className="space-y-1.5 mt-2">
           {AUDIT_TYPES.map(type => (
             <div key={type} className="flex items-center justify-between text-xs">
               <span className="text-muted-foreground truncate mr-2">{AUDIT_TYPE_LABELS[type]}</span>

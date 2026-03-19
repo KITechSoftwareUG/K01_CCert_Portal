@@ -263,60 +263,38 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
 
   return (
     <>
-      {/* Hero-style centered input */}
-      <div className={cn("relative", className)}>
-        <div className="rounded-2xl border border-primary/10 bg-gradient-to-br from-primary/[0.02] via-card to-accent/[0.02] shadow-sm overflow-hidden">
-          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-          
-          <div className="px-4 py-4 sm:px-10 sm:py-8">
-            {/* Greeting */}
-            <div className="flex items-start sm:items-center gap-2.5 sm:gap-3 mb-4 sm:mb-5 justify-center">
-              <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-              </div>
-              <div className="min-h-[1.5rem] flex-1">
-                {greeting ? (
-                  <div className="text-xs sm:text-sm text-foreground/80 leading-relaxed animate-fade-in prose prose-sm max-w-none prose-p:my-0">
-                    <ReactMarkdown components={markdownLinkComponents}>{greeting}</ReactMarkdown>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <div className="flex gap-1">
-                      <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
-                      <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
-                      <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
+      {/* Sleek Banner */}
+      <div className={cn("relative mb-6", className)}>
+        <div className="rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/[0.05] to-transparent shadow-sm overflow-hidden flex items-stretch">
 
-            {/* Centered large input */}
-            <div className="max-w-xl mx-auto">
-              <div 
-                className="relative cursor-text group/input"
-                onClick={handleHeroInputFocus}
-              >
-                <MessageCircle className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground/30 group-hover/input:text-primary/50 transition-colors" />
-                <Input
-                  value={input}
-                  onChange={handleHeroInputChange}
-                  onFocus={handleHeroInputFocus}
-                  placeholder="Frag mich etwas..."
-                  className="pl-10 sm:pl-12 pr-12 sm:pr-14 h-12 sm:h-14 bg-background border-border/60 rounded-2xl text-sm sm:text-base shadow-sm hover:shadow-md hover:border-primary/30 focus:shadow-md focus:border-primary/40 transition-all placeholder:text-muted-foreground/40"
-                  readOnly
-                />
-                <div className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2">
-                  <Button 
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl text-muted-foreground/40 hover:text-primary hover:bg-primary/10"
-                    tabIndex={-1}
-                  >
-                    <Send className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                  </Button>
+          <div className="flex-1 px-4 py-3 sm:px-5 sm:py-4 flex items-center gap-3 sm:gap-4">
+            <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0 pt-0.5">
+              {greeting ? (
+                <div className="text-sm font-medium text-foreground/90 leading-relaxed prose prose-sm max-w-none prose-p:my-0">
+                  <ReactMarkdown components={markdownLinkComponents}>{greeting}</ReactMarkdown>
                 </div>
+              ) : (
+                <div className="flex items-center gap-2 pt-1.5">
+                  <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
+                  <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
+                  <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div
+            className="w-16 sm:w-20 lg:w-24 bg-primary/5 flex items-center justify-center cursor-pointer hover:bg-primary/10 transition-colors border-l border-primary/10 group"
+            onClick={() => setChatOpen(true)}
+          >
+            <div className="flex flex-col items-center gap-1.5 text-primary">
+              <div className="h-8 w-8 rounded-full bg-background flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                <MessageCircle className="h-4 w-4" />
               </div>
+              <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider hidden sm:block">Frag KI</span>
             </div>
           </div>
         </div>
@@ -324,14 +302,14 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
 
       {/* Chat Dialog */}
       <Dialog open={chatOpen} onOpenChange={setChatOpen}>
-        <DialogContent 
+        <DialogContent
           className="sm:max-w-2xl p-0 gap-0 rounded-none sm:rounded-2xl overflow-hidden w-full h-full sm:h-[80vh] sm:w-auto fixed inset-0 sm:inset-auto sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] flex flex-col"
           aria-describedby={undefined}
         >
           <VisuallyHidden>
             <DialogTitle>KI-Assistent</DialogTitle>
           </VisuallyHidden>
-          
+
           {/* Header */}
           <div className="flex items-center gap-2.5 sm:gap-3 px-4 sm:px-5 py-3 sm:py-4 border-b border-border/50 bg-gradient-to-r from-primary/[0.04] to-transparent">
             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -388,8 +366,8 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
                 )}
                 <div className={cn(
                   "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm",
-                  msg.role === 'user' 
-                    ? 'bg-primary text-primary-foreground rounded-br-md' 
+                  msg.role === 'user'
+                    ? 'bg-primary text-primary-foreground rounded-br-md'
                     : 'bg-muted/60 text-foreground rounded-bl-md'
                 )}>
                   {msg.role === 'assistant' ? (
