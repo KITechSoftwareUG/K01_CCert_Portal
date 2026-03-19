@@ -146,7 +146,7 @@ export const DataQualityWarningsCard = () => {
                 return (
                   <TableRow
                     key={issue.id}
-                    className={`cursor-pointer text-xs transition-colors hover:bg-white/10 dark:hover:bg-white/5 ${issue.type === 'missing_both' ? 'bg-destructive/[0.08]' : ''
+                    className={`cursor-pointer text-xs ${issue.type === 'missing_both' ? 'bg-destructive/[0.04]' : ''
                       }`}
                     onClick={() => navigate(`/certifications/${issue.clientCertificationId}`)}
                   >

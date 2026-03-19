@@ -1,6 +1,4 @@
 import { useMemo } from 'react';
-import { useAudits } from '@/hooks/useAudits';
-import { transformAuditToLocal } from '@/lib/auditUtils';
 import { useClients } from '@/hooks/useClients';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Building2 } from 'lucide-react';
@@ -14,9 +12,6 @@ import { OpenTasksCard } from '@/components/OpenTasksCard';
 
 const Dashboard = () => {
   const { data: clients = [], isLoading: clientsLoading } = useClients();
-
-  const { data: auditsData = [] } = useAudits();
-  const audits = useMemo(() => auditsData.map(a => transformAuditToLocal(a)), [auditsData]);
 
   const clientStats = useMemo(() => {
     const totalLocations = clients.length;
@@ -63,7 +58,7 @@ const Dashboard = () => {
 
       {/* Main Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-primary/10 border-white/20">
+        <Card className="bg-primary/5 border-primary/20">
           <CardHeader className="flex flex-row items-center justify-between pb-1 space-y-0 text-primary">
             <CardTitle className="text-sm font-medium">Unternehmen</CardTitle>
             <Building2 className="h-4 w-4" />
@@ -97,12 +92,12 @@ const Dashboard = () => {
       {/* Second Row: Alerts and Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <AlertsCard audits={audits} />
+          <AlertsCard />
           <ExpiringCertificationsCard />
+          <DataQualityWarningsCard />
         </div>
         <div className="space-y-6">
           <OpenTasksCard />
-          <DataQualityWarningsCard />
         </div>
       </div>
     </div>

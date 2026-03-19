@@ -52,7 +52,7 @@ const KanbanColumn = ({
             <div
               key={cert.id}
               onClick={() => onItemClick(cert.id)}
-              className="group rounded-lg border border-white/10 bg-white/10 dark:bg-black/20 backdrop-blur-sm p-3 cursor-pointer transition-all duration-300 hover:shadow-lg hover:bg-white/20 dark:hover:bg-black/30 hover:border-primary/40 hover:-translate-y-1"
+              className="group rounded-md border bg-card p-2.5 cursor-pointer transition-all hover:shadow-sm hover:border-primary/30 hover:-translate-y-px"
             >
               <p className="text-xs font-medium truncate leading-tight">{cert.clientName}</p>
               <p className="text-[11px] text-muted-foreground truncate">{cert.certificationName}</p>
@@ -130,7 +130,7 @@ export const ExpiringCertificationsCard = () => {
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
             <ShieldAlert className="h-4 w-4 text-amber-500" />
-            Ablaufende Systeme
+            Ablaufende Zertifikate
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -146,7 +146,7 @@ export const ExpiringCertificationsCard = () => {
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
             <ShieldCheck className="h-4 w-4 text-green-500" />
-            Ablaufende Systeme
+            Ablaufende Zertifikate
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -166,7 +166,7 @@ export const ExpiringCertificationsCard = () => {
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
           <ShieldAlert className="h-4 w-4 text-amber-500" />
-          Ablaufende Systeme
+          Ablaufende Zertifikate
           <Badge variant="secondary" className="text-[10px] px-1.5 py-0 ml-auto">
             nächste 90 Tage
           </Badge>
