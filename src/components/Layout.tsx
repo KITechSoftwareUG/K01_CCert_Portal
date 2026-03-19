@@ -8,6 +8,7 @@ import {
   Calendar,
   Building2,
   UserCheck,
+  UserStar,
   LogOut,
   Award,
   ListChecks,
