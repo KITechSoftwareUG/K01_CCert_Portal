@@ -5,8 +5,10 @@ import { AlertTriangle, Bell, Calendar, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { AUDIT_TYPE_LABELS, ALERT_SEVERITY_CONFIG } from '@/lib/constants';
-import { getActiveAudits, getOverdueTasks, getPendingTasks } from '@/lib/auditUtils';
+import { getActiveAudits, getOverdueTasks, getPendingTasks, transformAuditToLocal } from '@/lib/auditUtils';
 import { getDaysUntil, isOverdue } from '@/lib/dateUtils';
+import { useAudits } from '@/hooks/useAudits';
+import { useAuditTasks } from '@/hooks/useAuditTasks';
 
 interface Alert {
   id: string;
@@ -18,7 +20,7 @@ interface Alert {
 }
 
 interface AlertsCardProps {
-  audits: Audit[];
+  audits?: Audit[];
 }
 
 const AlertIcon = {
@@ -27,8 +29,16 @@ const AlertIcon = {
   info: Calendar,
 };
 
-export const AlertsCard = memo(({ audits }: AlertsCardProps) => {
+export const AlertsCard = memo(({ audits: propAudits }: AlertsCardProps) => {
   const navigate = useNavigate();
+  const { data: dbAudits } = useAudits();
+  const { data: tasks } = useAuditTasks();
+
+  const audits = useMemo(() => {
+    if (propAudits) return propAudits;
+    if (!dbAudits) return [];
+    return dbAudits.map(a => transformAuditToLocal(a, tasks || []));
+  }, [propAudits, dbAudits, tasks]);
 
   const sortedAlerts = useMemo(() => {
     const alerts: Alert[] = [];
