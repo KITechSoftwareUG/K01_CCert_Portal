@@ -14,12 +14,78 @@ import { CertificationYearStatsCard } from "@/components/CertificationYearStatsC
 import { OpenTasksCard } from "@/components/OpenTasksCard";
 import { DashboardAIChat } from "@/components/DashboardAIChat";
 import { useCertificationBodyStats } from "@/hooks/useCertificationBodies";
+import { useState, useEffect } from "react";
+
+const GREETINGS: Record<string, string> = {
+  DE: "Willkommen im Portal von",
+  AT: "Willkommen im Portal von",
+  CH: "Willkommen im Portal von",
+  US: "Welcome to the portal of",
+  GB: "Welcome to the portal of",
+  FR: "Bienvenue sur le portail de",
+  IT: "Benvenuti nel portale di",
+  ES: "Bienvenido al portal de",
+  NL: "Welkom op het portaal van",
+  PL: "Witamy w portalu",
+  PT: "Bem-vindo ao portal de",
+  BE: "Bienvenue sur le portail de",
+  CZ: "Vítejte v portálu",
+};
+
+const SECONDARY_GREETINGS = [
+  "Welcome to the portal of",
+  "Bienvenue sur le portail de",
+  "Benvenuti nel portale di",
+  "Bienvenido al portal de",
+  "Witamy w portalu",
+];
 
 const Dashboard = () => {
   const { data: clients = [], isLoading: clientsLoading } = useClients();
   const { data: dbAudits = [], isLoading: auditsLoading } = useAudits();
   const { data: dbTasks = [], isLoading: tasksLoading } = useAllAuditTasks();
   const { data: bodyStats = [] } = useCertificationBodyStats();
+
+  const [greetingIndex, setGreetingIndex] = useState(0);
+  const [fade, setFade] = useState(true);
+
+  const availableGreetings = useMemo(() => {
+    const countries = new Set<string>();
+    clients.forEach((c: any) => {
+      if (c.country) countries.add(c.country.toUpperCase());
+    });
+
+    const list = ["Willkommen im Portal von"];
+    countries.forEach(country => {
+      const g = GREETINGS[country];
+      if (g && !list.includes(g)) {
+        list.push(g);
+      }
+    });
+
+    // Ensure we have a few if no countries found
+    if (list.length < 3) {
+      SECONDARY_GREETINGS.forEach(g => {
+        if (!list.includes(g)) list.push(g);
+      });
+    }
+
+    return list;
+  }, [clients]);
+
+  useEffect(() => {
+    if (availableGreetings.length <= 1) return;
+
+    const interval = setInterval(() => {
+      setFade(false);
+      setTimeout(() => {
+        setGreetingIndex((prev) => (prev + 1) % availableGreetings.length);
+        setFade(true);
+      }, 500); // Wait for fade out
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [availableGreetings]);
 
   const audits = useMemo(() => {
     return dbAudits.map((audit) => transformAuditToLocal(audit, dbTasks));
@@ -65,7 +131,9 @@ const Dashboard = () => {
     <div className="p-4 sm:p-8 space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">Willkommen im Portal von Certconsulting Pane.</p>
+        <p className="text-muted-foreground transition-opacity duration-500 min-h-[1.5rem]" style={{ opacity: fade ? 1 : 0 }}>
+          {availableGreetings[greetingIndex]} <span className="font-semibold text-foreground">Certconsulting Pane.</span>
+        </p>
       </div>
 
       <DashboardAIChat />
