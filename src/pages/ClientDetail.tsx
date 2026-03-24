@@ -694,12 +694,16 @@ const ClientDetail = () => {
                         valid: 'bg-green-100 text-green-800 border-green-300',
                         suspended: 'bg-orange-100 text-orange-800 border-orange-300',
                         expired: 'bg-red-100 text-red-800 border-red-300',
+                        pending: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+                        withdrawn: 'bg-gray-100 text-gray-800 border-gray-300',
                       };
                       const statusLabel: Record<string, string> = {
                         active: 'Aktiv',
                         valid: 'Gültig',
                         suspended: 'Ausgesetzt',
                         expired: 'Abgelaufen',
+                        pending: 'Ausstehend',
+                        withdrawn: 'Zurückgezogen',
                       };
                       return (
                         <div

@@ -13,11 +13,13 @@ import { AuditYearStatsCard } from '@/components/AuditYearStatsCard';
 import { CertificationYearStatsCard } from '@/components/CertificationYearStatsCard';
 import { OpenTasksCard } from '@/components/OpenTasksCard';
 import { DashboardAIChat } from '@/components/DashboardAIChat';
+import { useCertificationBodyStats } from '@/hooks/useCertificationBodies';
 
 const Dashboard = () => {
   const { data: clients = [], isLoading: clientsLoading } = useClients();
   const { data: dbAudits = [], isLoading: auditsLoading } = useAudits();
   const { data: dbTasks = [], isLoading: tasksLoading } = useAllAuditTasks();
+  const { data: bodyStats = [] } = useCertificationBodyStats();
 
   const audits = useMemo(() => {
     return dbAudits.map(audit => transformAuditToLocal(audit, dbTasks));
@@ -95,6 +97,21 @@ const Dashboard = () => {
                 <span className="text-muted-foreground truncate mr-2">Kunden (inaktiv)</span>
                 <span className="font-semibold text-destructive tabular-nums">{clientStats.inactiveLocations}</span>
               </div>
+
+              {bodyStats.length > 0 && (
+                <>
+                  <div className="border-t border-primary/20 my-2" />
+                  <p className="text-[10px] text-primary/70 font-medium uppercase tracking-wider pb-0.5">Zertifizierungen je Zertifizierer</p>
+                  {bodyStats.map((stat) => (
+                    <div key={stat.bodyId} className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground truncate mr-2" title={stat.bodyName}>
+                        {stat.bodyShortName || stat.bodyName}
+                      </span>
+                      <span className="font-semibold tabular-nums">{stat.count}</span>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -127,3 +144,4 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+

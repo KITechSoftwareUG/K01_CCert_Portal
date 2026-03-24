@@ -1,6 +1,58 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+export interface CertificationBodyStat {
+  bodyId: string;
+  bodyName: string;
+  bodyShortName: string | null;
+  count: number;
+}
+
+export const useCertificationBodyStats = () => {
+  return useQuery({
+    queryKey: ['certification_body_stats'],
+    queryFn: async () => {
+      // Fetch all active client certifications that have an auditor with a certification body
+      const { data, error } = await supabase
+        .from('client_certifications')
+        .select(`
+          id,
+          clients!inner ( id, is_active ),
+          auditors (
+            id,
+            certification_body_id,
+            certification_bodies ( id, name, short_name )
+          )
+        `);
+
+      if (error) throw error;
+
+      const counts: Record<string, CertificationBodyStat> = {};
+
+      for (const row of data) {
+        const client = row.clients as any;
+        if (client?.is_active === false) continue;
+
+        const auditor = row.auditors as any;
+        const body = auditor?.certification_bodies;
+        if (!body?.id) continue;
+
+        if (!counts[body.id]) {
+          counts[body.id] = {
+            bodyId: body.id,
+            bodyName: body.name,
+            bodyShortName: body.short_name,
+            count: 0,
+          };
+        }
+        counts[body.id].count += 1;
+      }
+
+      return Object.values(counts).sort((a, b) => b.count - a.count || a.bodyName.localeCompare(b.bodyName, 'de'));
+    },
+  });
+};
+
 export interface CertificationBody {
   id: string;
   name: string;
@@ -22,7 +74,7 @@ export const useCertificationBodies = () => {
         .from('certification_bodies')
         .select('*')
         .order('name', { ascending: true });
-      
+
       if (error) throw error;
       return data as CertificationBody[];
     },
@@ -31,11 +83,11 @@ export const useCertificationBodies = () => {
 
 export const useCreateCertificationBody = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: async (body: { 
-      name: string; 
-      short_name?: string; 
+    mutationFn: async (body: {
+      name: string;
+      short_name?: string;
       website?: string;
       contact_person?: string;
       email?: string;
@@ -48,7 +100,7 @@ export const useCreateCertificationBody = () => {
         .insert(body)
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
@@ -60,12 +112,12 @@ export const useCreateCertificationBody = () => {
 
 export const useUpdateCertificationBody = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: async ({ id, ...body }: { 
+    mutationFn: async ({ id, ...body }: {
       id: string;
-      name?: string; 
-      short_name?: string; 
+      name?: string;
+      short_name?: string;
       website?: string;
       contact_person?: string;
       email?: string;
@@ -79,7 +131,7 @@ export const useUpdateCertificationBody = () => {
         .eq('id', id)
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
@@ -91,14 +143,14 @@ export const useUpdateCertificationBody = () => {
 
 export const useDeleteCertificationBody = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
         .from('certification_bodies')
         .delete()
         .eq('id', id);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -120,7 +172,7 @@ export const useClientCertificationBodies = (clientId?: string) => {
           certification_bodies (*)
         `)
         .eq('client_id', clientId);
-      
+
       if (error) throw error;
       return data;
     },
@@ -140,7 +192,7 @@ export const useClientsByCertificationBody = (certificationBodyId?: string) => {
           clients (*)
         `)
         .eq('certification_body_id', certificationBodyId);
-      
+
       if (error) throw error;
       return data;
     },
@@ -150,21 +202,21 @@ export const useClientsByCertificationBody = (certificationBodyId?: string) => {
 
 export const useUpdateClientCertificationBodies = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: async ({ 
-      clientId, 
-      certificationBodyIds 
-    }: { 
-      clientId: string; 
-      certificationBodyIds: string[] 
+    mutationFn: async ({
+      clientId,
+      certificationBodyIds
+    }: {
+      clientId: string;
+      certificationBodyIds: string[]
     }) => {
       // First, delete all existing relationships
       const { error: deleteError } = await supabase
         .from('client_certification_bodies')
         .delete()
         .eq('client_id', clientId);
-      
+
       if (deleteError) throw deleteError;
 
       // Then, insert new relationships
@@ -177,7 +229,7 @@ export const useUpdateClientCertificationBodies = () => {
               certification_body_id: bodyId,
             }))
           );
-        
+
         if (insertError) throw insertError;
       }
     },
