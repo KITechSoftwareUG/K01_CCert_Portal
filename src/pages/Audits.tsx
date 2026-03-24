@@ -84,8 +84,8 @@ const AuditRow = ({
       {showClient && (
         <TableCell className="font-medium text-left">{audit.clientName}</TableCell>
       )}
-      <TableCell>
-        <div className="flex flex-wrap gap-1">
+      <TableCell className="text-center">
+        <div className="flex flex-wrap gap-1 justify-center">
           {audit.certifications.length > 0 ? audit.certifications.map((cert, i) => (
             <Badge key={i} variant="outline" className="text-xs">
               {cert}
@@ -115,12 +115,12 @@ const AuditRow = ({
         </Badge>
       </TableCell>
       <TableCell>
-        <div className="text-sm font-medium whitespace-nowrap">
+        <div className="text-sm font-medium">
           {audit.auditorName || <span className="text-muted-foreground opacity-50">–</span>}
         </div>
       </TableCell>
       <TableCell>
-        <div className="text-sm whitespace-nowrap">
+        <div className="text-sm">
           {audit.certificationBodyName || <span className="text-muted-foreground opacity-50">–</span>}
         </div>
       </TableCell>
@@ -141,7 +141,7 @@ const AuditRow = ({
               </span>
             </div>
           ) : (
-            <span className="text-sm text-green-600 font-medium whitespace-nowrap">✓ Fertig</span>
+            <span className="text-sm text-green-600 font-medium">✓ Fertig</span>
           )}
         </div>
       </TableCell>
@@ -462,10 +462,10 @@ const Audits = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[40px]"></TableHead>
-                      <TableHead className="w-[18%]">Kunde</TableHead>
-                      <TableHead className="w-[12%]">Zertifikat</TableHead>
+                      <TableHead className="w-[15%]">Kunde</TableHead>
+                      <TableHead className="w-[8%] text-center">Zertifikat</TableHead>
                       <TableHead className="w-[12%]">Auditart</TableHead>
-                      <TableHead className="w-[12%]">Termin</TableHead>
+                      <TableHead className="w-[10%]">Termin</TableHead>
                       <TableHead className="w-[10%]">Status</TableHead>
                       <TableHead className="w-[12%]">Auditor</TableHead>
                       <TableHead className="w-[12%]">Zertifizierer</TableHead>
@@ -518,10 +518,10 @@ const Audits = () => {
                                 onCheckedChange={() => toggleAllInGroup(group.audits.map(a => a.id))}
                               />
                             </TableHead>
-                            {groupBy !== 'client' && <TableHead className="text-left w-[18%]">Kunde</TableHead>}
-                            <TableHead className="text-left w-[12%]">Zertifikat</TableHead>
+                            {groupBy !== 'client' && <TableHead className="text-left w-[15%]">Kunde</TableHead>}
+                            <TableHead className="text-left w-[8%] text-center">Zertifikat</TableHead>
                             {groupBy !== 'type' && <TableHead className="text-left w-[12%]">Auditart</TableHead>}
-                            <TableHead className="text-left w-[12%]">Termin</TableHead>
+                            <TableHead className="text-left w-[10%]">Termin</TableHead>
                             <TableHead className="text-left w-[10%]">Status</TableHead>
                             <TableHead className="text-left w-[12%]">Auditor</TableHead>
                             <TableHead className="text-left w-[12%]">Zertifizierer</TableHead>
