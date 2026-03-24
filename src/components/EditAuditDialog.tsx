@@ -28,6 +28,7 @@ import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useUpdateAudit, AuditWithClient } from '@/hooks/useAudits';
 import { useAuditors } from '@/hooks/useAuditors';
+import { useCertificationBodies } from '@/hooks/useCertificationBodies';
 import { useAuditTasks, useUpdateAuditTask } from '@/hooks/useAuditTasks';
 import { formatAuditorName, sortAuditorsByLastName } from '@/lib/auditorUtils';
 import { toast } from 'sonner';
@@ -50,6 +51,7 @@ const AUDIT_STATUSES = [
 export function EditAuditDialog({ audit, open, onOpenChange }: EditAuditDialogProps) {
   const updateAudit = useUpdateAudit();
   const { data: auditors = [] } = useAuditors();
+  const { data: certificationBodies = [] } = useCertificationBodies();
   const { data: auditTasks = [] } = useAuditTasks(audit?.id);
   const updateTask = useUpdateAuditTask();
 
@@ -57,6 +59,7 @@ export function EditAuditDialog({ audit, open, onOpenChange }: EditAuditDialogPr
   const [originalDate, setOriginalDate] = useState<Date | undefined>(undefined);
   const [status, setStatus] = useState<string>('scheduled');
   const [auditorId, setAuditorId] = useState<string>('__none__');
+  const [certificationBodyId, setCertificationBodyId] = useState<string>('__none__');
 
   // Reset form only when a different audit is opened (keyed by audit.id)
   useEffect(() => {
@@ -66,6 +69,7 @@ export function EditAuditDialog({ audit, open, onOpenChange }: EditAuditDialogPr
       setOriginalDate(d);
       setStatus(audit.status);
       setAuditorId(audit.auditor_id || '__none__');
+      setCertificationBodyId(audit.certification_body_id || '__none__');
     }
   }, [audit?.id]);
 
@@ -85,6 +89,7 @@ export function EditAuditDialog({ audit, open, onOpenChange }: EditAuditDialogPr
         scheduled_date: scheduledDate.toISOString(),
         status: status as 'scheduled' | 'in-progress' | 'completed' | 'cancelled',
         auditor_id: auditorId === '__none__' ? null : auditorId,
+        certification_body_id: certificationBodyId === '__none__' ? null : certificationBodyId,
       });
 
       // Shift task due dates if audit date changed
@@ -184,11 +189,29 @@ export function EditAuditDialog({ audit, open, onOpenChange }: EditAuditDialogPr
               <SelectTrigger>
                 <SelectValue placeholder="Auditor wählen..." />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-background border shadow-lg z-50">
                 <SelectItem value="__none__">— Kein Auditor —</SelectItem>
                 {sortedAuditors.map((auditor) => (
                   <SelectItem key={auditor.id} value={auditor.id}>
                     {formatAuditorName(auditor.name)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Certification Body */}
+          <div className="space-y-2">
+            <Label>Zertifizierer</Label>
+            <Select value={certificationBodyId} onValueChange={setCertificationBodyId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Zertifizierer wählen..." />
+              </SelectTrigger>
+              <SelectContent className="bg-background border shadow-lg z-50">
+                <SelectItem value="__none__">— Kein Zertifizierer —</SelectItem>
+                {certificationBodies.map((body) => (
+                  <SelectItem key={body.id} value={body.id}>
+                    {body.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -205,7 +228,7 @@ export function EditAuditDialog({ audit, open, onOpenChange }: EditAuditDialogPr
             Speichern
           </Button>
         </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </DialogContent >
+    </Dialog >
   );
 }

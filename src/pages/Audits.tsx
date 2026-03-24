@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { NewAuditDialog } from '@/components/NewAuditDialog';
 import { useAudits } from '@/hooks/useAudits';
@@ -115,6 +115,16 @@ const AuditRow = ({
         </Badge>
       </TableCell>
       <TableCell>
+        <div className="text-sm font-medium whitespace-nowrap">
+          {audit.auditorName || <span className="text-muted-foreground opacity-50">–</span>}
+        </div>
+      </TableCell>
+      <TableCell>
+        <div className="text-sm whitespace-nowrap">
+          {audit.certificationBodyName || <span className="text-muted-foreground opacity-50">–</span>}
+        </div>
+      </TableCell>
+      <TableCell>
         <div className="flex flex-col gap-1">
           {audit.tasks.some(t => t.category === 'finding' && t.status !== 'completed') && (
             <Badge variant="destructive" className="text-[10px] py-0 h-4 w-fit">
@@ -196,6 +206,17 @@ const Audits = () => {
     dbAudits.map(audit => transformAuditToLocal(audit, tasks)),
     [dbAudits, tasks]
   );
+
+  // Scroll to current month on initial load once audits are loaded
+  useEffect(() => {
+    if (!auditsLoading && audits.length > 0 && groupBy === 'month') {
+      // Small delay to ensure DOM is rendered
+      const timer = setTimeout(() => {
+        scrollToCurrentMonth();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [auditsLoading, groupBy, audits.length]);
 
   const handleViewDetails = useCallback((audit: Audit) => {
     navigate(`/audits/${audit.id}`);
@@ -441,13 +462,15 @@ const Audits = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[40px]"></TableHead>
-                      <TableHead className="w-[25%]">Kunde</TableHead>
-                      <TableHead className="w-[15%]">Zertifikat</TableHead>
-                      <TableHead className="w-[15%]">Auditart</TableHead>
-                      <TableHead className="w-[15%]">Termin</TableHead>
-                      <TableHead className="w-[12%]">Status</TableHead>
-                      <TableHead className="w-[12%]">Aufgaben</TableHead>
-                      <TableHead className="w-[6%]"></TableHead>
+                      <TableHead className="w-[18%]">Kunde</TableHead>
+                      <TableHead className="w-[12%]">Zertifikat</TableHead>
+                      <TableHead className="w-[12%]">Auditart</TableHead>
+                      <TableHead className="w-[12%]">Termin</TableHead>
+                      <TableHead className="w-[10%]">Status</TableHead>
+                      <TableHead className="w-[12%]">Auditor</TableHead>
+                      <TableHead className="w-[12%]">Zertifizierer</TableHead>
+                      <TableHead className="w-[10%]">Aufgaben</TableHead>
+                      <TableHead className="w-[40px]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -495,13 +518,15 @@ const Audits = () => {
                                 onCheckedChange={() => toggleAllInGroup(group.audits.map(a => a.id))}
                               />
                             </TableHead>
-                            {groupBy !== 'client' && <TableHead className="text-left w-[25%]">Kunde</TableHead>}
-                            <TableHead className="text-left w-[15%]">Zertifikat</TableHead>
-                            {groupBy !== 'type' && <TableHead className="text-left w-[15%]">Auditart</TableHead>}
-                            <TableHead className="text-left w-[15%]">Termin</TableHead>
-                            <TableHead className="text-left w-[12%]">Status</TableHead>
-                            <TableHead className="text-left w-[12%]">Aufgaben</TableHead>
-                            <TableHead className="w-[6%]"></TableHead>
+                            {groupBy !== 'client' && <TableHead className="text-left w-[18%]">Kunde</TableHead>}
+                            <TableHead className="text-left w-[12%]">Zertifikat</TableHead>
+                            {groupBy !== 'type' && <TableHead className="text-left w-[12%]">Auditart</TableHead>}
+                            <TableHead className="text-left w-[12%]">Termin</TableHead>
+                            <TableHead className="text-left w-[10%]">Status</TableHead>
+                            <TableHead className="text-left w-[12%]">Auditor</TableHead>
+                            <TableHead className="text-left w-[12%]">Zertifizierer</TableHead>
+                            <TableHead className="text-left w-[10%]">Aufgaben</TableHead>
+                            <TableHead className="w-[40px]"></TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>

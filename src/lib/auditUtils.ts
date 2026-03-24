@@ -21,18 +21,22 @@ export const transformAuditToLocal = (dbAudit: AuditWithClient, tasks?: any[]): 
   })(),
   scheduledDate: new Date(dbAudit.scheduled_date),
   status: dbAudit.status,
+  auditorId: dbAudit.auditor_id || undefined,
+  auditorName: dbAudit.auditors?.name || undefined,
+  certificationBodyId: dbAudit.certification_body_id || undefined,
+  certificationBodyName: dbAudit.certification_bodies?.name || undefined,
   tasks: tasks
     ? tasks
-        .filter(t => t.audit_id === dbAudit.id)
-        .map(t => ({
-          id: t.id,
-          title: t.title,
-          description: t.description || '',
-          status: t.status,
-          dueDate: new Date(t.due_date),
-          assignedTo: t.assigned_to || undefined,
-          completedAt: t.completed_at ? new Date(t.completed_at) : undefined,
-        }))
+      .filter(t => t.audit_id === dbAudit.id)
+      .map(t => ({
+        id: t.id,
+        title: t.title,
+        description: t.description || '',
+        status: t.status,
+        dueDate: new Date(t.due_date),
+        assignedTo: t.assigned_to || undefined,
+        completedAt: t.completed_at ? new Date(t.completed_at) : undefined,
+      }))
     : [],
   notes: dbAudit.notes || undefined,
   createdAt: new Date(dbAudit.created_at),

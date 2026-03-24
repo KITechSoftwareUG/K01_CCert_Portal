@@ -36,6 +36,10 @@ export interface Audit {
   scheduledDate: Date;
   status: 'scheduled' | 'in-progress' | 'completed' | 'cancelled';
   tasks: AuditTask[];
+  auditorId?: string;
+  auditorName?: string;
+  certificationBodyId?: string;
+  certificationBodyName?: string;
   notes?: string;
   createdAt: Date;
 }

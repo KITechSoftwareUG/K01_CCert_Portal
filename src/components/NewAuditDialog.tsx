@@ -30,6 +30,9 @@ import { useClients, CertificationStandard } from '@/hooks/useClients';
 import { useCreateAudit, AuditType } from '@/hooks/useAudits';
 import { useCreateBulkAuditTasks, useAllAuditTasks } from '@/hooks/useAuditTasks';
 import { useCertifications } from '@/hooks/useCertifications';
+import { useCreateClientCertification, useAllClientCertifications } from '@/hooks/useClientCertifications';
+import { useAuditors } from '@/hooks/useAuditors';
+import { useCertificationBodies } from '@/hooks/useCertificationBodies';
 import { AUDIT_TYPE_LABELS } from '@/lib/constants';
 import { daysFromNow } from '@/lib/dateUtils';
 import { AlertTriangle, ChevronDown, Calendar as CalendarIcon } from 'lucide-react';
@@ -109,12 +112,16 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
   const [selectedCertifications, setSelectedCertifications] = useState<string[]>([]);
   const [scheduledDate, setScheduledDate] = useState('');
   const [notes, setNotes] = useState('');
+  const [auditorId, setAuditorId] = useState<string>('');
+  const [certificationBodyId, setCertificationBodyId] = useState<string>('');
   const [nkListOpen, setNkListOpen] = useState(false);
   const [selectedNks, setSelectedNks] = useState<string[]>([]);
 
   const { data: clients = [], isLoading: clientsLoading } = useClients();
   const { data: certifications = [] } = useCertifications();
   const { data: allTasks = [] } = useAllAuditTasks();
+  const { data: auditors = [] } = useAuditors();
+  const { data: certificationBodies = [] } = useCertificationBodies();
   const createAudit = useCreateAudit();
   const createTasks = useCreateBulkAuditTasks();
 
@@ -172,6 +179,8 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
     setSelectedCertifications([]);
     setScheduledDate('');
     setNotes('');
+    setAuditorId('');
+    setCertificationBodyId('');
     setNkListOpen(false);
     setSelectedNks([]);
   };
@@ -192,6 +201,8 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
         scheduled_date: new Date(scheduledDate).toISOString(),
         notes: notes || null,
         status: 'scheduled',
+        auditor_id: auditorId || null,
+        certification_body_id: certificationBodyId || null,
       });
 
       const defaultTasks = getDefaultTasksForAuditType(auditType, new Date(scheduledDate));
@@ -368,6 +379,44 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
               value={scheduledDate}
               onChange={(e) => setScheduledDate(e.target.value)}
             />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Auditor */}
+            <div className="space-y-2">
+              <Label htmlFor="auditor">Auditor</Label>
+              <Select value={auditorId} onValueChange={setAuditorId}>
+                <SelectTrigger id="auditor">
+                  <SelectValue placeholder="Auditor wählen..." />
+                </SelectTrigger>
+                <SelectContent className="bg-background border shadow-lg z-50">
+                  <SelectItem value="none">— Kein Auditor —</SelectItem>
+                  {auditors.map((auditor) => (
+                    <SelectItem key={auditor.id} value={auditor.id}>
+                      {auditor.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Certification Body */}
+            <div className="space-y-2">
+              <Label htmlFor="cert-body">Zertifizierer</Label>
+              <Select value={certificationBodyId} onValueChange={setCertificationBodyId}>
+                <SelectTrigger id="cert-body">
+                  <SelectValue placeholder="Zertifizierer wählen..." />
+                </SelectTrigger>
+                <SelectContent className="bg-background border shadow-lg z-50">
+                  <SelectItem value="none">— Kein Zertifizierer —</SelectItem>
+                  {certificationBodies.map((body) => (
+                    <SelectItem key={body.id} value={body.id}>
+                      {body.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Notes */}
