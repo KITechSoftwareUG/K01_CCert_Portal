@@ -290,11 +290,17 @@ const Audits = () => {
       .sort((a, b) => groupBy === 'month' ? a.sortKey.localeCompare(b.sortKey) : a.title.localeCompare(b.title, 'de'));
   }, [filteredAudits, groupBy]);
 
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
   const scrollToCurrentMonth = useCallback(() => {
     const currentMonthKey = format(new Date(), 'yyyy-MM');
     const element = document.getElementById(`month-${currentMonthKey}`);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (element && scrollContainerRef.current) {
+      const container = scrollContainerRef.current;
+      const elementTop = element.getBoundingClientRect().top;
+      const containerTop = container.getBoundingClientRect().top;
+      const offset = elementTop - containerTop + container.scrollTop;
+      container.scrollTo({ top: offset, behavior: 'smooth' });
     } else {
       toast.info('Keine Audits im aktuellen Monat geplant');
     }
@@ -344,9 +350,9 @@ const Audits = () => {
 
   return (
     <>
-      <div className="flex flex-col min-h-full animate-fade-in">
+      <div className="h-full flex flex-col animate-fade-in">
         {/* Header - Not Sticky */}
-        <div className="p-4 sm:p-6 pb-2">
+        <div className="p-4 sm:p-6 pb-2 shrink-0">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-foreground mb-1">Audits</h1>
@@ -361,11 +367,8 @@ const Audits = () => {
           </div>
         </div>
 
-        {/* ═══════════════════════════════════════════════════
-            STICKY FILTER BAR — Must be a direct child of the
-            scroll container, NOT inside Tabs or any overflow element
-        ═══════════════════════════════════════════════════ */}
-        <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-md border-b shadow-sm px-4 sm:px-6 py-3 space-y-3">
+        {/* ═══ FILTER BAR — shrink-0 means it never scrolls away ═══ */}
+        <div className="shrink-0 bg-background/95 backdrop-blur-md border-b shadow-sm px-4 sm:px-6 py-3 space-y-3">
           {/* Row 1: Search + Filters */}
           <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
             <div className="relative flex-1 min-w-0 sm:max-w-md">
@@ -433,7 +436,7 @@ const Audits = () => {
             </div>
           </div>
 
-          {/* Row 2: Status Tabs (plain buttons, no Radix Tabs wrapper here) */}
+          {/* Row 2: Status Tabs */}
           <div className="flex items-center gap-1 bg-muted rounded-md p-1 w-fit">
             {(['all', 'scheduled', 'in-progress', 'completed'] as StatusFilter[]).map((val) => {
               const labels: Record<StatusFilter, string> = { all: 'Alle', scheduled: 'Geplant', 'in-progress': 'In Bearbeitung', completed: 'Abgeschlossen' };
@@ -450,106 +453,108 @@ const Audits = () => {
           </div>
         </div>
 
-        {/* ═══════════════════════════ Scrollable Content ═══════════════════════════ */}
-        <div className="p-4 sm:p-6 space-y-6">
-          {auditsError ? (
-            <div className="text-center py-12">
-              <p className="text-destructive">Fehler beim Laden der Audits</p>
-            </div>
-          ) : isLoading ? (
-            <div className="border rounded-lg overflow-hidden">
-              <Table className="table-fixed w-full">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[40px]"></TableHead>
-                    <TableHead className="w-[15%]">Kunde</TableHead>
-                    <TableHead className="w-[8%] text-center">Zertifikat</TableHead>
-                    <TableHead className="w-[12%]">Auditart</TableHead>
-                    <TableHead className="w-[10%]">Termin</TableHead>
-                    <TableHead className="w-[10%]">Status</TableHead>
-                    <TableHead className="w-[12%]">Auditor</TableHead>
-                    <TableHead className="w-[12%]">Zertifizierer</TableHead>
-                    <TableHead className="w-[10%]">Aufgaben</TableHead>
-                    <TableHead className="w-[40px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <TableRowSkeleton key={i} />
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          ) : filteredAudits.length === 0 ? (
-            <div className="text-center py-12 border rounded-lg bg-muted/20">
-              <ClipboardCheck className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
-              <p className="text-muted-foreground">
-                {searchQuery || statusFilter !== 'all' ? 'Keine Audits gefunden' : 'Noch keine Audits vorhanden'}
-              </p>
-              {!searchQuery && statusFilter === 'all' && (
-                <Button className="mt-4" onClick={() => setShowNewAuditDialog(true)}>
-                  Erstes Audit erstellen
-                </Button>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {groupedAudits.map((group) => (
-                <div key={group.key} className="border rounded-lg overflow-hidden bg-card">
-                  {groupBy !== 'none' && (
-                    <GroupHeader
-                      title={group.title}
-                      count={group.audits.length}
-                      icon={groupBy === 'month'
-                        ? <Calendar className="h-4 w-4 text-primary" />
-                        : groupBy === 'client'
-                          ? <Users className="h-4 w-4 text-primary" />
-                          : <ClipboardCheck className="h-4 w-4 text-primary" />
-                      }
-                    />
-                  )}
-                  <div id={groupBy === 'month' ? `month-${group.key}` : undefined} className="scroll-mt-[230px]">
-                    <Table className="table-fixed w-full">
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-[40px]">
-                            <Checkbox
-                              checked={group.audits.every(a => selectedAuditIds.has(a.id))}
-                              onCheckedChange={() => toggleAllInGroup(group.audits.map(a => a.id))}
+        {/* ═══ SCROLLABLE CONTENT — this div scrolls, the filter bar above does not ═══ */}
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
+          <div className="p-4 sm:p-6 space-y-6">
+            {auditsError ? (
+              <div className="text-center py-12">
+                <p className="text-destructive">Fehler beim Laden der Audits</p>
+              </div>
+            ) : isLoading ? (
+              <div className="border rounded-lg overflow-hidden">
+                <Table className="table-fixed w-full">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[40px]"></TableHead>
+                      <TableHead className="w-[15%]">Kunde</TableHead>
+                      <TableHead className="w-[8%] text-center">Zertifikat</TableHead>
+                      <TableHead className="w-[12%]">Auditart</TableHead>
+                      <TableHead className="w-[10%]">Termin</TableHead>
+                      <TableHead className="w-[10%]">Status</TableHead>
+                      <TableHead className="w-[12%]">Auditor</TableHead>
+                      <TableHead className="w-[12%]">Zertifizierer</TableHead>
+                      <TableHead className="w-[10%]">Aufgaben</TableHead>
+                      <TableHead className="w-[40px]"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <TableRowSkeleton key={i} />
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : filteredAudits.length === 0 ? (
+              <div className="text-center py-12 border rounded-lg bg-muted/20">
+                <ClipboardCheck className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+                <p className="text-muted-foreground">
+                  {searchQuery || statusFilter !== 'all' ? 'Keine Audits gefunden' : 'Noch keine Audits vorhanden'}
+                </p>
+                {!searchQuery && statusFilter === 'all' && (
+                  <Button className="mt-4" onClick={() => setShowNewAuditDialog(true)}>
+                    Erstes Audit erstellen
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {groupedAudits.map((group) => (
+                  <div key={group.key} className="border rounded-lg overflow-hidden bg-card">
+                    {groupBy !== 'none' && (
+                      <GroupHeader
+                        title={group.title}
+                        count={group.audits.length}
+                        icon={groupBy === 'month'
+                          ? <Calendar className="h-4 w-4 text-primary" />
+                          : groupBy === 'client'
+                            ? <Users className="h-4 w-4 text-primary" />
+                            : <ClipboardCheck className="h-4 w-4 text-primary" />
+                        }
+                      />
+                    )}
+                    <div id={groupBy === 'month' ? `month-${group.key}` : undefined} className="scroll-mt-[230px]">
+                      <Table className="table-fixed w-full">
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-[40px]">
+                              <Checkbox
+                                checked={group.audits.every(a => selectedAuditIds.has(a.id))}
+                                onCheckedChange={() => toggleAllInGroup(group.audits.map(a => a.id))}
+                              />
+                            </TableHead>
+                            {groupBy !== 'client' && <TableHead className="text-left w-[15%]">Kunde</TableHead>}
+                            <TableHead className="text-left w-[8%] text-center">Zertifikat</TableHead>
+                            {groupBy !== 'type' && <TableHead className="text-left w-[12%]">Auditart</TableHead>}
+                            <TableHead className="text-left w-[10%]">Termin</TableHead>
+                            <TableHead className="text-left w-[10%]">Status</TableHead>
+                            <TableHead className="text-left w-[12%]">Auditor</TableHead>
+                            <TableHead className="text-left w-[12%]">Zertifizierer</TableHead>
+                            <TableHead className="text-left w-[10%]">Aufgaben</TableHead>
+                            <TableHead className="w-[40px] text-right pr-4"></TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {group.audits.map((audit) => (
+                            <AuditRow
+                              key={audit.id}
+                              audit={audit}
+                              onClick={() => handleViewDetails(audit)}
+                              showClient={groupBy !== 'client'}
+                              showType={groupBy !== 'type'}
+                              isSelected={selectedAuditIds.has(audit.id)}
+                              onSelectChange={() => toggleAuditSelection(audit.id)}
                             />
-                          </TableHead>
-                          {groupBy !== 'client' && <TableHead className="text-left w-[15%]">Kunde</TableHead>}
-                          <TableHead className="text-left w-[8%] text-center">Zertifikat</TableHead>
-                          {groupBy !== 'type' && <TableHead className="text-left w-[12%]">Auditart</TableHead>}
-                          <TableHead className="text-left w-[10%]">Termin</TableHead>
-                          <TableHead className="text-left w-[10%]">Status</TableHead>
-                          <TableHead className="text-left w-[12%]">Auditor</TableHead>
-                          <TableHead className="text-left w-[12%]">Zertifizierer</TableHead>
-                          <TableHead className="text-left w-[10%]">Aufgaben</TableHead>
-                          <TableHead className="w-[40px] text-right pr-4"></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {group.audits.map((audit) => (
-                          <AuditRow
-                            key={audit.id}
-                            audit={audit}
-                            onClick={() => handleViewDetails(audit)}
-                            showClient={groupBy !== 'client'}
-                            showType={groupBy !== 'type'}
-                            isSelected={selectedAuditIds.has(audit.id)}
-                            onSelectChange={() => toggleAuditSelection(audit.id)}
-                          />
-                        ))}
-                      </TableBody>
-                    </Table>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+                ))}
+              </div>
+            )}
+          </div>{/* /p-4 sm:p-6 space-y-6 */}
+        </div>{/* /flex-1 overflow-y-auto */}
+      </div>{/* /h-full flex flex-col */}
 
       <NewAuditDialog open={showNewAuditDialog} onOpenChange={setShowNewAuditDialog} />
 
