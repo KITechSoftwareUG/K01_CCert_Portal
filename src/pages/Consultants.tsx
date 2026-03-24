@@ -33,9 +33,8 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { Plus, Pencil, Trash2, Search, User, Mail, Phone, RefreshCw } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, User, Mail, Phone } from 'lucide-react';
 import { toast } from 'sonner';
-import { useClients } from '@/hooks/useClients';
 
 const Consultants = () => {
     const [searchQuery, setSearchQuery] = useState('');
@@ -46,14 +45,11 @@ const Consultants = () => {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
-    const [notes, setNotes] = useState('');
 
     const { data: consultants = [], isLoading } = useConsultants();
-    const { data: allClients = [] } = useClients();
     const createConsultant = useCreateConsultant();
     const updateConsultant = useUpdateConsultant();
     const deleteConsultant = useDeleteConsultant();
-    const [isSyncing, setIsSyncing] = useState(false);
 
     const filteredConsultants = useMemo(() => {
         return consultants.filter(consultant =>
@@ -66,7 +62,6 @@ const Consultants = () => {
         setName('');
         setEmail('');
         setPhone('');
-        setNotes('');
         setEditingConsultant(null);
     };
 
@@ -80,7 +75,6 @@ const Consultants = () => {
         setName(consultant.name);
         setEmail(consultant.email || '');
         setPhone(consultant.phone || '');
-        setNotes((consultant as any).notes || '');
         setShowDialog(true);
     };
 
@@ -99,8 +93,6 @@ const Consultants = () => {
                     name,
                     email: email || null,
                     phone: phone || null,
-                    // note: Table definitions might vary slightly, using casting for safety if 'notes' is custom
-                    ...({ notes: notes || null } as any)
                 });
                 toast.success('Berater erfolgreich aktualisiert');
             } else {
@@ -108,7 +100,6 @@ const Consultants = () => {
                     name,
                     email: email || null,
                     phone: phone || null,
-                    ...({ notes: notes || null } as any)
                 });
                 toast.success('Berater erfolgreich erstellt');
             }
@@ -139,44 +130,6 @@ const Consultants = () => {
                         <p className="text-muted-foreground text-sm">{consultants.length} Einträge</p>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={async () => {
-                                setIsSyncing(true);
-                                try {
-                                    const uniqueNames = Array.from(new Set(
-                                        allClients
-                                            .map(c => c.consultant)
-                                            .filter(n => n && n.trim() !== '' && n !== '0000')
-                                    )) as string[];
-
-                                    const existingNames = new Set(consultants.map(c => c.name));
-                                    const toAdd = uniqueNames.filter(name => !existingNames.has(name));
-
-                                    if (toAdd.length === 0) {
-                                        toast.info('Keine neuen Berater zum Synchronisieren gefunden');
-                                        return;
-                                    }
-
-                                    let count = 0;
-                                    for (const name of toAdd) {
-                                        await createConsultant.mutateAsync({ name });
-                                        count++;
-                                    }
-                                    toast.success(`${count} Berater erfolgreich synchronisiert`);
-                                } catch (err) {
-                                    console.error('Sync failed:', err);
-                                    toast.error('Synchronisierung fehlgeschlagen');
-                                } finally {
-                                    setIsSyncing(false);
-                                }
-                            }}
-                            disabled={isSyncing || allClients.length === 0}
-                        >
-                            <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
-                            Sync von Kunden
-                        </Button>
                         <Button size="sm" onClick={openCreateDialog}>
                             <Plus className="h-4 w-4 sm:mr-2" />
                             <span className="hidden sm:inline">Neuer Berater</span>
@@ -323,16 +276,6 @@ const Consultants = () => {
                                     value={phone}
                                     onChange={(e) => setPhone(e.target.value)}
                                     placeholder="+49 123 456789"
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="notes">Notizen</Label>
-                                <Textarea
-                                    id="notes"
-                                    value={notes}
-                                    onChange={(e) => setNotes(e.target.value)}
-                                    placeholder="Zusätzliche Informationen..."
                                 />
                             </div>
 
