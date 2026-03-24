@@ -4,6 +4,8 @@ import { NewAuditDialog } from '@/components/NewAuditDialog';
 import { useAudits } from '@/hooks/useAudits';
 import { useAuditTasks } from '@/hooks/useAuditTasks';
 import { useClients } from '@/hooks/useClients';
+import { useAuditors } from '@/hooks/useAuditors';
+import { useCertificationBodies } from '@/hooks/useCertificationBodies';
 import { transformAuditToLocal } from '@/lib/auditUtils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -184,11 +186,19 @@ const Audits = () => {
   const [consultantFilter, setConsultantFilter] = useState<string>(() =>
     sessionStorage.getItem('audits-consultant-filter') || 'all'
   );
+  const [auditorFilter, setAuditorFilter] = useState<string>(() =>
+    sessionStorage.getItem('audits-auditor-filter') || 'all'
+  );
+  const [certificationBodyFilter, setCertificationBodyFilter] = useState<string>(() =>
+    sessionStorage.getItem('audits-cert-body-filter') || 'all'
+  );
   const [selectedAuditIds, setSelectedAuditIds] = useState<Set<string>>(new Set());
 
   const { data: dbAudits = [], isLoading: auditsLoading, error: auditsError } = useAudits();
   const { data: tasks = [], isLoading: tasksLoading } = useAuditTasks();
   const { data: clients = [] } = useClients();
+  const { data: auditors = [] } = useAuditors();
+  const { data: certificationBodies = [] } = useCertificationBodies();
 
   const clientMap = useMemo(() => {
     const map = new Map<string, { is_active: boolean; consultant: string | null }>();
@@ -234,7 +244,10 @@ const Audits = () => {
           || (clientStatusFilter === 'inactive' && clientInfo?.is_active === false);
         const matchesConsultant = consultantFilter === 'all' || clientInfo?.consultant === consultantFilter;
 
-        return matchesSearch && matchesStatus && matchesClientStatus && matchesConsultant;
+        const matchesAuditor = auditorFilter === 'all' || audit.auditorId === auditorFilter;
+        const matchesCertBody = certificationBodyFilter === 'all' || audit.certificationBodyId === certificationBodyFilter;
+
+        return matchesSearch && matchesStatus && matchesClientStatus && matchesConsultant && matchesAuditor && matchesCertBody;
       })
       .sort((a, b) => a.scheduledDate.getTime() - b.scheduledDate.getTime());
   }, [audits, searchQuery, statusFilter, clientStatusFilter, consultantFilter, clientMap]);
@@ -376,6 +389,42 @@ const Audits = () => {
                 <SelectItem value="all">Alle Berater</SelectItem>
                 {consultants.map(c => (
                   <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={auditorFilter}
+              onValueChange={(v) => {
+                setAuditorFilter(v);
+                sessionStorage.setItem('audits-auditor-filter', v);
+              }}
+            >
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Auditor..." />
+              </SelectTrigger>
+              <SelectContent className="bg-background border shadow-lg z-50">
+                <SelectItem value="all">Alle Auditoren</SelectItem>
+                {auditors.map(a => (
+                  <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={certificationBodyFilter}
+              onValueChange={(v) => {
+                setCertificationBodyFilter(v);
+                sessionStorage.setItem('audits-cert-body-filter', v);
+              }}
+            >
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Zertifizierer..." />
+              </SelectTrigger>
+              <SelectContent className="bg-background border shadow-lg z-50">
+                <SelectItem value="all">Alle Zertifizierer</SelectItem>
+                {certificationBodies.map(cb => (
+                  <SelectItem key={cb.id} value={cb.id}>{cb.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
