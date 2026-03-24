@@ -250,7 +250,7 @@ const Audits = () => {
         return matchesSearch && matchesStatus && matchesClientStatus && matchesConsultant && matchesAuditor && matchesCertBody;
       })
       .sort((a, b) => a.scheduledDate.getTime() - b.scheduledDate.getTime());
-  }, [audits, searchQuery, statusFilter, clientStatusFilter, consultantFilter, clientMap]);
+  }, [audits, searchQuery, statusFilter, clientStatusFilter, consultantFilter, auditorFilter, certificationBodyFilter, clientMap]);
 
   // Group audits
   const groupedAudits = useMemo(() => {
