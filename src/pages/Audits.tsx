@@ -361,276 +361,194 @@ const Audits = () => {
           </div>
         </div>
 
-        <Tabs
-          value={statusFilter}
-          onValueChange={(v) => {
-            const val = v as StatusFilter;
-            setStatusFilter(val);
-            sessionStorage.setItem('audits-status-filter', val);
-          }}
-          className="w-full"
-        >
-          {/* Sticky Filters Row & TabsList */}
-          <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-md border-b shadow-sm px-4 sm:px-6 py-4 space-y-4">
-            <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-              <div className="relative flex-1 min-w-0 sm:max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Kunde suchen..."
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    sessionStorage.setItem('audits-search-query', e.target.value);
-                  }}
-                  className="pl-10"
-                />
-              </div>
-
-              <div className="flex items-center gap-2 flex-wrap">
-                <Select
-                  value={clientStatusFilter}
-                  onValueChange={(v) => {
-                    const val = v as 'all' | 'active' | 'inactive';
-                    setClientStatusFilter(val);
-                    sessionStorage.setItem('audits-client-status-filter', val);
-                  }}
-                >
-                  <SelectTrigger className="w-[150px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-background border shadow-lg z-50">
-                    <SelectItem value="all">Alle Kunden</SelectItem>
-                    <SelectItem value="active">Nur aktive</SelectItem>
-                    <SelectItem value="inactive">Nur inaktive</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Select
-                  value={consultantFilter}
-                  onValueChange={(v) => {
-                    setConsultantFilter(v);
-                    sessionStorage.setItem('audits-consultant-filter', v);
-                  }}
-                >
-                  <SelectTrigger className="w-[160px]">
-                    <SelectValue placeholder="Berater..." />
-                  </SelectTrigger>
-                  <SelectContent className="bg-background border shadow-lg z-50">
-                    <SelectItem value="all">Alle Berater</SelectItem>
-                    {consultants.map(c => (
-                      <SelectItem key={c} value={c}>{c}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select
-                  value={auditorFilter}
-                  onValueChange={(v) => {
-                    setAuditorFilter(v);
-                    sessionStorage.setItem('audits-auditor-filter', v);
-                  }}
-                >
-                  <SelectTrigger className="w-[160px]">
-                    <SelectValue placeholder="Auditor..." />
-                  </SelectTrigger>
-                  <SelectContent className="bg-background border shadow-lg z-50">
-                    <SelectItem value="all">Alle Auditoren</SelectItem>
-                    {auditors.map(a => (
-                      <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select
-                  value={certificationBodyFilter}
-                  onValueChange={(v) => {
-                    setCertificationBodyFilter(v);
-                    sessionStorage.setItem('audits-cert-body-filter', v);
-                  }}
-                >
-                  <SelectTrigger className="w-[160px]">
-                    <SelectValue placeholder="Zertifizierer..." />
-                  </SelectTrigger>
-                  <SelectContent className="bg-background border shadow-lg z-50">
-                    <SelectItem value="all">Alle Zertifizierer</SelectItem>
-                    {certificationBodies.map(cb => (
-                      <SelectItem key={cb.id} value={cb.id}>{cb.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <span className="text-sm text-muted-foreground hidden sm:inline">Gruppieren:</span>
-                <div className="flex items-center gap-1">
-                  <Select
-                    value={groupBy}
-                    onValueChange={(v) => {
-                      const val = v as GroupBy;
-                      setGroupBy(val);
-                      sessionStorage.setItem('audits-group-by', val);
-                    }}
-                  >
-                    <SelectTrigger className="w-[160px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-background border shadow-lg z-50">
-                      <SelectItem value="month">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4" />
-                          Nach Monat
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="client">
-                        <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4" />
-                          Nach Kunde
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="type">
-                        <div className="flex items-center gap-2">
-                          <ClipboardCheck className="h-4 w-4" />
-                          Nach Auditart
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="none">
-                        <div className="flex items-center gap-2">
-                          <Building2 className="h-4 w-4" />
-                          Keine Gruppierung
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {groupBy === 'month' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="px-2"
-                      onClick={scrollToCurrentMonth}
-                      title="Zum aktuellen Monat springen"
-                    >
-                      Heute
-                    </Button>
-                  )}
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="px-2 text-muted-foreground hover:text-foreground"
-                  onClick={handleResetFilters}
-                  title="Alle Filter zurücksetzen"
-                >
-                  <RotateCcw className="h-4 w-4 mr-1" />
-                  Reset
-                </Button>
-              </div>
+        {/* ═══════════════════════════════════════════════════
+            STICKY FILTER BAR — Must be a direct child of the
+            scroll container, NOT inside Tabs or any overflow element
+        ═══════════════════════════════════════════════════ */}
+        <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-md border-b shadow-sm px-4 sm:px-6 py-3 space-y-3">
+          {/* Row 1: Search + Filters */}
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+            <div className="relative flex-1 min-w-0 sm:max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Kunde suchen..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  sessionStorage.setItem('audits-search-query', e.target.value);
+                }}
+                className="pl-10"
+              />
             </div>
-
-            <TabsList>
-              <TabsTrigger value="all">Alle</TabsTrigger>
-              <TabsTrigger value="scheduled">Geplant</TabsTrigger>
-              <TabsTrigger value="in-progress">In Bearbeitung</TabsTrigger>
-              <TabsTrigger value="completed">Abgeschlossen</TabsTrigger>
-            </TabsList>
-          </div>
-
-          <TabsContent value={statusFilter} className="mt-0 p-4 sm:p-6">
-            {auditsError ? (
-              <div className="text-center py-12">
-                <p className="text-destructive">Fehler beim Laden der Audits</p>
-              </div>
-            ) : isLoading ? (
-              <div className="border rounded-lg overflow-hidden">
-                <Table className="table-fixed w-full">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[40px]"></TableHead>
-                      <TableHead className="w-[15%]">Kunde</TableHead>
-                      <TableHead className="w-[8%] text-center">Zertifikat</TableHead>
-                      <TableHead className="w-[12%]">Auditart</TableHead>
-                      <TableHead className="w-[10%]">Termin</TableHead>
-                      <TableHead className="w-[10%]">Status</TableHead>
-                      <TableHead className="w-[12%]">Auditor</TableHead>
-                      <TableHead className="w-[12%]">Zertifizierer</TableHead>
-                      <TableHead className="w-[10%]">Aufgaben</TableHead>
-                      <TableHead className="w-[40px]"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {[1, 2, 3, 4, 5].map((i) => (
-                      <TableRowSkeleton key={i} />
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            ) : filteredAudits.length === 0 ? (
-              <div className="text-center py-12 border rounded-lg bg-muted/20">
-                <ClipboardCheck className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
-                <p className="text-muted-foreground">
-                  {searchQuery || statusFilter !== 'all' ? 'Keine Audits gefunden' : 'Noch keine Audits vorhanden'}
-                </p>
-                {!searchQuery && statusFilter === 'all' && (
-                  <Button className="mt-4" onClick={() => setShowNewAuditDialog(true)}>
-                    Erstes Audit erstellen
+            <div className="flex items-center gap-2 flex-wrap">
+              <Select value={clientStatusFilter} onValueChange={(v) => { setClientStatusFilter(v as any); sessionStorage.setItem('audits-client-status-filter', v); }}>
+                <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-background border shadow-lg z-[100]">
+                  <SelectItem value="all">Alle Kunden</SelectItem>
+                  <SelectItem value="active">Nur aktive</SelectItem>
+                  <SelectItem value="inactive">Nur inaktive</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={consultantFilter} onValueChange={(v) => { setConsultantFilter(v); sessionStorage.setItem('audits-consultant-filter', v); }}>
+                <SelectTrigger className="w-[150px]"><SelectValue placeholder="Berater..." /></SelectTrigger>
+                <SelectContent className="bg-background border shadow-lg z-[100]">
+                  <SelectItem value="all">Alle Berater</SelectItem>
+                  {consultants.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={auditorFilter} onValueChange={(v) => { setAuditorFilter(v); sessionStorage.setItem('audits-auditor-filter', v); }}>
+                <SelectTrigger className="w-[150px]"><SelectValue placeholder="Auditor..." /></SelectTrigger>
+                <SelectContent className="bg-background border shadow-lg z-[100]">
+                  <SelectItem value="all">Alle Auditoren</SelectItem>
+                  {auditors.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={certificationBodyFilter} onValueChange={(v) => { setCertificationBodyFilter(v); sessionStorage.setItem('audits-cert-body-filter', v); }}>
+                <SelectTrigger className="w-[150px]"><SelectValue placeholder="Zertifizierer..." /></SelectTrigger>
+                <SelectContent className="bg-background border shadow-lg z-[100]">
+                  <SelectItem value="all">Alle Zertifizierer</SelectItem>
+                  {certificationBodies.map(cb => <SelectItem key={cb.id} value={cb.id}>{cb.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <span className="text-sm text-muted-foreground hidden lg:inline">Gruppieren:</span>
+              <div className="flex items-center gap-1">
+                <Select value={groupBy} onValueChange={(v) => { setGroupBy(v as GroupBy); sessionStorage.setItem('audits-group-by', v); }}>
+                  <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-background border shadow-lg z-[100]">
+                    <SelectItem value="month"><div className="flex items-center gap-2"><Calendar className="h-4 w-4" /> Nach Monat</div></SelectItem>
+                    <SelectItem value="client"><div className="flex items-center gap-2"><Users className="h-4 w-4" /> Nach Kunde</div></SelectItem>
+                    <SelectItem value="type"><div className="flex items-center gap-2"><ClipboardCheck className="h-4 w-4" /> Nach Auditart</div></SelectItem>
+                    <SelectItem value="none"><div className="flex items-center gap-2"><Building2 className="h-4 w-4" /> Keine Gruppierung</div></SelectItem>
+                  </SelectContent>
+                </Select>
+                {groupBy === 'month' && (
+                  <Button variant="outline" size="sm" className="px-3" onClick={scrollToCurrentMonth} title="Zum aktuellen Monat springen">
+                    Heute
                   </Button>
                 )}
               </div>
-            ) : (
-              <div className="space-y-6">
-                {groupedAudits.map((group) => (
-                  <div key={group.key} className="border rounded-lg overflow-hidden bg-card">
-                    {groupBy !== 'none' && (
-                      <GroupHeader
-                        title={group.title}
-                        count={group.audits.length}
-                        icon={groupBy === 'month'
-                          ? <Calendar className="h-4 w-4 text-primary" />
-                          : groupBy === 'client'
-                            ? <Users className="h-4 w-4 text-primary" />
-                            : <ClipboardCheck className="h-4 w-4 text-primary" />
-                        }
-                      />
-                    )}
-                    <div id={groupBy === 'month' ? `month-${group.key}` : undefined} className="scroll-mt-[250px]">
-                      <Table className="table-fixed w-full">
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="w-[40px]">
-                              <Checkbox
-                                checked={group.audits.every(a => selectedAuditIds.has(a.id))}
-                                onCheckedChange={() => toggleAllInGroup(group.audits.map(a => a.id))}
-                              />
-                            </TableHead>
-                            {groupBy !== 'client' && <TableHead className="text-left w-[15%]">Kunde</TableHead>}
-                            <TableHead className="text-left w-[8%] text-center">Zertifikat</TableHead>
-                            {groupBy !== 'type' && <TableHead className="text-left w-[12%]">Auditart</TableHead>}
-                            <TableHead className="text-left w-[10%]">Termin</TableHead>
-                            <TableHead className="text-left w-[10%]">Status</TableHead>
-                            <TableHead className="text-left w-[12%]">Auditor</TableHead>
-                            <TableHead className="text-left w-[12%]">Zertifizierer</TableHead>
-                            <TableHead className="text-left w-[10%]">Aufgaben</TableHead>
-                            <TableHead className="w-[40px] text-right pr-4"></TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {group.audits.map((audit) => (
-                            <AuditRow
-                              key={audit.id}
-                              audit={audit}
-                              onClick={() => handleViewDetails(audit)}
-                              showClient={groupBy !== 'client'}
-                              showType={groupBy !== 'type'}
-                              isSelected={selectedAuditIds.has(audit.id)}
-                              onSelectChange={() => toggleAuditSelection(audit.id)}
+              <Button variant="ghost" size="sm" className="px-2 text-muted-foreground hover:text-foreground" onClick={handleResetFilters} title="Alle Filter zurücksetzen">
+                <RotateCcw className="h-4 w-4 mr-1" /> Reset
+              </Button>
+            </div>
+          </div>
+
+          {/* Row 2: Status Tabs (plain buttons, no Radix Tabs wrapper here) */}
+          <div className="flex items-center gap-1 bg-muted rounded-md p-1 w-fit">
+            {(['all', 'scheduled', 'in-progress', 'completed'] as StatusFilter[]).map((val) => {
+              const labels: Record<StatusFilter, string> = { all: 'Alle', scheduled: 'Geplant', 'in-progress': 'In Bearbeitung', completed: 'Abgeschlossen' };
+              return (
+                <button
+                  key={val}
+                  onClick={() => { setStatusFilter(val); sessionStorage.setItem('audits-status-filter', val); }}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-sm transition-all ${statusFilter === val ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  {labels[val]}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ═══════════════════════════ Scrollable Content ═══════════════════════════ */}
+        <div className="p-4 sm:p-6 space-y-6">
+          {auditsError ? (
+            <div className="text-center py-12">
+              <p className="text-destructive">Fehler beim Laden der Audits</p>
+            </div>
+          ) : isLoading ? (
+            <div className="border rounded-lg overflow-hidden">
+              <Table className="table-fixed w-full">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[40px]"></TableHead>
+                    <TableHead className="w-[15%]">Kunde</TableHead>
+                    <TableHead className="w-[8%] text-center">Zertifikat</TableHead>
+                    <TableHead className="w-[12%]">Auditart</TableHead>
+                    <TableHead className="w-[10%]">Termin</TableHead>
+                    <TableHead className="w-[10%]">Status</TableHead>
+                    <TableHead className="w-[12%]">Auditor</TableHead>
+                    <TableHead className="w-[12%]">Zertifizierer</TableHead>
+                    <TableHead className="w-[10%]">Aufgaben</TableHead>
+                    <TableHead className="w-[40px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <TableRowSkeleton key={i} />
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : filteredAudits.length === 0 ? (
+            <div className="text-center py-12 border rounded-lg bg-muted/20">
+              <ClipboardCheck className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+              <p className="text-muted-foreground">
+                {searchQuery || statusFilter !== 'all' ? 'Keine Audits gefunden' : 'Noch keine Audits vorhanden'}
+              </p>
+              {!searchQuery && statusFilter === 'all' && (
+                <Button className="mt-4" onClick={() => setShowNewAuditDialog(true)}>
+                  Erstes Audit erstellen
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {groupedAudits.map((group) => (
+                <div key={group.key} className="border rounded-lg overflow-hidden bg-card">
+                  {groupBy !== 'none' && (
+                    <GroupHeader
+                      title={group.title}
+                      count={group.audits.length}
+                      icon={groupBy === 'month'
+                        ? <Calendar className="h-4 w-4 text-primary" />
+                        : groupBy === 'client'
+                          ? <Users className="h-4 w-4 text-primary" />
+                          : <ClipboardCheck className="h-4 w-4 text-primary" />
+                      }
+                    />
+                  )}
+                  <div id={groupBy === 'month' ? `month-${group.key}` : undefined} className="scroll-mt-[230px]">
+                    <Table className="table-fixed w-full">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[40px]">
+                            <Checkbox
+                              checked={group.audits.every(a => selectedAuditIds.has(a.id))}
+                              onCheckedChange={() => toggleAllInGroup(group.audits.map(a => a.id))}
                             />
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
+                          </TableHead>
+                          {groupBy !== 'client' && <TableHead className="text-left w-[15%]">Kunde</TableHead>}
+                          <TableHead className="text-left w-[8%] text-center">Zertifikat</TableHead>
+                          {groupBy !== 'type' && <TableHead className="text-left w-[12%]">Auditart</TableHead>}
+                          <TableHead className="text-left w-[10%]">Termin</TableHead>
+                          <TableHead className="text-left w-[10%]">Status</TableHead>
+                          <TableHead className="text-left w-[12%]">Auditor</TableHead>
+                          <TableHead className="text-left w-[12%]">Zertifizierer</TableHead>
+                          <TableHead className="text-left w-[10%]">Aufgaben</TableHead>
+                          <TableHead className="w-[40px] text-right pr-4"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {group.audits.map((audit) => (
+                          <AuditRow
+                            key={audit.id}
+                            audit={audit}
+                            onClick={() => handleViewDetails(audit)}
+                            showClient={groupBy !== 'client'}
+                            showType={groupBy !== 'type'}
+                            isSelected={selectedAuditIds.has(audit.id)}
+                            onSelectChange={() => toggleAuditSelection(audit.id)}
+                          />
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <NewAuditDialog open={showNewAuditDialog} onOpenChange={setShowNewAuditDialog} />
@@ -643,7 +561,6 @@ const Audits = () => {
               <span className="text-sm font-bold">{selectedAuditIds.size}</span>
               <span className="text-sm opacity-80">Audit{selectedAuditIds.size !== 1 ? 's' : ''} ausgewählt</span>
             </div>
-
             <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
@@ -651,7 +568,6 @@ const Audits = () => {
                 className="text-background hover:bg-background/10 gap-2 h-8"
                 onClick={() => {
                   if (confirm(`${selectedAuditIds.size} Audits wirklich löschen?`)) {
-                    // Bulk delete logic would go here
                     toast.error('Bulk Delete noch nicht implementiert (Vorsicht!)');
                   }
                 }}
@@ -659,9 +575,7 @@ const Audits = () => {
                 <Trash2 className="h-4 w-4" />
                 Löschen
               </Button>
-
               <div className="h-4 w-[1px] bg-background/20 mx-2" />
-
               <Button
                 variant="ghost"
                 size="sm"
