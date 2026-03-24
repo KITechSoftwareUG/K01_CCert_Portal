@@ -344,19 +344,21 @@ const Audits = () => {
 
   return (
     <>
-      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 animate-fade-in">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground mb-1">Audits</h1>
-            <p className="text-sm text-muted-foreground">
-              {filteredAudits.length} Audit{filteredAudits.length !== 1 ? 's' : ''} gefunden
-            </p>
+      <div className="flex flex-col min-h-full animate-fade-in">
+        {/* Header - Not Sticky */}
+        <div className="p-4 sm:p-6 pb-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground mb-1">Audits</h1>
+              <p className="text-sm text-muted-foreground">
+                {filteredAudits.length} Audit{filteredAudits.length !== 1 ? 's' : ''} gefunden
+              </p>
+            </div>
+            <Button className="gap-2 self-start sm:self-auto" onClick={() => setShowNewAuditDialog(true)}>
+              <Plus className="h-4 w-4" />
+              Neues Audit
+            </Button>
           </div>
-          <Button className="gap-2 self-start sm:self-auto" onClick={() => setShowNewAuditDialog(true)}>
-            <Plus className="h-4 w-4" />
-            Neues Audit
-          </Button>
         </div>
 
         <Tabs
@@ -369,7 +371,7 @@ const Audits = () => {
           className="w-full"
         >
           {/* Sticky Filters Row & TabsList */}
-          <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b pb-4 pt-2 -mx-4 px-4 sm:-mx-6 sm:px-6 space-y-4">
+          <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-md border-b shadow-sm px-4 sm:px-6 py-4 space-y-4">
             <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
               <div className="relative flex-1 min-w-0 sm:max-w-md">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -530,7 +532,7 @@ const Audits = () => {
             </TabsList>
           </div>
 
-          <TabsContent value={statusFilter} className="mt-4">
+          <TabsContent value={statusFilter} className="mt-0 p-4 sm:p-6">
             {auditsError ? (
               <div className="text-center py-12">
                 <p className="text-destructive">Fehler beim Laden der Audits</p>
@@ -587,7 +589,7 @@ const Audits = () => {
                         }
                       />
                     )}
-                    <div id={groupBy === 'month' ? `month-${group.key}` : undefined} className="scroll-mt-[200px]">
+                    <div id={groupBy === 'month' ? `month-${group.key}` : undefined} className="scroll-mt-[250px]">
                       <Table className="table-fixed w-full">
                         <TableHeader>
                           <TableRow>
