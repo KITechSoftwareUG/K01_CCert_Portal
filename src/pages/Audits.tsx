@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Search, ChevronRight, Calendar, Building2, ClipboardCheck, Users, Trash2, X } from 'lucide-react';
+import { Plus, Search, ChevronRight, Calendar, Building2, ClipboardCheck, Users, Trash2, X, RotateCcw } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Audit } from '@/types/audit';
 import { AUDIT_TYPE_LABELS, AUDIT_STATUS_CONFIG } from '@/lib/constants';
@@ -300,6 +300,24 @@ const Audits = () => {
     }
   }, []);
 
+  const handleResetFilters = useCallback(() => {
+    setSearchQuery('');
+    setStatusFilter('all');
+    setClientStatusFilter('active');
+    setConsultantFilter('all');
+    setAuditorFilter('all');
+    setCertificationBodyFilter('all');
+
+    sessionStorage.removeItem('audits-search-query');
+    sessionStorage.removeItem('audits-status-filter');
+    sessionStorage.removeItem('audits-client-status-filter');
+    sessionStorage.removeItem('audits-consultant-filter');
+    sessionStorage.removeItem('audits-auditor-filter');
+    sessionStorage.removeItem('audits-cert-body-filter');
+
+    toast.success('Filter zurückgesetzt');
+  }, []);
+
   const toggleAuditSelection = (auditId: string) => {
     setSelectedAuditIds(prev => {
       const next = new Set(prev);
@@ -481,6 +499,16 @@ const Audits = () => {
                 </Button>
               )}
             </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="px-2 text-muted-foreground hover:text-foreground"
+              onClick={handleResetFilters}
+              title="Alle Filter zurücksetzen"
+            >
+              <RotateCcw className="h-4 w-4 mr-1" />
+              Reset
+            </Button>
           </div>
         </div>
 
