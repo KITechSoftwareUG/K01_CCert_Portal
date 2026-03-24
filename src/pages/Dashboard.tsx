@@ -1,19 +1,19 @@
-import { useMemo } from 'react';
-import { useClients } from '@/hooks/useClients';
-import { useAudits } from '@/hooks/useAudits';
-import { useAllAuditTasks } from '@/hooks/useAuditTasks';
-import { transformAuditToLocal } from '@/lib/auditUtils';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Building2 } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
-import { ExpiringCertificationsCard } from '@/components/ExpiringCertificationsCard';
-import { DataQualityWarningsCard } from '@/components/DataQualityWarningsCard';
-import { AlertsCard } from '@/components/AlertsCard';
-import { AuditYearStatsCard } from '@/components/AuditYearStatsCard';
-import { CertificationYearStatsCard } from '@/components/CertificationYearStatsCard';
-import { OpenTasksCard } from '@/components/OpenTasksCard';
-import { DashboardAIChat } from '@/components/DashboardAIChat';
-import { useCertificationBodyStats } from '@/hooks/useCertificationBodies';
+import { useMemo } from "react";
+import { useClients } from "@/hooks/useClients";
+import { useAudits } from "@/hooks/useAudits";
+import { useAllAuditTasks } from "@/hooks/useAuditTasks";
+import { transformAuditToLocal } from "@/lib/auditUtils";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Users, Building2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ExpiringCertificationsCard } from "@/components/ExpiringCertificationsCard";
+import { DataQualityWarningsCard } from "@/components/DataQualityWarningsCard";
+import { AlertsCard } from "@/components/AlertsCard";
+import { AuditYearStatsCard } from "@/components/AuditYearStatsCard";
+import { CertificationYearStatsCard } from "@/components/CertificationYearStatsCard";
+import { OpenTasksCard } from "@/components/OpenTasksCard";
+import { DashboardAIChat } from "@/components/DashboardAIChat";
+import { useCertificationBodyStats } from "@/hooks/useCertificationBodies";
 
 const Dashboard = () => {
   const { data: clients = [], isLoading: clientsLoading } = useClients();
@@ -22,7 +22,7 @@ const Dashboard = () => {
   const { data: bodyStats = [] } = useCertificationBodyStats();
 
   const audits = useMemo(() => {
-    return dbAudits.map(audit => transformAuditToLocal(audit, dbTasks));
+    return dbAudits.map((audit) => transformAuditToLocal(audit, dbTasks));
   }, [dbAudits, dbTasks]);
 
   const clientStats = useMemo(() => {
@@ -45,7 +45,7 @@ const Dashboard = () => {
       totalLocations,
       activeLocations,
       inactiveLocations,
-      totalCompanies
+      totalCompanies,
     };
   }, [clients]);
 
@@ -65,7 +65,7 @@ const Dashboard = () => {
     <div className="p-4 sm:p-8 space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">Willkommen zurück im CCert Portal.</p>
+        <p className="text-muted-foreground">Willkommen im Portal von Certconsulting Pane.</p>
       </div>
 
       <DashboardAIChat />
@@ -101,7 +101,9 @@ const Dashboard = () => {
               {bodyStats.length > 0 && (
                 <>
                   <div className="border-t border-primary/20 my-2" />
-                  <p className="text-[10px] text-primary/70 font-medium uppercase tracking-wider pb-0.5">Zertifizierungen je Zertifizierer</p>
+                  <p className="text-[10px] text-primary/70 font-medium uppercase tracking-wider pb-0.5">
+                    Zertifizierungen je Zertifizierer
+                  </p>
                   {bodyStats.map((stat) => (
                     <div key={stat.bodyId} className="flex items-center justify-between text-xs">
                       <span className="text-muted-foreground truncate mr-2" title={stat.bodyName}>
@@ -144,4 +146,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-
