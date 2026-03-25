@@ -175,7 +175,7 @@ export const Layout = ({ children }: LayoutProps) => {
 
   if (isMobile) {
     return (
-      <div className="flex flex-col min-h-screen bg-background">
+      <div className="flex flex-col h-screen overflow-hidden bg-background">
         {/* Mobile Header */}
         <header className="sticky top-0 z-40 flex items-center gap-3 px-4 py-3 bg-sidebar border-b border-sidebar-border">
           <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
@@ -215,7 +215,7 @@ export const Layout = ({ children }: LayoutProps) => {
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex h-screen overflow-hidden bg-background">
       {/* Desktop Sidebar */}
       <aside className="w-64 bg-sidebar border-r border-sidebar-border flex flex-col sticky top-0 h-screen">
         <SidebarContent
