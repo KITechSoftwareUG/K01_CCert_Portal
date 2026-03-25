@@ -75,6 +75,7 @@ const AuditRow = ({
   isSelected,
   onSelectChange
 }: AuditRowProps) => {
+  const isToday = format(audit.scheduledDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
   const statusConfig = AUDIT_STATUS_CONFIG[audit.status];
   const pendingTasks = audit.tasks.filter(t => t.status !== 'completed').length;
   const overdueTasks = audit.tasks.filter(t => t.status === 'overdue' || (t.status !== 'completed' && t.dueDate < new Date())).length;
@@ -82,7 +83,11 @@ const AuditRow = ({
   return (
     <TableRow
       id={`audit-${audit.id}`}
-      className={cn("cursor-pointer hover:bg-muted/50 transition-colors scroll-mt-[100px]", isSelected && "bg-primary/5")}
+      className={cn(
+        "cursor-pointer hover:bg-muted/50 transition-colors scroll-mt-[100px] border-l-0",
+        isSelected && "bg-primary/5",
+        isToday && "bg-destructive/5 border-l-4 border-l-destructive shadow-sm"
+      )}
       onClick={onClick}
     >
       <TableCell onClick={(e) => e.stopPropagation()}>
