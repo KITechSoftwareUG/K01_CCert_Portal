@@ -123,51 +123,63 @@ const Clients = () => {
 
   // Filter clients by active status, search, and auditor
   const filteredClients = useMemo(() => {
-    let result = clients;
-
-    // Filter by active status
-    if (statusFilter === 'active') {
-      result = result.filter(client => client.is_active !== false);
-    } else if (statusFilter === 'inactive') {
-      result = result.filter(client => client.is_active === false && client.is_active !== null);
-    }
-
-    // Filter by search query
+    // Stage 1: Basic Matching (Individual level)
+    const directSearchMatches = new Set<string>();
     if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(client =>
-        client.name.toLowerCase().includes(query) ||
-        client.contact_person?.toLowerCase().includes(query) ||
-        client.client_number?.toLowerCase().includes(query) ||
-        client.country?.toLowerCase().includes(query)
-      );
+      const q = searchQuery.toLowerCase();
+      clients.forEach(c => {
+        if (c.name.toLowerCase().includes(q) || c.contact_person?.toLowerCase().includes(q) || c.client_number?.toLowerCase().includes(q) || c.country?.toLowerCase().includes(q)) {
+          directSearchMatches.add(c.id);
+        }
+      });
+    } else {
+      clients.forEach(c => directSearchMatches.add(c.id));
     }
 
-    // Filter by auditor
-    if (auditorFilter && auditorFilter !== 'all') {
-      const clientIdsWithAuditor = new Set<string>();
+    const statMatches = new Set<string>();
+    clients.forEach(c => {
+      if (statusFilter === 'all') statMatches.add(c.id);
+      else if (statusFilter === 'active' && c.is_active !== false) statMatches.add(c.id);
+      else if (statusFilter === 'inactive' && c.is_active === false && c.is_active !== null) statMatches.add(c.id);
+    });
 
+    const audMatches = new Set<string>();
+    if (auditorFilter === 'all') {
+      clients.forEach(c => audMatches.add(c.id));
+    } else {
+      const clientIdsWithAuditor = new Set<string>();
       if (auditorFilter === 'none') {
-        // Find clients that have at least one certification WITHOUT an auditor
         Object.entries(certificationsByClient).forEach(([clientId, certRows]) => {
-          const hasNoAuditor = certRows.some(row => !auditorsByClientCertification[row.primaryCertificationId]);
-          if (hasNoAuditor) clientIdsWithAuditor.add(clientId);
+          if (certRows.some(row => !auditorsByClientCertification[row.primaryCertificationId])) clientIdsWithAuditor.add(clientId);
         });
       } else {
-        // Find clients that have certifications with the selected auditor
         Object.entries(certificationsByClient).forEach(([clientId, certRows]) => {
-          const hasAuditor = certRows.some(row => {
-            const auditor = auditorsByClientCertification[row.primaryCertificationId];
-            return auditor && auditor.auditorId === auditorFilter;
-          });
-          if (hasAuditor) clientIdsWithAuditor.add(clientId);
+          if (certRows.some(row => auditorsByClientCertification[row.primaryCertificationId]?.auditorId === auditorFilter)) clientIdsWithAuditor.add(clientId);
         });
       }
-
-      result = result.filter(client => clientIdsWithAuditor.has(client.id));
+      clients.forEach(c => { if (clientIdsWithAuditor.has(c.id)) audMatches.add(c.id); });
     }
 
-    return result;
+    // Stage 2: Hierarchy Application
+    // A child is kept if (passes status/auditor) AND (itself matches search OR its parent matches search)
+    const survivors = new Set<string>();
+    clients.forEach(c => {
+      const isSearchMatch = directSearchMatches.has(c.id) || (c.parent_client_id && directSearchMatches.has(c.parent_client_id));
+      if (isSearchMatch && statMatches.has(c.id) && audMatches.has(c.id)) {
+        survivors.add(c.id);
+        // If a child survives, its parent MUST also survive (to provide the "folder" context)
+        if (c.parent_client_id) survivors.add(c.parent_client_id);
+      }
+    });
+
+    // Also include parents that match the search directly even if they have no matching children (they'll show as empty folders)
+    clients.forEach(c => {
+      if (!c.parent_client_id && directSearchMatches.has(c.id)) {
+        survivors.add(c.id);
+      }
+    });
+
+    return clients.filter(c => survivors.has(c.id));
   }, [searchQuery, clients, statusFilter, auditorFilter, certificationsByClient, auditorsByClientCertification]);
 
   // Group clients by country → company groups
