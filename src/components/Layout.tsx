@@ -200,9 +200,11 @@ export const Layout = ({ children }: LayoutProps) => {
           <img src={logo} alt="cert consulting" className="h-8 w-auto" />
         </header>
 
-        {/* Main Content */}
-        <main className="flex-1 overflow-auto">
-          {children || <Outlet />}
+        {/* Main Content - overflow-hidden so children can use h-full reliably */}
+        <main className="flex-1 overflow-hidden flex flex-col">
+          <div className="flex-1 overflow-auto" id="main-scroll-container">
+            {children || <Outlet />}
+          </div>
         </main>
       </div>
     );
@@ -221,9 +223,11 @@ export const Layout = ({ children }: LayoutProps) => {
         />
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto">
-        {children || <Outlet />}
+      {/* Main Content - overflow-hidden so children can use h-full reliably */}
+      <main className="flex-1 overflow-hidden flex flex-col">
+        <div className="flex-1 overflow-auto" id="main-scroll-container">
+          {children || <Outlet />}
+        </div>
       </main>
     </div>
   );
