@@ -113,45 +113,124 @@ serve(async (req) => {
     const now = new Date();
     const todayStr = now.toLocaleDateString("de-DE");
 
-    const [clientsRes, auditsRes, tasksRes, certificationsRes, auditorsRes, certBodiesRes, contactsRes, certsRes] = await Promise.all([
-      supabase.from("clients").select("id, name, client_number, contact_person, email, phone, country, is_active, consultant"),
-      supabase.from("audits").select(`
+    // Detection of focused intent
+    const hasAuditWords = keywords.some(k => ["audit", "prüfung", "termin", "besuch"].includes(k));
+    const hasClientWords = keywords.some(k => ["kunde", "firma", "unternehmen", "mandant"].includes(k));
+    const hasTaskWords = keywords.some(k => ["aufgabe", "task", "todo", "erledigen", "fällig"].includes(k));
+    const hasCertWords = keywords.some(k => ["zertifikat", "norm", "iso", "standard", "gültig"].includes(k));
+    const hasAuditorWords = keywords.some(k => ["auditor", "person", "wer"].includes(k));
+
+    // Helper for keyword filtering in Supabase
+    const applyKeywordFilter = (query: any, columns: string[]) => {
+      if (keywords.length === 0) return query.limit(20);
+      const filterString = columns.map(col => `${col}.ilike.%${keywords[0]}%`).join(",");
+      return query.or(filterString).limit(50);
+    };
+
+    // Optimized Data Fetching
+    const fetchPromises = [];
+
+    // 1. CLIENTS
+    if (isGreetingRequest || hasClientWords || keywords.length === 0) {
+      let q = supabase.from("clients").select("id, name, client_number, contact_person, email, phone, country, is_active, consultant");
+      if (!isGreetingRequest && keywords.length > 0) q = applyKeywordFilter(q, ["name", "client_number", "contact_person"]);
+      else q = q.limit(MAX_CLIENTS);
+      fetchPromises.push(q.then(res => ({ type: "clients", data: res.data || [] })));
+    } else {
+      fetchPromises.push(Promise.resolve({ type: "clients", data: [] }));
+    }
+
+    // 2. AUDITS
+    if (isGreetingRequest || hasAuditWords || keywords.length === 0) {
+      let q = supabase.from("audits").select(`
         id, type, status, scheduled_date, notes,
         clients (id, name, client_number),
         auditors (id, name),
         certification_bodies (id, name, short_name),
-        client_certifications (
-          id,
-          certifications (id, name)
-        )
-      `).order("scheduled_date", { ascending: true }),
-      supabase.from("audit_tasks").select(`
+        client_certifications (id, certifications (id, name))
+      `);
+      if (isGreetingRequest) {
+        q = q.gte("scheduled_date", now.toISOString()).limit(10);
+      } else if (keywords.length > 0) {
+        q = applyKeywordFilter(q, ["type", "status", "notes"]);
+      } else {
+        q = q.order("scheduled_date", { ascending: true }).limit(MAX_AUDITS);
+      }
+      fetchPromises.push(q.then(res => ({ type: "audits", data: res.data || [] })));
+    } else {
+      fetchPromises.push(Promise.resolve({ type: "audits", data: [] }));
+    }
+
+    // 3. TASKS
+    if (isGreetingRequest || hasTaskWords || keywords.length === 0) {
+      let q = supabase.from("audit_tasks").select(`
         id, title, description, status, due_date, assigned_to,
-        audits (
-          id, type, scheduled_date, status,
-          clients (id, name, client_number)
-        )
-      `).order("due_date", { ascending: true }),
-      supabase.from("client_certifications").select(`
+        audits (id, type, scheduled_date, status, clients (id, name, client_number))
+      `);
+      if (isGreetingRequest) {
+        q = q.or(`status.eq.pending,status.eq.in-progress`).limit(15);
+      } else if (keywords.length > 0) {
+        q = applyKeywordFilter(q, ["title", "description"]);
+      } else {
+        q = q.order("due_date", { ascending: true }).limit(MAX_TASKS);
+      }
+      fetchPromises.push(q.then(res => ({ type: "tasks", data: res.data || [] })));
+    } else {
+      fetchPromises.push(Promise.resolve({ type: "tasks", data: [] }));
+    }
+
+    // 4. CERTIFICATIONS
+    if (isGreetingRequest || hasCertWords || keywords.length === 0) {
+      let q = supabase.from("client_certifications").select(`
         id, status, valid_from, valid_until, certificate_number, scope,
         clients (id, name, client_number),
         certifications (id, name),
         auditors (id, name)
-      `),
-      supabase.from("auditors").select("id, name, email, phone, certification_bodies (name, short_name)"),
-      supabase.from("certification_bodies").select("id, name, short_name, contact_person, email, phone"),
-      supabase.from("contacts").select("id, name, role, email, phone, is_primary, clients (id, name, client_number)"),
-      supabase.from("certifications").select("id, name, description"),
-    ]);
+      `);
+      if (isGreetingRequest) {
+        q = q.lte("valid_until", new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000).toISOString()).limit(10);
+      } else if (keywords.length > 0) {
+        q = applyKeywordFilter(q, ["certificate_number", "scope", "status"]);
+      } else {
+        q = q.limit(MAX_CERTIFICATIONS);
+      }
+      fetchPromises.push(q.then(res => ({ type: "clientCerts", data: res.data || [] })));
+    } else {
+      fetchPromises.push(Promise.resolve({ type: "clientCerts", data: [] }));
+    }
 
-    const clients = clientsRes.data || [];
-    const audits = auditsRes.data || [];
-    const tasks = tasksRes.data || [];
-    const clientCerts = certificationsRes.data || [];
-    const auditors = auditorsRes.data || [];
-    const certBodies = certBodiesRes.data || [];
-    const contacts = contactsRes.data || [];
-    const certTypes = certsRes.data || [];
+    // 5. AUDITORS
+    if (hasAuditorWords || (!isGreetingRequest && keywords.length === 0)) {
+      let q = supabase.from("auditors").select("id, name, email, phone, certification_bodies (name, short_name)");
+      if (keywords.length > 0) q = applyKeywordFilter(q, ["name", "email"]);
+      else q = q.limit(MAX_AUDITORS);
+      fetchPromises.push(q.then(res => ({ type: "auditors", data: res.data || [] })));
+    } else {
+      fetchPromises.push(Promise.resolve({ type: "auditors", data: [] }));
+    }
+
+    // 6. CERT BODIES & CONTACTS
+    if (keywords.length > 0) {
+      fetchPromises.push(applyKeywordFilter(supabase.from("certification_bodies").select("id, name, short_name, contact_person, email, phone"), ["name", "short_name"]).then(res => ({ type: "certBodies", data: res.data || [] })));
+      fetchPromises.push(applyKeywordFilter(supabase.from("contacts").select("id, name, role, email, phone, is_primary, clients (id, name, client_number)"), ["name", "role", "email"]).then(res => ({ type: "contacts", data: res.data || [] })));
+      fetchPromises.push(supabase.from("certifications").select("id, name, description").limit(10).then(res => ({ type: "certTypes", data: res.data || [] })));
+    } else {
+      fetchPromises.push(Promise.resolve({ type: "certBodies", data: [] }));
+      fetchPromises.push(Promise.resolve({ type: "contacts", data: [] }));
+      fetchPromises.push(supabase.from("certifications").select("id, name, description").limit(8).then(res => ({ type: "certTypes", data: res.data || [] })));
+    }
+
+    const results = await Promise.all(fetchPromises);
+    const dataMap = Object.fromEntries(results.map(r => [r.type, r.data]));
+
+    const clients = dataMap.clients || [];
+    const audits = dataMap.audits || [];
+    const tasks = dataMap.tasks || [];
+    const clientCerts = dataMap.clientCerts || [];
+    const auditors = dataMap.auditors || [];
+    const certBodies = dataMap.certBodies || [];
+    const contacts = dataMap.contacts || [];
+    const certTypes = dataMap.certTypes || [];
 
     const openTasks = tasks.filter((t: any) => t.status === "pending" || t.status === "in-progress");
     const overdueTasks = openTasks.filter((t: any) => new Date(t.due_date) < now);
@@ -160,54 +239,43 @@ serve(async (req) => {
       .filter((cc: any) => cc.valid_until)
       .sort((a: any, b: any) => new Date(a.valid_until).getTime() - new Date(b.valid_until).getTime());
 
-    const matchAllClients = keywords.length === 0 || keywords.some((keyword) => [
-      ...clients.map((client: any) => `${client.name} ${client.client_number ?? ""} ${client.country ?? ""} ${client.consultant ?? ""}`),
-      ...auditors.map((auditor: any) => auditor.name),
-      ...certBodies.map((body: any) => `${body.name} ${body.short_name ?? ""}`),
-      ...certTypes.map((cert: any) => cert.name),
-    ].some((text) => normalize(text).includes(keyword)));
-
     const selectedClients = isGreetingRequest
       ? []
       : limitAndSort(
-          clients,
-          MAX_CLIENTS,
-          (client: any) => scoreByKeywords(`${client.name} ${client.client_number ?? ""} ${client.country ?? ""} ${client.consultant ?? ""} ${client.contact_person ?? ""}`, keywords),
-          (a: any, b: any) => a.name.localeCompare(b.name)
-        );
+        clients,
+        MAX_CLIENTS,
+        (client: any) => scoreByKeywords(`${client.name} ${client.client_number ?? ""} ${client.country ?? ""} ${client.consultant ?? ""} ${client.contact_person ?? ""}`, keywords),
+        (a: any, b: any) => a.name.localeCompare(b.name)
+      );
 
-    const selectedAudits = isGreetingRequest
-      ? upcomingAudits.slice(0, 4)
-      : [
-          ...limitAndSort(
-            audits,
-            MAX_AUDITS,
-            (audit: any) => {
-              const certName = audit.client_certifications?.certifications?.name ?? "";
-              const auditorName = audit.auditors?.name ?? "";
-              const clientName = audit.clients?.name ?? "";
-              return scoreByKeywords(`${clientName} ${audit.type} ${audit.status} ${certName} ${auditorName}`, keywords);
-            },
-            (a: any, b: any) => new Date(a.scheduled_date).getTime() - new Date(b.scheduled_date).getTime()
-          ),
-          ...upcomingAudits.slice(0, 6),
-        ].filter((audit: any, index: number, array: any[]) => array.findIndex((item) => item.id === audit.id) === index).slice(0, MAX_AUDITS);
+    const selectedAudits = [
+      ...limitAndSort(
+        audits,
+        MAX_AUDITS,
+        (audit: any) => {
+          const certName = audit.client_certifications?.certifications?.name ?? "";
+          const auditorName = audit.auditors?.name ?? "";
+          const clientName = audit.clients?.name ?? "";
+          return scoreByKeywords(`${clientName} ${audit.type} ${audit.status} ${certName} ${auditorName}`, keywords);
+        },
+        (a: any, b: any) => new Date(a.scheduled_date).getTime() - new Date(b.scheduled_date).getTime()
+      ),
+      ...(isGreetingRequest ? upcomingAudits.slice(0, 6) : [])
+    ].filter((audit: any, index: number, array: any[]) => array.findIndex((item) => item.id === audit.id) === index).slice(0, MAX_AUDITS);
 
-    const selectedTasks = isGreetingRequest
-      ? [...overdueTasks.slice(0, 5), ...openTasks.slice(0, 5)].filter((task: any, index: number, array: any[]) => array.findIndex((item) => item.id === task.id) === index).slice(0, MAX_TASKS)
-      : [
-          ...limitAndSort(
-            tasks,
-            MAX_TASKS,
-            (task: any) => {
-              const clientName = task.audits?.clients?.name ?? "";
-              const auditType = task.audits?.type ?? "";
-              return scoreByKeywords(`${task.title} ${task.description ?? ""} ${task.status} ${clientName} ${auditType} ${task.assigned_to ?? ""}`, keywords);
-            },
-            (a: any, b: any) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
-          ),
-          ...overdueTasks.slice(0, 6),
-        ].filter((task: any, index: number, array: any[]) => array.findIndex((item) => item.id === task.id) === index).slice(0, MAX_TASKS);
+    const selectedTasks = [
+      ...limitAndSort(
+        tasks,
+        MAX_TASKS,
+        (task: any) => {
+          const clientName = task.audits?.clients?.name ?? "";
+          const auditType = task.audits?.type ?? "";
+          return scoreByKeywords(`${task.title} ${task.description ?? ""} ${task.status} ${clientName} ${auditType} ${task.assigned_to ?? ""}`, keywords);
+        },
+        (a: any, b: any) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+      ),
+      ...(isGreetingRequest ? overdueTasks.slice(0, 6) : [])
+    ].filter((task: any, index: number, array: any[]) => array.findIndex((item) => item.id === task.id) === index).slice(0, MAX_TASKS);
 
     const relatedClientIds = new Set([
       ...selectedClients.map((client: any) => client.id),
@@ -215,54 +283,52 @@ serve(async (req) => {
       ...selectedTasks.map((task: any) => task.audits?.clients?.id).filter(Boolean),
     ]);
 
-    const selectedClientCerts = isGreetingRequest
-      ? expiringCerts.slice(0, 6)
-      : [
-          ...clientCerts.filter((cert: any) => relatedClientIds.has(cert.clients?.id)),
-          ...limitAndSort(
-            clientCerts,
-            MAX_CERTIFICATIONS,
-            (cert: any) => {
-              const clientName = cert.clients?.name ?? "";
-              const certName = cert.certifications?.name ?? "";
-              const auditorName = cert.auditors?.name ?? "";
-              return scoreByKeywords(`${clientName} ${certName} ${cert.status ?? ""} ${cert.scope ?? ""} ${cert.certificate_number ?? ""} ${auditorName}`, keywords);
-            },
-            (a: any, b: any) => {
-              const aTime = a.valid_until ? new Date(a.valid_until).getTime() : Number.MAX_SAFE_INTEGER;
-              const bTime = b.valid_until ? new Date(b.valid_until).getTime() : Number.MAX_SAFE_INTEGER;
-              return aTime - bTime;
-            }
-          ),
-        ].filter((cert: any, index: number, array: any[]) => array.findIndex((item) => item.id === cert.id) === index).slice(0, MAX_CERTIFICATIONS);
+    const selectedClientCerts = [
+      ...clientCerts.filter((cert: any) => relatedClientIds.has(cert.clients?.id)),
+      ...limitAndSort(
+        clientCerts,
+        MAX_CERTIFICATIONS,
+        (cert: any) => {
+          const clientName = cert.clients?.name ?? "";
+          const certName = cert.certifications?.name ?? "";
+          const auditorName = cert.auditors?.name ?? "";
+          return scoreByKeywords(`${clientName} ${certName} ${cert.status ?? ""} ${cert.scope ?? ""} ${cert.certificate_number ?? ""} ${auditorName}`, keywords);
+        },
+        (a: any, b: any) => {
+          const aTime = a.valid_until ? new Date(a.valid_until).getTime() : Number.MAX_SAFE_INTEGER;
+          const bTime = b.valid_until ? new Date(b.valid_until).getTime() : Number.MAX_SAFE_INTEGER;
+          return aTime - bTime;
+        }
+      ),
+    ].filter((cert: any, index: number, array: any[]) => array.findIndex((item) => item.id === cert.id) === index).slice(0, MAX_CERTIFICATIONS);
 
     const selectedAuditors = isGreetingRequest
       ? []
       : limitAndSort(
-          auditors,
-          MAX_AUDITORS,
-          (auditor: any) => scoreByKeywords(`${auditor.name} ${auditor.email ?? ""} ${auditor.certification_bodies?.name ?? ""} ${auditor.certification_bodies?.short_name ?? ""}`, keywords),
-          (a: any, b: any) => a.name.localeCompare(b.name)
-        );
+        auditors,
+        MAX_AUDITORS,
+        (auditor: any) => scoreByKeywords(`${auditor.name} ${auditor.email ?? ""} ${auditor.certification_bodies?.name ?? ""} ${auditor.certification_bodies?.short_name ?? ""}`, keywords),
+        (a: any, b: any) => a.name.localeCompare(b.name)
+      );
 
     const selectedContacts = isGreetingRequest
       ? []
       : contacts
-          .filter((contact: any) => relatedClientIds.has(contact.clients?.id))
-          .slice(0, MAX_CONTACTS);
+        .filter((contact: any) => relatedClientIds.has(contact.clients?.id))
+        .slice(0, MAX_CONTACTS);
 
     const selectedCertBodies = isGreetingRequest
       ? []
       : limitAndSort(
-          certBodies,
-          MAX_CERT_BODIES,
-          (body: any) => scoreByKeywords(`${body.name} ${body.short_name ?? ""} ${body.contact_person ?? ""} ${body.email ?? ""}`, keywords),
-          (a: any, b: any) => a.name.localeCompare(b.name)
-        );
+        certBodies,
+        MAX_CERT_BODIES,
+        (body: any) => scoreByKeywords(`${body.name} ${body.short_name ?? ""} ${body.contact_person ?? ""} ${body.email ?? ""}`, keywords),
+        (a: any, b: any) => a.name.localeCompare(b.name)
+      );
 
-    const selectedCertTypes = isGreetingRequest || !matchAllClients
+    const selectedCertTypes = isGreetingRequest
       ? certTypes.slice(0, 8)
-      : certTypes.filter((cert: any) => scoreByKeywords(cert.name, keywords) > 0).slice(0, 8);
+      : certTypes.filter((cert: any) => scoreByKeywords(cert.name, keywords) > 0 || keywords.length === 0).slice(0, 8);
 
     const ctx: string[] = [];
     ctx.push(`AKTUELLES DATUM: ${todayStr}`);
