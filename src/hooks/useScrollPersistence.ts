@@ -19,18 +19,31 @@ export const useScrollPersistence = (key?: string) => {
         // Restore scroll position
         const savedPos = sessionStorage.getItem(persistenceKey);
 
-        // Small timeout to ensure content has rendered
-        const timeoutId = setTimeout(() => {
-            if (savedPos) {
-                container.scrollTo({ top: parseInt(savedPos, 10), behavior: 'auto' });
-            } else {
-                // If NO saved position, we MUST reset to top.
-                // Otherwise a shared container stays at the previous page's position.
-                container.scrollTo({ top: 0, behavior: 'auto' });
-            }
-        }, 10); // Shorter timeout for snappier feel
+        if (savedPos) {
+            const targetPos = parseInt(savedPos, 10);
+            let attempts = 0;
+            const maxAttempts = 5;
 
-        return () => clearTimeout(timeoutId);
+            const attemptScroll = () => {
+                if (!container) return;
+                container.scrollTo({ top: targetPos, behavior: 'auto' });
+
+                // If we haven't reached the target pos (and the container might still be growing)
+                // we try again in a bit.
+                if (Math.abs(container.scrollTop - targetPos) > 5 && attempts < maxAttempts) {
+                    attempts++;
+                    setTimeout(attemptScroll, 150); // Give it time between attempts
+                }
+            };
+
+            // Initial delay to let the initial render finish
+            const timeoutId = setTimeout(attemptScroll, 50);
+            return () => clearTimeout(timeoutId);
+        } else {
+            // If NO saved position, we MUST reset to top.
+            // Otherwise a shared container stays at the previous page's position.
+            container.scrollTo({ top: 0, behavior: 'auto' });
+        }
     }, [persistenceKey]);
 
     useEffect(() => {
