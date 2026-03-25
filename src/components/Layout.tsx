@@ -202,9 +202,13 @@ export const Layout = ({ children }: LayoutProps) => {
 
         {/* Main Content - overflow-hidden so children can use h-full reliably */}
         <main className="flex-1 overflow-hidden flex flex-col">
-          <div className="flex-1 overflow-auto" id="main-scroll-container">
-            {children || <Outlet />}
-          </div>
+          {location.pathname === '/audits' ? (
+            children || <Outlet />
+          ) : (
+            <div className="flex-1 overflow-auto" id="main-scroll-container">
+              {children || <Outlet />}
+            </div>
+          )}
         </main>
       </div>
     );
@@ -225,9 +229,13 @@ export const Layout = ({ children }: LayoutProps) => {
 
       {/* Main Content - overflow-hidden so children can use h-full reliably */}
       <main className="flex-1 overflow-hidden flex flex-col">
-        <div className="flex-1 overflow-auto" id="main-scroll-container">
-          {children || <Outlet />}
-        </div>
+        {location.pathname === '/audits' ? (
+          children || <Outlet />
+        ) : (
+          <div className="flex-1 overflow-auto" id="main-scroll-container">
+            {children || <Outlet />}
+          </div>
+        )}
       </main>
     </div>
   );
