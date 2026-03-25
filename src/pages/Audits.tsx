@@ -81,7 +81,8 @@ const AuditRow = ({
 
   return (
     <TableRow
-      className={cn("cursor-pointer hover:bg-muted/50 transition-colors", isSelected && "bg-primary/5")}
+      id={`audit-${audit.id}`}
+      className={cn("cursor-pointer hover:bg-muted/50 transition-colors scroll-mt-[100px]", isSelected && "bg-primary/5")}
       onClick={onClick}
     >
       <TableCell onClick={(e) => e.stopPropagation()}>
@@ -225,34 +226,6 @@ const Audits = () => {
     [dbAudits, tasks]
   );
 
-  const scrollToCurrentMonth = useCallback(() => {
-    const currentMonthKey = format(new Date(), 'yyyy-MM');
-    const element = document.getElementById(`month-${currentMonthKey}`);
-    if (element && scrollRef.current) {
-      const container = scrollRef.current;
-      const elementTop = element.getBoundingClientRect().top;
-      const containerTop = container.getBoundingClientRect().top;
-      const offset = elementTop - containerTop + container.scrollTop;
-      container.scrollTo({ top: offset, behavior: 'smooth' });
-    } else {
-      toast.info('Keine Audits im aktuellen Monat geplant');
-    }
-  }, [scrollRef]);
-
-  // Scroll to current month on initial load once audits are loaded
-  useEffect(() => {
-    if (!auditsLoading && audits.length > 0 && groupBy === 'month') {
-      const timer = setTimeout(() => {
-        scrollToCurrentMonth();
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [auditsLoading, groupBy, audits.length, scrollToCurrentMonth]);
-
-  const handleViewDetails = useCallback((audit: Audit) => {
-    navigate(`/audits/${audit.id}`);
-  }, [navigate]);
-
   const filteredAudits = useMemo(() => {
     return audits
       .filter(audit => {
@@ -272,6 +245,58 @@ const Audits = () => {
       })
       .sort((a, b) => a.scheduledDate.getTime() - b.scheduledDate.getTime());
   }, [audits, searchQuery, statusFilter, clientStatusFilter, consultantFilter, auditorFilter, certificationBodyFilter, clientMap]);
+
+  const scrollToToday = useCallback(() => {
+    // 1. First attempt: Scroll directly to the first audit of "Today" or the next upcoming audit
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const upcomingAudit = filteredAudits.find(audit => {
+      const auditDate = new Date(audit.scheduledDate);
+      auditDate.setHours(0, 0, 0, 0);
+      return auditDate >= today;
+    });
+
+    if (upcomingAudit) {
+      const element = document.getElementById(`audit-${upcomingAudit.id}`);
+      if (element && scrollRef.current) {
+        const container = scrollRef.current;
+        const elementTop = element.getBoundingClientRect().top;
+        const containerTop = container.getBoundingClientRect().top;
+        // Scroll to the specific row but subtract a small offset so the context isn't cut off
+        const offset = elementTop - containerTop + container.scrollTop - 80;
+        container.scrollTo({ top: Math.max(0, offset), behavior: 'smooth' });
+        return;
+      }
+    }
+
+    // 2. Fallback: Scroll to the start of the current month group header
+    const currentMonthKey = format(new Date(), 'yyyy-MM');
+    const element = document.getElementById(`month-${currentMonthKey}`);
+    if (element && scrollRef.current) {
+      const container = scrollRef.current;
+      const elementTop = element.getBoundingClientRect().top;
+      const containerTop = container.getBoundingClientRect().top;
+      const offset = elementTop - containerTop + container.scrollTop;
+      container.scrollTo({ top: offset, behavior: 'smooth' });
+    } else {
+      toast.info('Keine Audits in nächster Zeit geplant');
+    }
+  }, [scrollRef, filteredAudits]);
+
+  // Scroll to today on initial load once audits are loaded
+  useEffect(() => {
+    if (!auditsLoading && audits.length > 0 && groupBy === 'month') {
+      const timer = setTimeout(() => {
+        scrollToToday();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [auditsLoading, groupBy, audits.length, scrollToToday]);
+
+  const handleViewDetails = useCallback((audit: Audit) => {
+    navigate(`/audits/${audit.id}`);
+  }, [navigate]);
 
   const groupedAudits = useMemo(() => {
     if (groupBy === 'none') {
@@ -429,7 +454,7 @@ const Audits = () => {
                   </SelectContent>
                 </Select>
                 {groupBy === 'month' && (
-                  <Button variant="outline" size="sm" className="h-9 px-3 text-xs" onClick={scrollToCurrentMonth} title="Zum aktuellen Monat springen">
+                  <Button variant="outline" size="sm" className="h-9 px-3 text-xs" onClick={scrollToToday} title="Zum heutigen Tag springen">
                     Heute
                   </Button>
                 )}
