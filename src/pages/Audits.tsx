@@ -6,6 +6,7 @@ import { useAuditTasks } from '@/hooks/useAuditTasks';
 import { useClients } from '@/hooks/useClients';
 import { useAuditors } from '@/hooks/useAuditors';
 import { useCertificationBodies } from '@/hooks/useCertificationBodies';
+import { useScrollPersistence } from '@/hooks/useScrollPersistence';
 import { transformAuditToLocal } from '@/lib/auditUtils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,11 +28,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Plus, Search, ChevronRight, Calendar, Building2, ClipboardCheck, Users, Trash2, X, RotateCcw } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Audit } from '@/types/audit';
 import { AUDIT_TYPE_LABELS, AUDIT_STATUS_CONFIG } from '@/lib/constants';
 import { toast } from 'sonner';
-import { format, isSameMonth } from 'date-fns';
+import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -41,13 +41,20 @@ type GroupBy = 'month' | 'client' | 'type' | 'none';
 
 const TableRowSkeleton = () => (
   <TableRow>
-    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-    <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-    <TableCell><Skeleton className="h-8 w-8" /></TableCell>
+    <TableCell colSpan={10}>
+      <div className="flex items-center gap-4 px-2 py-1">
+        <Skeleton className="h-4 w-4" />
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-4 w-20" />
+        <Skeleton className="h-4 w-28" />
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-5 w-20" />
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-4 w-16" />
+        <Skeleton className="h-8 w-8 ml-auto" />
+      </div>
+    </TableCell>
   </TableRow>
 );
 
@@ -103,26 +110,26 @@ const AuditRow = ({
         </TableCell>
       )}
       <TableCell>
-        <div className="flex items-center gap-2 text-sm">
-          <Calendar className="h-4 w-4 text-muted-foreground" />
+        <div className="flex items-center gap-2 text-sm whitespace-nowrap">
+          <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
           {format(audit.scheduledDate, 'dd.MM.yyyy')}
         </div>
       </TableCell>
       <TableCell>
         <Badge
           variant={statusConfig.variant}
-          className={cn("text-xs", statusConfig.className)}
+          className={cn("text-[10px] px-1.5 py-0 h-5 whitespace-nowrap", statusConfig.className)}
         >
           {statusConfig.label}
         </Badge>
       </TableCell>
       <TableCell>
-        <div className="text-sm font-medium">
+        <div className="text-sm font-medium truncate max-w-[120px]">
           {audit.auditorName || <span className="text-muted-foreground opacity-50">–</span>}
         </div>
       </TableCell>
       <TableCell>
-        <div className="text-sm">
+        <div className="text-sm truncate max-w-[120px]">
           {audit.certificationBodyName || <span className="text-muted-foreground opacity-50">–</span>}
         </div>
       </TableCell>
@@ -136,19 +143,19 @@ const AuditRow = ({
           {pendingTasks > 0 ? (
             <div className="flex items-center gap-1">
               <span className={cn(
-                "text-sm",
-                overdueTasks > 0 ? "text-destructive font-medium" : "text-muted-foreground"
+                "text-[11px]",
+                overdueTasks > 0 ? "text-destructive font-semibold" : "text-muted-foreground"
               )}>
-                {overdueTasks > 0 ? `${overdueTasks} überfällig` : `${pendingTasks} Aufgabe${pendingTasks !== 1 ? 'n' : ''}`}
+                {overdueTasks > 0 ? `${overdueTasks} fällig` : `${pendingTasks} Aufg.`}
               </span>
             </div>
           ) : (
-            <span className="text-sm text-green-600 font-medium">✓ Fertig</span>
+            <span className="text-[11px] text-green-600 font-medium whitespace-nowrap">✓ Erledigt</span>
           )}
         </div>
       </TableCell>
-      <TableCell>
-        <Button variant="ghost" size="icon" className="h-8 w-8">
+      <TableCell className="text-right pr-4">
+        <Button variant="ghost" size="icon" className="h-7 w-7">
           <ChevronRight className="h-4 w-4" />
         </Button>
       </TableCell>
@@ -163,10 +170,10 @@ interface GroupHeaderProps {
 }
 
 const GroupHeader = ({ title, count, icon }: GroupHeaderProps) => (
-  <div className="flex items-center gap-3 py-3 px-4 bg-muted/30 border-y border-border sticky top-0">
+  <div className="flex items-center gap-3 py-2.5 px-4 bg-muted/40 border-y border-border/50 sticky top-0 z-20 backdrop-blur-sm">
     {icon}
-    <span className="font-semibold text-foreground">{title}</span>
-    <Badge variant="secondary" className="text-xs">{count}</Badge>
+    <span className="font-bold text-sm tracking-tight text-foreground">{title}</span>
+    <Badge variant="secondary" className="text-[10px] h-4 px-1.5 font-bold uppercase tracking-wider">{count}</Badge>
   </div>
 );
 
@@ -199,6 +206,7 @@ const Audits = () => {
   const { data: clients = [] } = useClients();
   const { data: auditors = [] } = useAuditors();
   const { data: certificationBodies = [] } = useCertificationBodies();
+  const scrollRef = useScrollPersistence();
 
   const clientMap = useMemo(() => {
     const map = new Map<string, { is_active: boolean; consultant: string | null }>();
@@ -217,16 +225,29 @@ const Audits = () => {
     [dbAudits, tasks]
   );
 
+  const scrollToCurrentMonth = useCallback(() => {
+    const currentMonthKey = format(new Date(), 'yyyy-MM');
+    const element = document.getElementById(`month-${currentMonthKey}`);
+    if (element && scrollRef.current) {
+      const container = scrollRef.current;
+      const elementTop = element.getBoundingClientRect().top;
+      const containerTop = container.getBoundingClientRect().top;
+      const offset = elementTop - containerTop + container.scrollTop;
+      container.scrollTo({ top: offset, behavior: 'smooth' });
+    } else {
+      toast.info('Keine Audits im aktuellen Monat geplant');
+    }
+  }, [scrollRef]);
+
   // Scroll to current month on initial load once audits are loaded
   useEffect(() => {
     if (!auditsLoading && audits.length > 0 && groupBy === 'month') {
-      // Small delay to ensure DOM is rendered
       const timer = setTimeout(() => {
         scrollToCurrentMonth();
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [auditsLoading, groupBy, audits.length]);
+  }, [auditsLoading, groupBy, audits.length, scrollToCurrentMonth]);
 
   const handleViewDetails = useCallback((audit: Audit) => {
     navigate(`/audits/${audit.id}`);
@@ -252,7 +273,6 @@ const Audits = () => {
       .sort((a, b) => a.scheduledDate.getTime() - b.scheduledDate.getTime());
   }, [audits, searchQuery, statusFilter, clientStatusFilter, consultantFilter, auditorFilter, certificationBodyFilter, clientMap]);
 
-  // Group audits
   const groupedAudits = useMemo(() => {
     if (groupBy === 'none') {
       return [{ key: 'all', title: 'Alle Audits', audits: filteredAudits }];
@@ -289,22 +309,6 @@ const Audits = () => {
       .map(([key, value]) => ({ key, ...value }))
       .sort((a, b) => groupBy === 'month' ? a.sortKey.localeCompare(b.sortKey) : a.title.localeCompare(b.title, 'de'));
   }, [filteredAudits, groupBy]);
-
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-  const scrollToCurrentMonth = useCallback(() => {
-    const currentMonthKey = format(new Date(), 'yyyy-MM');
-    const element = document.getElementById(`month-${currentMonthKey}`);
-    if (element && scrollContainerRef.current) {
-      const container = scrollContainerRef.current;
-      const elementTop = element.getBoundingClientRect().top;
-      const containerTop = container.getBoundingClientRect().top;
-      const offset = elementTop - containerTop + container.scrollTop;
-      container.scrollTo({ top: offset, behavior: 'smooth' });
-    } else {
-      toast.info('Keine Audits im aktuellen Monat geplant');
-    }
-  }, []);
 
   const handleResetFilters = useCallback(() => {
     setSearchQuery('');
@@ -385,7 +389,7 @@ const Audits = () => {
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <Select value={clientStatusFilter} onValueChange={(v) => { setClientStatusFilter(v as any); sessionStorage.setItem('audits-client-status-filter', v); }}>
-                <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-[140px] h-9"><SelectValue /></SelectTrigger>
                 <SelectContent className="bg-background border shadow-lg z-[100]">
                   <SelectItem value="all">Alle Kunden</SelectItem>
                   <SelectItem value="active">Nur aktive</SelectItem>
@@ -393,58 +397,63 @@ const Audits = () => {
                 </SelectContent>
               </Select>
               <Select value={consultantFilter} onValueChange={(v) => { setConsultantFilter(v); sessionStorage.setItem('audits-consultant-filter', v); }}>
-                <SelectTrigger className="w-[150px]"><SelectValue placeholder="Berater..." /></SelectTrigger>
+                <SelectTrigger className="w-[150px] h-9"><SelectValue placeholder="Berater..." /></SelectTrigger>
                 <SelectContent className="bg-background border shadow-lg z-[100]">
                   <SelectItem value="all">Alle Berater</SelectItem>
                   {consultants.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Select value={auditorFilter} onValueChange={(v) => { setAuditorFilter(v); sessionStorage.setItem('audits-auditor-filter', v); }}>
-                <SelectTrigger className="w-[150px]"><SelectValue placeholder="Auditor..." /></SelectTrigger>
+                <SelectTrigger className="w-[150px] h-9"><SelectValue placeholder="Auditor..." /></SelectTrigger>
                 <SelectContent className="bg-background border shadow-lg z-[100]">
                   <SelectItem value="all">Alle Auditoren</SelectItem>
                   {auditors.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Select value={certificationBodyFilter} onValueChange={(v) => { setCertificationBodyFilter(v); sessionStorage.setItem('audits-cert-body-filter', v); }}>
-                <SelectTrigger className="w-[150px]"><SelectValue placeholder="Zertifizierer..." /></SelectTrigger>
+                <SelectTrigger className="w-[150px] h-9"><SelectValue placeholder="Zertifizierer..." /></SelectTrigger>
                 <SelectContent className="bg-background border shadow-lg z-[100]">
                   <SelectItem value="all">Alle Zertifizierer</SelectItem>
                   {certificationBodies.map(cb => <SelectItem key={cb.id} value={cb.id}>{cb.name}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <span className="text-sm text-muted-foreground hidden lg:inline">Gruppieren:</span>
+              <span className="text-sm text-muted-foreground hidden lg:inline">Gruppe:</span>
               <div className="flex items-center gap-1">
                 <Select value={groupBy} onValueChange={(v) => { setGroupBy(v as GroupBy); sessionStorage.setItem('audits-group-by', v); }}>
-                  <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-[140px] h-9"><SelectValue /></SelectTrigger>
                   <SelectContent className="bg-background border shadow-lg z-[100]">
-                    <SelectItem value="month"><div className="flex items-center gap-2"><Calendar className="h-4 w-4" /> Nach Monat</div></SelectItem>
-                    <SelectItem value="client"><div className="flex items-center gap-2"><Users className="h-4 w-4" /> Nach Kunde</div></SelectItem>
-                    <SelectItem value="type"><div className="flex items-center gap-2"><ClipboardCheck className="h-4 w-4" /> Nach Auditart</div></SelectItem>
-                    <SelectItem value="none"><div className="flex items-center gap-2"><Building2 className="h-4 w-4" /> Keine Gruppierung</div></SelectItem>
+                    <SelectItem value="month"><div className="flex items-center gap-2 text-xs"><Calendar className="h-3.5 w-3.5" /> Monat</div></SelectItem>
+                    <SelectItem value="client"><div className="flex items-center gap-2 text-xs"><Users className="h-3.5 w-3.5" /> Kunde</div></SelectItem>
+                    <SelectItem value="type"><div className="flex items-center gap-2 text-xs"><ClipboardCheck className="h-3.5 w-3.5" /> Auditart</div></SelectItem>
+                    <SelectItem value="none"><div className="flex items-center gap-2 text-xs">Ohne</div></SelectItem>
                   </SelectContent>
                 </Select>
                 {groupBy === 'month' && (
-                  <Button variant="outline" size="sm" className="px-3" onClick={scrollToCurrentMonth} title="Zum aktuellen Monat springen">
+                  <Button variant="outline" size="sm" className="h-9 px-3 text-xs" onClick={scrollToCurrentMonth} title="Zum aktuellen Monat springen">
                     Heute
                   </Button>
                 )}
               </div>
-              <Button variant="ghost" size="sm" className="px-2 text-muted-foreground hover:text-foreground" onClick={handleResetFilters} title="Alle Filter zurücksetzen">
-                <RotateCcw className="h-4 w-4 mr-1" /> Reset
+              <Button variant="ghost" size="sm" className="h-9 px-2 text-muted-foreground hover:text-foreground text-xs" onClick={handleResetFilters} title="Alle Filter zurücksetzen">
+                <RotateCcw className="h-3.5 w-3.5 mr-1" /> Reset
               </Button>
             </div>
           </div>
 
           {/* Row 2: Status Tabs */}
-          <div className="flex items-center gap-1 bg-muted rounded-md p-1 w-fit">
+          <div className="flex items-center gap-1 bg-muted/50 rounded-md p-1 w-fit">
             {(['all', 'scheduled', 'in-progress', 'completed'] as StatusFilter[]).map((val) => {
-              const labels: Record<StatusFilter, string> = { all: 'Alle', scheduled: 'Geplant', 'in-progress': 'In Bearbeitung', completed: 'Abgeschlossen' };
+              const labels: Record<StatusFilter, string> = { all: 'Alle', scheduled: 'Geplant', 'in-progress': 'In Bearbeitung', completed: 'Fertig' };
               return (
                 <button
                   key={val}
                   onClick={() => { setStatusFilter(val); sessionStorage.setItem('audits-status-filter', val); }}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-sm transition-all ${statusFilter === val ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                  className={cn(
+                    "px-3 py-1 text-[11px] font-bold rounded-sm transition-all uppercase tracking-wide",
+                    statusFilter === val
+                      ? "bg-background text-primary shadow-sm"
+                      : "text-muted-foreground hover:text-foreground hover:bg-background/40"
+                  )}
                 >
                   {labels[val]}
                 </button>
@@ -453,23 +462,23 @@ const Audits = () => {
           </div>
         </div>
 
-        {/* ═══ SCROLLABLE CONTENT — this div scrolls, the filter bar above does not ═══ */}
-        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
+        {/* ═══ SCROLLABLE CONTENT ═══ */}
+        <div ref={scrollRef} className="flex-1 overflow-y-auto bg-muted/5">
           <div className="p-4 sm:p-6 space-y-6">
             {auditsError ? (
               <div className="text-center py-12">
                 <p className="text-destructive">Fehler beim Laden der Audits</p>
               </div>
             ) : isLoading ? (
-              <div className="border rounded-lg overflow-hidden">
+              <div className="border rounded-lg overflow-hidden bg-background">
                 <Table className="table-fixed w-full">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[40px]"></TableHead>
                       <TableHead className="w-[15%]">Kunde</TableHead>
-                      <TableHead className="w-[8%] text-center">Zertifikat</TableHead>
+                      <TableHead className="w-[10%] text-center">Zertifikat</TableHead>
                       <TableHead className="w-[12%]">Auditart</TableHead>
-                      <TableHead className="w-[10%]">Termin</TableHead>
+                      <TableHead className="w-[12%]">Termin</TableHead>
                       <TableHead className="w-[10%]">Status</TableHead>
                       <TableHead className="w-[12%]">Auditor</TableHead>
                       <TableHead className="w-[12%]">Zertifizierer</TableHead>
@@ -478,28 +487,27 @@ const Audits = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {[1, 2, 3, 4, 5].map((i) => (
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
                       <TableRowSkeleton key={i} />
                     ))}
                   </TableBody>
                 </Table>
               </div>
             ) : filteredAudits.length === 0 ? (
-              <div className="text-center py-12 border rounded-lg bg-muted/20">
-                <ClipboardCheck className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
-                <p className="text-muted-foreground">
-                  {searchQuery || statusFilter !== 'all' ? 'Keine Audits gefunden' : 'Noch keine Audits vorhanden'}
+              <div className="text-center py-16 border border-dashed rounded-lg bg-background/50 backdrop-blur-sm">
+                <ClipboardCheck className="h-12 w-12 mx-auto text-muted-foreground/30 mb-4" />
+                <h3 className="text-lg font-semibold text-foreground/70">Keine Audits gefunden</h3>
+                <p className="text-sm text-muted-foreground max-w-xs mx-auto mb-6">
+                  Überprüfen Sie Ihre Filter oder erstellen Sie ein neues Audit.
                 </p>
-                {!searchQuery && statusFilter === 'all' && (
-                  <Button className="mt-4" onClick={() => setShowNewAuditDialog(true)}>
-                    Erstes Audit erstellen
-                  </Button>
-                )}
+                <Button variant="outline" onClick={handleResetFilters}>
+                  Filter zurücksetzen
+                </Button>
               </div>
             ) : (
               <div className="space-y-6">
                 {groupedAudits.map((group) => (
-                  <div key={group.key} className="border rounded-lg overflow-hidden bg-card">
+                  <div key={group.key} className="border rounded-lg overflow-hidden bg-card shadow-sm border-border/60">
                     {groupBy !== 'none' && (
                       <GroupHeader
                         title={group.title}
@@ -512,24 +520,24 @@ const Audits = () => {
                         }
                       />
                     )}
-                    <div id={groupBy === 'month' ? `month-${group.key}` : undefined} className="scroll-mt-[230px]">
+                    <div id={groupBy === 'month' ? `month-${group.key}` : undefined} className="scroll-mt-[200px]">
                       <Table className="table-fixed w-full">
-                        <TableHeader>
-                          <TableRow>
+                        <TableHeader className="bg-muted/10">
+                          <TableRow className="hover:bg-transparent">
                             <TableHead className="w-[40px]">
                               <Checkbox
                                 checked={group.audits.every(a => selectedAuditIds.has(a.id))}
                                 onCheckedChange={() => toggleAllInGroup(group.audits.map(a => a.id))}
                               />
                             </TableHead>
-                            {groupBy !== 'client' && <TableHead className="text-left w-[15%]">Kunde</TableHead>}
-                            <TableHead className="text-left w-[8%] text-center">Zertifikat</TableHead>
-                            {groupBy !== 'type' && <TableHead className="text-left w-[12%]">Auditart</TableHead>}
-                            <TableHead className="text-left w-[10%]">Termin</TableHead>
-                            <TableHead className="text-left w-[10%]">Status</TableHead>
-                            <TableHead className="text-left w-[12%]">Auditor</TableHead>
-                            <TableHead className="text-left w-[12%]">Zertifizierer</TableHead>
-                            <TableHead className="text-left w-[10%]">Aufgaben</TableHead>
+                            {groupBy !== 'client' && <TableHead className="text-left w-[15%] text-xs font-bold uppercase tracking-tight">Kunde</TableHead>}
+                            <TableHead className="text-center w-[10%] text-xs font-bold uppercase tracking-tight">Zert.</TableHead>
+                            {groupBy !== 'type' && <TableHead className="text-left w-[12%] text-xs font-bold uppercase tracking-tight">Art</TableHead>}
+                            <TableHead className="text-left w-[12%] text-xs font-bold uppercase tracking-tight">Datum</TableHead>
+                            <TableHead className="text-left w-[10%] text-xs font-bold uppercase tracking-tight">Status</TableHead>
+                            <TableHead className="text-left w-[12%] text-xs font-bold uppercase tracking-tight">Auditor</TableHead>
+                            <TableHead className="text-left w-[12%] text-xs font-bold uppercase tracking-tight">Zertifizierer</TableHead>
+                            <TableHead className="text-left w-[10%] text-xs font-bold uppercase tracking-tight">Check</TableHead>
                             <TableHead className="w-[40px] text-right pr-4"></TableHead>
                           </TableRow>
                         </TableHeader>
@@ -552,39 +560,39 @@ const Audits = () => {
                 ))}
               </div>
             )}
-          </div>{/* /p-4 sm:p-6 space-y-6 */}
-        </div>{/* /flex-1 overflow-y-auto */}
-      </div>{/* /h-full flex flex-col */}
+          </div>
+        </div>
+      </div>
 
       <NewAuditDialog open={showNewAuditDialog} onOpenChange={setShowNewAuditDialog} />
 
       {/* Bulk Action Bar */}
       {selectedAuditIds.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
-          <div className="bg-foreground text-background px-6 py-3 rounded-full shadow-2xl flex items-center gap-6 border border-primary/20">
-            <div className="flex items-center gap-2 border-r border-background/20 pr-6">
-              <span className="text-sm font-bold">{selectedAuditIds.size}</span>
-              <span className="text-sm opacity-80">Audit{selectedAuditIds.size !== 1 ? 's' : ''} ausgewählt</span>
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="bg-primary text-primary-foreground px-6 py-3 rounded-full shadow-2xl flex items-center gap-6 border border-primary-foreground/10 ring-4 ring-background">
+            <div className="flex items-center gap-2 border-r border-primary-foreground/20 pr-6">
+              <span className="text-sm font-black">{selectedAuditIds.size}</span>
+              <span className="text-[11px] font-bold uppercase tracking-wider opacity-90">Ausgewählt</span>
             </div>
             <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-background hover:bg-background/10 gap-2 h-8"
+                className="text-primary-foreground hover:bg-primary-foreground/10 font-bold uppercase text-[10px] gap-2 h-8"
                 onClick={() => {
                   if (confirm(`${selectedAuditIds.size} Audits wirklich löschen?`)) {
-                    toast.error('Bulk Delete noch nicht implementiert (Vorsicht!)');
+                    toast.error('Bulk Delete noch nicht implementiert');
                   }
                 }}
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-3.5 w-3.5" />
                 Löschen
               </Button>
-              <div className="h-4 w-[1px] bg-background/20 mx-2" />
+              <div className="h-4 w-[1px] bg-primary-foreground/20 mx-2" />
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-background hover:bg-background/10 h-8 p-1"
+                className="text-primary-foreground hover:bg-primary-foreground/10 h-8 w-8 p-0 flex items-center justify-center rounded-full"
                 onClick={() => setSelectedAuditIds(new Set())}
               >
                 <X className="h-4 w-4" />

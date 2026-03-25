@@ -31,6 +31,7 @@ import {
   SheetTrigger,
 } from './ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useScrollPersistence } from '@/hooks/useScrollPersistence';
 
 interface LayoutProps {
   children?: ReactNode;
@@ -173,6 +174,8 @@ export const Layout = ({ children }: LayoutProps) => {
     navigate('/auth');
   };
 
+  const scrollRef = useScrollPersistence();
+
   if (isMobile) {
     return (
       <div className="flex flex-col h-screen overflow-hidden bg-background">
@@ -205,7 +208,7 @@ export const Layout = ({ children }: LayoutProps) => {
           {location.pathname === '/audits' ? (
             children || <Outlet />
           ) : (
-            <div className="flex-1 overflow-auto" id="main-scroll-container">
+            <div ref={scrollRef} className="flex-1 overflow-auto">
               {children || <Outlet />}
             </div>
           )}
@@ -232,7 +235,7 @@ export const Layout = ({ children }: LayoutProps) => {
         {location.pathname === '/audits' ? (
           children || <Outlet />
         ) : (
-          <div className="flex-1 overflow-auto" id="main-scroll-container">
+          <div ref={scrollRef} className="flex-1 overflow-auto">
             {children || <Outlet />}
           </div>
         )}

@@ -57,38 +57,57 @@ export const OpenTasksCard = () => {
                         </div>
                     ) : (
                         <div className="space-y-2 py-1">
-                            {openTasks.map((task: any) => {
-                                const dueDate = new Date(task.due_date);
-                                const isOverdue = isPast(dueDate) && !isToday(dueDate);
-
-                                return (
-                                    <div
-                                        key={task.id}
-                                        onClick={() => navigate(`/audits/${task.audit_id}`)}
-                                        className="group relative flex flex-col p-3 rounded-lg border bg-card transition-all hover:border-primary/30 hover:shadow-sm cursor-pointer"
-                                    >
-                                        <div className="flex items-start justify-between gap-2">
-                                            <p className="text-sm font-medium leading-tight group-hover:text-primary transition-colors">
-                                                {task.title}
-                                            </p>
-                                            <div className={cn(
-                                                "shrink-0 flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border",
-                                                isOverdue
-                                                    ? "bg-destructive/10 text-destructive border-destructive/20"
-                                                    : "bg-muted text-muted-foreground border-transparent"
-                                            )}>
-                                                <Calendar className="h-3 w-3" />
-                                                {format(dueDate, 'dd.MM.')}
-                                            </div>
-                                        </div>
-
-                                        <div className="flex items-center gap-1.5 mt-2 text-[11px] text-muted-foreground">
-                                            <Building2 className="h-3 w-3 shrink-0" />
-                                            <span className="truncate">{task.audits?.clients?.name || 'Unbekannter Kunde'}</span>
-                                        </div>
+                            {Object.entries(
+                                openTasks.reduce((acc: any, task: any) => {
+                                    const monthKey = format(new Date(task.due_date), 'MMMM yyyy', { locale: de });
+                                    if (!acc[monthKey]) acc[monthKey] = [];
+                                    acc[monthKey].push(task);
+                                    return acc;
+                                }, {})
+                            ).map(([month, tasks]: [string, any]) => (
+                                <div key={month} className="space-y-2">
+                                    <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm py-1.5 px-2 -mx-2 border-b border-border/50">
+                                        <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                                            <Calendar className="h-3 w-3" />
+                                            {month}
+                                        </h3>
                                     </div>
-                                );
-                            })}
+                                    <div className="space-y-2">
+                                        {tasks.map((task: any) => {
+                                            const dueDate = new Date(task.due_date);
+                                            const isOverdue = isPast(dueDate) && !isToday(dueDate);
+
+                                            return (
+                                                <div
+                                                    key={task.id}
+                                                    onClick={() => navigate(`/audits/${task.audit_id}`)}
+                                                    className="group relative flex flex-col p-3 rounded-lg border bg-card transition-all hover:border-primary/30 hover:shadow-sm cursor-pointer"
+                                                >
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <p className="text-sm font-medium leading-tight group-hover:text-primary transition-colors">
+                                                            {task.title}
+                                                        </p>
+                                                        <div className={cn(
+                                                            "shrink-0 flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border",
+                                                            isOverdue
+                                                                ? "bg-destructive/10 text-destructive border-destructive/20"
+                                                                : "bg-muted text-muted-foreground border-transparent"
+                                                        )}>
+                                                            <Calendar className="h-3 w-3" />
+                                                            {format(dueDate, 'dd.MM.yyyy')}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-1.5 mt-2 text-[11px] text-muted-foreground">
+                                                        <Building2 className="h-3 w-3 shrink-0" />
+                                                        <span className="truncate">{task.audits?.clients?.name || 'Unbekannter Kunde'}</span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ))}
 
                             {openTasks.length > 0 && (
                                 <button
