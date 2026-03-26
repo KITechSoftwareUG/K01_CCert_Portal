@@ -161,21 +161,28 @@ const Clients = () => {
     }
 
     // Stage 2: Hierarchy Application
-    // A child is kept if (passes status/auditor) AND (itself matches search OR its parent matches search)
+    // A client is kept if:
+    // 1. It matches all active filters (Status, Auditor, and Search/ParentSearch)
     const survivors = new Set<string>();
     clients.forEach(c => {
-      const isSearchMatch = directSearchMatches.has(c.id) || (c.parent_client_id && directSearchMatches.has(c.parent_client_id));
-      if (isSearchMatch && statMatches.has(c.id) && audMatches.has(c.id)) {
+      // Check for search match (including context)
+      const matchesSearch = directSearchMatches.has(c.id) || (c.parent_client_id && directSearchMatches.has(c.parent_client_id));
+
+      // Must match ALL filters to be a primary survivor
+      if (matchesSearch && statMatches.has(c.id) && audMatches.has(c.id)) {
         survivors.add(c.id);
-        // If a child survives, its parent MUST also survive (to provide the "folder" context)
+        // If it survives, its parent must also survive to provide the group header context
         if (c.parent_client_id) survivors.add(c.parent_client_id);
       }
     });
 
-    // Also include parents that match the search directly even if they have no matching children (they'll show as empty folders)
+    // Special case: Group headers that match search directly and pass other filters should be shown
+    // even if they have no matching children (empty folder support)
     clients.forEach(c => {
-      if (!c.parent_client_id && directSearchMatches.has(c.id)) {
-        survivors.add(c.id);
+      if (!c.parent_client_id && !survivors.has(c.id)) {
+        if (directSearchMatches.has(c.id) && statMatches.has(c.id) && audMatches.has(c.id)) {
+          survivors.add(c.id);
+        }
       }
     });
 
