@@ -167,20 +167,22 @@ const Dashboard = () => {
               </div>
 
               {bodyStats.length > 0 && (
-                <>
+                <div className="flex flex-col">
                   <div className="border-t border-primary/20 my-2" />
-                  <p className="text-[10px] text-primary/70 font-medium uppercase tracking-wider pb-0.5">
+                  <p className="text-[10px] text-primary/70 font-medium uppercase tracking-wider pb-1">
                     Zertifizierungen je Zertifizierer
                   </p>
-                  {bodyStats.map((stat) => (
-                    <div key={stat.bodyId} className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground truncate mr-2" title={stat.bodyName}>
-                        {stat.bodyShortName || stat.bodyName}
-                      </span>
-                      <span className="font-semibold tabular-nums">{stat.count}</span>
-                    </div>
-                  ))}
-                </>
+                  <div className="max-h-[120px] overflow-y-auto pr-1 space-y-1.5 scrollbar-thin scrollbar-thumb-primary/10 scrollbar-track-transparent">
+                    {bodyStats.map((stat) => (
+                      <div key={stat.bodyId} className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground truncate mr-2" title={stat.bodyName}>
+                          {stat.bodyShortName || stat.bodyName}
+                        </span>
+                        <span className="font-semibold tabular-nums">{stat.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
           </CardContent>
