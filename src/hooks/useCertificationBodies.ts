@@ -12,17 +12,17 @@ export const useCertificationBodyStats = () => {
   return useQuery({
     queryKey: ['certification_body_stats'],
     queryFn: async () => {
-      // Fetch all active client certifications that have an auditor with a certification body
+      // The source of truth for "which client is certified by which body" is the
+      // client_certification_bodies table - a direct, explicit link.
+      // We do NOT go via auditors, because an auditor may not be assigned, or their
+      // certification_body field may not match the actual certifying body.
       const { data, error } = await supabase
-        .from('client_certifications')
+        .from('client_certification_bodies')
         .select(`
           id,
+          client_id,
           clients!inner ( id, is_active ),
-          auditors (
-            id,
-            certification_body_id,
-            certification_bodies ( id, name, short_name )
-          )
+          certification_bodies ( id, name, short_name )
         `);
 
       if (error) throw error;
@@ -31,10 +31,10 @@ export const useCertificationBodyStats = () => {
 
       for (const row of data) {
         const client = row.clients as any;
+        // Skip inactive clients
         if (client?.is_active === false) continue;
 
-        const auditor = row.auditors as any;
-        const body = auditor?.certification_bodies;
+        const body = row.certification_bodies as any;
         if (!body?.id) continue;
 
         if (!counts[body.id]) {
