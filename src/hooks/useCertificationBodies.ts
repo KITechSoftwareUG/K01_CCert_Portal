@@ -12,11 +12,24 @@ export const useCertificationBodyStats = () => {
   return useQuery({
     queryKey: ['certification_body_stats'],
     queryFn: async () => {
-      // The source of truth for "which client is certified by which body" is the
-      // client_certification_bodies table - a direct, explicit link.
-      // We do NOT go via auditors, because an auditor may not be assigned, or their
-      // certification_body field may not match the actual certifying body.
-      const { data, error } = await supabase
+      // 1. Primary source: Active client certifications linked via auditors
+      const { data: certData, error: certError } = await supabase
+        .from('client_certifications')
+        .select(`
+          id,
+          client_id,
+          clients!inner ( id, is_active ),
+          auditors (
+            id,
+            certification_body_id,
+            certification_bodies ( id, name, short_name )
+          )
+        `);
+
+      if (certError) throw certError;
+
+      // 2. Secondary source: Direct links from client to certification bodies (fallback for missing auditors)
+      const { data: linkData, error: linkError } = await supabase
         .from('client_certification_bodies')
         .select(`
           id,
@@ -24,18 +37,23 @@ export const useCertificationBodyStats = () => {
           clients!inner ( id, is_active ),
           certification_bodies ( id, name, short_name )
         `);
-
-      if (error) throw error;
+        
+      if (linkError) throw linkError;
 
       const counts: Record<string, CertificationBodyStat> = {};
+      const countedClientBodies = new Set<string>();
 
-      for (const row of data) {
+      // Process primary data first (Certificates -> Auditors -> Body)
+      for (const row of certData) {
         const client = row.clients as any;
-        // Skip inactive clients
         if (client?.is_active === false) continue;
 
-        const body = row.certification_bodies as any;
+        const auditor = row.auditors as any;
+        const body = auditor?.certification_bodies;
         if (!body?.id) continue;
+
+        // Remember we counted this client-body combo so we don't double count it from linkData
+        countedClientBodies.add(`${row.client_id}-${body.id}`);
 
         if (!counts[body.id]) {
           counts[body.id] = {
@@ -46,6 +64,31 @@ export const useCertificationBodyStats = () => {
           };
         }
         counts[body.id].count += 1;
+      }
+
+      // Process secondary data (Direct Client -> Body links)
+      for (const row of linkData) {
+        const client = row.clients as any;
+        if (client?.is_active === false) continue;
+
+        const body = row.certification_bodies as any;
+        if (!body?.id) continue;
+
+        // Only count it if we haven't already counted this body for this client via certificates
+        const comboKey = `${row.client_id}-${body.id}`;
+        if (!countedClientBodies.has(comboKey)) {
+          countedClientBodies.add(comboKey);
+          
+          if (!counts[body.id]) {
+            counts[body.id] = {
+              bodyId: body.id,
+              bodyName: body.name,
+              bodyShortName: body.short_name,
+              count: 0,
+            };
+          }
+          counts[body.id].count += 1;
+        }
       }
 
       return Object.values(counts).sort((a, b) => b.count - a.count || a.bodyName.localeCompare(b.bodyName, 'de'));
