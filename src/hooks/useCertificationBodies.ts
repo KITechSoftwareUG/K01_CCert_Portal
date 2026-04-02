@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { logActivity } from '@/hooks/useActivityLog';
+
 
 export interface CertificationBodyStat {
   bodyId: string;
@@ -147,8 +149,14 @@ export const useCreateCertificationBody = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['certification_bodies'] });
+      logActivity({
+        action: 'created',
+        entity_type: 'certification_body',
+        entity_id: data.id,
+        entity_name: data.short_name || data.name
+      });
     },
   });
 };
@@ -178,8 +186,14 @@ export const useUpdateCertificationBody = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['certification_bodies'] });
+      logActivity({
+        action: 'updated',
+        entity_type: 'certification_body',
+        entity_id: data.id,
+        entity_name: data.name
+      });
     },
   });
 };
@@ -196,9 +210,14 @@ export const useDeleteCertificationBody = () => {
 
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: ['certification_bodies'] });
       queryClient.invalidateQueries({ queryKey: ['client_certification_bodies'] });
+      logActivity({
+        action: 'deleted',
+        entity_type: 'certification_body',
+        entity_id: id
+      });
     },
   });
 };

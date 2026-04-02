@@ -25,6 +25,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { toast } from 'sonner';
 import { 
   useCreateCertificationAudit, 
@@ -38,7 +44,8 @@ import { useCertificationBodies } from '@/hooks/useCertificationBodies';
 import { useCreateBulkAuditTasks, useAllAuditTasks } from '@/hooks/useAuditTasks';
 import { fetchTemplateTasksForAudit } from '@/hooks/useAuditTemplates';
 import { AUDIT_TYPE_LABELS } from '@/lib/constants';
-import { addDays, format } from 'date-fns';
+import { parseGermanDate } from '@/lib/dateUtils';
+import { addDays, format, parse, isValid, isMatch } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { AlertTriangle, ChevronDown, Calendar as CalendarIcon } from 'lucide-react';
 
@@ -174,11 +181,18 @@ export const CertificationAuditDialog = ({
     }
 
     try {
+      const parsedDate = parseGermanDate(scheduledDate);
+
+      if (!parsedDate) {
+        toast.error('Bitte geben Sie ein gültiges Datum ein (z.B. 22.03.2026)');
+        return;
+      }
+
       if (isEditMode && existingAudit) {
         await updateAudit.mutateAsync({
           id: existingAudit.id,
           type: auditType,
-          scheduled_date: new Date(scheduledDate).toISOString(),
+          scheduled_date: parsedDate.toISOString(),
           status,
           auditor_id: auditorId || null,
           certification_body_id: certificationBodyId || null,
@@ -190,7 +204,7 @@ export const CertificationAuditDialog = ({
           client_id: clientId,
           client_certification_id: clientCertificationId,
           type: auditType,
-          scheduled_date: new Date(scheduledDate).toISOString(),
+          scheduled_date: parsedDate.toISOString(),
           status,
           auditor_id: auditorId || null,
           certification_body_id: certificationBodyId || null,
@@ -202,20 +216,18 @@ export const CertificationAuditDialog = ({
         const templateTasks = await fetchTemplateTasksForAudit(certificationId, auditType);
         
         const tasksToCreate: any[] = [];
+        const auditDate = parsedDate;
 
-        if (templateTasks.length > 0) {
-          const auditDate = new Date(scheduledDate);
-          tasksToCreate.push(
-            ...templateTasks.map(task => ({
-              title: task.title,
-              description: task.description || undefined,
-              due_date: addDays(auditDate, -task.days_before_audit).toISOString(),
-              assigned_to: 'Auditor',
-              status: 'pending' as const,
-              audit_id: audit.id,
-            }))
-          );
-        }
+        tasksToCreate.push(
+          ...templateTasks.map(task => ({
+            title: task.title,
+            description: task.description || undefined,
+            due_date: addDays(auditDate, -task.days_before_audit).toISOString(),
+            assigned_to: 'Auditor',
+            status: 'pending' as const,
+            audit_id: audit.id,
+          }))
+        );
 
         // Copy selected NKs
         if (selectedNks.length > 0) {
@@ -344,13 +356,48 @@ export const CertificationAuditDialog = ({
           {/* Scheduled Date */}
           <div className="space-y-2">
             <Label htmlFor="scheduled-date">Geplantes Datum *</Label>
-            <Input
-              id="scheduled-date"
-              type="date"
-              value={scheduledDate}
-              onChange={(e) => setScheduledDate(e.target.value)}
-            />
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Input
+                  id="scheduled-date"
+                  type="text"
+                  placeholder="TT.MM.JJJJ"
+                  value={scheduledDate}
+                  onChange={(e) => setScheduledDate(e.target.value)}
+                  className="pr-10"
+                />
+              </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="icon" className="shrink-0 h-10 w-10 border-input">
+                    <CalendarIcon className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 z-[100]" align="end">
+                  <Calendar
+                    mode="single"
+                    selected={
+                      isMatch(scheduledDate, 'dd.MM.yyyy') ? parse(scheduledDate, 'dd.MM.yyyy', new Date()) : 
+                      isMatch(scheduledDate, 'yyyy-MM-dd') ? parse(scheduledDate, 'yyyy-MM-dd', new Date()) :
+                      isMatch(scheduledDate.split('T')[0], 'yyyy-MM-dd') ? parse(scheduledDate.split('T')[0], 'yyyy-MM-dd', new Date()) :
+                      undefined
+                    }
+                    onSelect={(date) => {
+                      if (date) {
+                        setScheduledDate(format(date, 'dd.MM.yyyy'));
+                      }
+                    }}
+                    initialFocus
+                    locale={de}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              Tipp: Datum manuell eingeben (z.B. 22.03.31) oder Kalender nutzen.
+            </p>
           </div>
+
 
           {/* Status */}
           <div className="space-y-2">

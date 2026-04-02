@@ -14,8 +14,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import {
   Popover,
+
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
@@ -23,7 +25,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Label } from '@/components/ui/label';
 import { Loader2, CalendarIcon } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, parse, isValid, isMatch, differenceInCalendarDays } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useUpdateAudit, AuditWithClient } from '@/hooks/useAudits';
@@ -33,7 +35,8 @@ import { useAuditTasks, useUpdateAuditTask } from '@/hooks/useAuditTasks';
 import { formatAuditorName, sortAuditorsByLastName } from '@/lib/auditorUtils';
 import { toast } from 'sonner';
 import { AUDIT_STATUS_CONFIG } from '@/lib/constants';
-import { addDays, differenceInCalendarDays } from 'date-fns';
+import { addDays } from 'date-fns';
+import { parseGermanDate } from '@/lib/dateUtils';
 
 interface EditAuditDialogProps {
   audit: AuditWithClient | null;
@@ -55,7 +58,7 @@ export function EditAuditDialog({ audit, open, onOpenChange }: EditAuditDialogPr
   const { data: auditTasks = [] } = useAuditTasks(audit?.id);
   const updateTask = useUpdateAuditTask();
 
-  const [scheduledDate, setScheduledDate] = useState<Date | undefined>(undefined);
+  const [dateInput, setDateInput] = useState<string>('');
   const [originalDate, setOriginalDate] = useState<Date | undefined>(undefined);
   const [status, setStatus] = useState<string>('scheduled');
   const [auditorId, setAuditorId] = useState<string>('__none__');
@@ -65,7 +68,7 @@ export function EditAuditDialog({ audit, open, onOpenChange }: EditAuditDialogPr
   useEffect(() => {
     if (audit) {
       const d = new Date(audit.scheduled_date);
-      setScheduledDate(d);
+      setDateInput(format(d, 'dd.MM.yyyy'));
       setOriginalDate(d);
       setStatus(audit.status);
       setAuditorId(audit.auditor_id || '__none__');
@@ -73,20 +76,28 @@ export function EditAuditDialog({ audit, open, onOpenChange }: EditAuditDialogPr
     }
   }, [audit?.id]);
 
+
   const sortedAuditors = sortAuditorsByLastName(auditors);
 
   const handleSave = async () => {
-    if (!audit || !scheduledDate) {
-      toast.error('Bitte wählen Sie ein Datum.');
+    if (!audit || !dateInput) {
+      toast.error('Bitte geben Sie ein Datum an.');
       return;
     }
 
     try {
-      const daysDiff = originalDate ? differenceInCalendarDays(scheduledDate, originalDate) : 0;
+      const parsedDate = parseGermanDate(dateInput);
+
+      if (!parsedDate) {
+        toast.error('Bitte geben Sie ein gültiges Datum ein (z.B. 22.03.2026)');
+        return;
+      }
+
+      const daysDiff = originalDate ? differenceInCalendarDays(parsedDate, originalDate) : 0;
 
       await updateAudit.mutateAsync({
         id: audit.id,
-        scheduled_date: scheduledDate.toISOString(),
+        scheduled_date: parsedDate.toISOString(),
         status: status as 'scheduled' | 'in-progress' | 'completed' | 'cancelled',
         auditor_id: auditorId === '__none__' ? null : auditorId,
         certification_body_id: certificationBodyId === '__none__' ? null : certificationBodyId,
@@ -109,9 +120,11 @@ export function EditAuditDialog({ audit, open, onOpenChange }: EditAuditDialogPr
 
       onOpenChange(false);
     } catch (error) {
+      console.error('Error updating audit:', error);
       toast.error('Audit konnte nicht aktualisiert werden.');
     }
   };
+
 
   if (!audit) return null;
 
@@ -129,41 +142,59 @@ export function EditAuditDialog({ audit, open, onOpenChange }: EditAuditDialogPr
           {/* Scheduled Date */}
           <div className="space-y-2">
             <Label>Auditdatum *</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !scheduledDate && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {scheduledDate ? (
-                    format(scheduledDate, 'dd.MM.yyyy', { locale: de })
-                  ) : (
-                    <span>Datum wählen...</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={scheduledDate}
-                  onSelect={setScheduledDate}
-                  initialFocus
-                  className="p-3 pointer-events-auto"
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Input
+                  type="text"
+                  placeholder="TT.MM.JJJJ"
+                  value={dateInput}
+                  onChange={(e) => setDateInput(e.target.value)}
+                  className="pr-10"
                 />
-              </PopoverContent>
-            </Popover>
+              </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="icon" className="shrink-0 h-10 w-10 border-input">
+                    <CalendarIcon className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 z-[100]" align="end">
+                  <Calendar
+                    mode="single"
+                    selected={
+                      isMatch(dateInput, 'dd.MM.yyyy') ? parse(dateInput, 'dd.MM.yyyy', new Date()) : 
+                      isMatch(dateInput, 'yyyy-MM-dd') ? parse(dateInput, 'yyyy-MM-dd', new Date()) :
+                      undefined
+                    }
+                    onSelect={(date) => {
+                      if (date) {
+                        setDateInput(format(date, 'dd.MM.yyyy'));
+                      }
+                    }}
+                    initialFocus
+                    locale={de}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
 
-            {originalDate && scheduledDate && differenceInCalendarDays(scheduledDate, originalDate) !== 0 && auditTasks.length > 0 && (
-              <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-200 mt-2 flex items-center gap-2">
-                <CalendarIcon className="h-3 w-3" />
-                Hinweis: {auditTasks.length} Aufgabenfristen werden automatisch um {Math.abs(differenceInCalendarDays(scheduledDate, originalDate))} Tage {differenceInCalendarDays(scheduledDate, originalDate) > 0 ? 'nach hinten' : 'nach vorne'} verschoben.
-              </p>
+            {originalDate && dateInput && isMatch(dateInput, 'dd.MM.yyyy') && (
+              (() => {
+                const parsed = parse(dateInput, 'dd.MM.yyyy', new Date());
+                const diff = differenceInCalendarDays(parsed, originalDate);
+                if (diff !== 0 && auditTasks.length > 0) {
+                  return (
+                    <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-200 mt-2 flex items-center gap-2">
+                      <CalendarIcon className="h-3 w-3" />
+                      Hinweis: {auditTasks.length} Aufgabenfristen werden automatisch um {Math.abs(diff)} Tage {diff > 0 ? 'nach hinten' : 'nach vorne'} verschoben.
+                    </p>
+                  );
+                }
+                return null;
+              })()
             )}
           </div>
+
 
           {/* Status */}
           <div className="space-y-2">

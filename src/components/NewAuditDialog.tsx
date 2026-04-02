@@ -25,6 +25,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { toast } from 'sonner';
 import { useClients, CertificationStandard } from '@/hooks/useClients';
 import { useCreateAudit, AuditType } from '@/hooks/useAudits';
@@ -34,10 +40,11 @@ import { useCreateClientCertification, useAllClientCertifications } from '@/hook
 import { useAuditors } from '@/hooks/useAuditors';
 import { useCertificationBodies } from '@/hooks/useCertificationBodies';
 import { AUDIT_TYPE_LABELS } from '@/lib/constants';
-import { daysFromNow } from '@/lib/dateUtils';
+import { daysFromNow, parseGermanDate } from '@/lib/dateUtils';
 import { AlertTriangle, ChevronDown, Calendar as CalendarIcon } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, parse, isValid, isMatch, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
+
 
 interface NewAuditDialogProps {
   open: boolean;
@@ -194,18 +201,25 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
     }
 
     try {
+      const parsedDate = parseGermanDate(scheduledDate);
+
+      if (!parsedDate) {
+        toast.error('Bitte geben Sie ein gültiges Datum ein (z.B. 22.03.2026)');
+        return;
+      }
+
       const audit = await createAudit.mutateAsync({
         client_id: selectedClient,
         type: auditType,
         certifications: selectedCertifications as any,
-        scheduled_date: new Date(scheduledDate).toISOString(),
+        scheduled_date: parsedDate.toISOString(),
         notes: notes || null,
         status: 'scheduled',
         auditor_id: auditorId || null,
         certification_body_id: certificationBodyId || null,
       });
 
-      const defaultTasks = getDefaultTasksForAuditType(auditType, new Date(scheduledDate));
+      const defaultTasks = getDefaultTasksForAuditType(auditType, parsedDate);
       const tasksToCreate: any[] = defaultTasks.map(task => ({
         ...task,
         audit_id: audit.id,
@@ -373,13 +387,47 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
           {/* Scheduled Date */}
           <div className="space-y-2">
             <Label htmlFor="scheduled-date">Geplantes Datum *</Label>
-            <Input
-              id="scheduled-date"
-              type="date"
-              value={scheduledDate}
-              onChange={(e) => setScheduledDate(e.target.value)}
-            />
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Input
+                  id="scheduled-date"
+                  type="text"
+                  placeholder="TT.MM.JJJJ"
+                  value={scheduledDate}
+                  onChange={(e) => setScheduledDate(e.target.value)}
+                  className="pr-10"
+                />
+              </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="icon" className="shrink-0 h-10 w-10 border-input">
+                    <CalendarIcon className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 z-[100]" align="end">
+                  <Calendar
+                    mode="single"
+                    selected={
+                      isMatch(scheduledDate, 'dd.MM.yyyy') ? parse(scheduledDate, 'dd.MM.yyyy', new Date()) : 
+                      isMatch(scheduledDate, 'yyyy-MM-dd') ? parse(scheduledDate, 'yyyy-MM-dd', new Date()) :
+                      undefined
+                    }
+                    onSelect={(date) => {
+                      if (date) {
+                        setScheduledDate(format(date, 'dd.MM.yyyy'));
+                      }
+                    }}
+                    initialFocus
+                    locale={de}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Tipp: Datum manuell eingeben (z.B. 22.03.31) oder Kalender nutzen
+            </p>
           </div>
+
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Auditor */}
