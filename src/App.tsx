@@ -20,6 +20,7 @@ import ActivityLog from "./pages/ActivityLog";
 import CertificationsManagement from "./pages/CertificationsManagement";
 import AuditTemplates from "./pages/AuditTemplates";
 import CertificationDetail from "./pages/CertificationDetail";
+import Agents from "./pages/Agents";
 
 const queryClient = new QueryClient();
 
