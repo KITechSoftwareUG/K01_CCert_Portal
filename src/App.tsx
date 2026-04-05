@@ -20,6 +20,7 @@ import ActivityLog from "./pages/ActivityLog";
 import CertificationsManagement from "./pages/CertificationsManagement";
 import AuditTemplates from "./pages/AuditTemplates";
 import CertificationDetail from "./pages/CertificationDetail";
+import Agents from "./pages/Agents";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +45,7 @@ const App = () => (
               <Route path="/consultants" element={<Consultants />} />
               <Route path="/calendar" element={<Calendar />} />
               <Route path="/activity-log" element={<ActivityLog />} />
+              <Route path="/agents" element={<Agents />} />
               <Route path="/certifications/:id" element={<CertificationDetail />} />
 
               {/* Settings Routes */}
