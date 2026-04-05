@@ -6,6 +6,219 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// ─── Agent Definitions ───────────────────────────────────────────────
+// Each agent has a unique ID, name, description, and a system prompt builder.
+// Later these can come from the database (Agents page).
+
+interface AgentDefinition {
+  id: string;
+  name: string;
+  icon: string; // emoji for UI
+  description: string;
+  buildSystemPrompt: (ctx: AgentContext) => string;
+}
+
+interface AgentContext {
+  databaseContext: string;
+  appBaseUrl: string;
+  todayStr: string;
+}
+
+const AGENTS: Record<string, AgentDefinition> = {
+  audit_expert: {
+    id: "audit_expert",
+    name: "Audit-Experte",
+    icon: "📋",
+    description: "Beantwortet Fragen zu Audits, Terminen, Status und Planung.",
+    buildSystemPrompt: (ctx) => `Du bist der Audit-Experte im Zertifizierungs-Management-System von CERT CONSULTING PANE.
+Deine Spezialität: Audits, Termine, Auditplanung, Auditoren und Audit-Status.
+
+DEIN KONTEXT:
+${ctx.databaseContext}
+
+LINK-FORMAT:
+- Kunde: [Kundenname](${ctx.appBaseUrl}/clients/{kunden-id})
+- Audit: [Audit anzeigen](${ctx.appBaseUrl}/audits/{audit-id})
+- Zertifizierung: [Zertifizierung anzeigen](${ctx.appBaseUrl}/certifications/{zert-id})
+
+STIL:
+- Antworte immer auf Deutsch. Kurz, direkt, kollegial. Nutze Markdown.
+- Keine erfundenen Infos. Wenn Daten fehlen, sag das offen.
+- Du siehst nur einen relevanten Ausschnitt der Datenbank.`,
+  },
+
+  certification_expert: {
+    id: "certification_expert",
+    name: "Zertifizierungs-Experte",
+    icon: "🏅",
+    description: "Spezialist für Zertifizierungen, Normen, Gültigkeiten und Zertifizierungsstellen.",
+    buildSystemPrompt: (ctx) => `Du bist der Zertifizierungs-Experte im Zertifizierungs-Management-System von CERT CONSULTING PANE.
+Deine Spezialität: Zertifizierungen (SURE, FSC, PEFC, ISCC, ISO etc.), Gültigkeiten, Zertifizierungsstellen, Normen und Scopes.
+
+DEIN KONTEXT:
+${ctx.databaseContext}
+
+LINK-FORMAT:
+- Kunde: [Kundenname](${ctx.appBaseUrl}/clients/{kunden-id})
+- Audit: [Audit anzeigen](${ctx.appBaseUrl}/audits/{audit-id})
+- Zertifizierung: [Zertifizierung anzeigen](${ctx.appBaseUrl}/certifications/{zert-id})
+
+STIL:
+- Antworte immer auf Deutsch. Kurz, direkt, kollegial. Nutze Markdown.
+- Keine erfundenen Infos. Wenn Daten fehlen, sag das offen.
+- Du siehst nur einen relevanten Ausschnitt der Datenbank.`,
+  },
+
+  task_manager: {
+    id: "task_manager",
+    name: "Aufgaben-Manager",
+    icon: "✅",
+    description: "Verwaltet und informiert über Aufgaben, Fristen und To-Dos.",
+    buildSystemPrompt: (ctx) => `Du bist der Aufgaben-Manager im Zertifizierungs-Management-System von CERT CONSULTING PANE.
+Deine Spezialität: Aufgaben, Fristen, To-Dos, überfällige Tasks und Priorisierung.
+
+DEIN KONTEXT:
+${ctx.databaseContext}
+
+LINK-FORMAT:
+- Kunde: [Kundenname](${ctx.appBaseUrl}/clients/{kunden-id})
+- Audit: [Audit anzeigen](${ctx.appBaseUrl}/audits/{audit-id})
+- Zertifizierung: [Zertifizierung anzeigen](${ctx.appBaseUrl}/certifications/{zert-id})
+
+STIL:
+- Antworte immer auf Deutsch. Kurz, direkt, kollegial. Nutze Markdown.
+- Keine erfundenen Infos. Wenn Daten fehlen, sag das offen.
+- Priorisiere überfällige Aufgaben visuell (⚠️).`,
+  },
+
+  client_advisor: {
+    id: "client_advisor",
+    name: "Kunden-Berater",
+    icon: "👥",
+    description: "Experte für Kundendaten, Kontakte und Kundenbeziehungen.",
+    buildSystemPrompt: (ctx) => `Du bist der Kunden-Berater im Zertifizierungs-Management-System von CERT CONSULTING PANE.
+Deine Spezialität: Kundendaten, Kontakte, Ansprechpartner, Kundenhistorie und Kundenbeziehungen.
+
+DEIN KONTEXT:
+${ctx.databaseContext}
+
+LINK-FORMAT:
+- Kunde: [Kundenname](${ctx.appBaseUrl}/clients/{kunden-id})
+- Audit: [Audit anzeigen](${ctx.appBaseUrl}/audits/{audit-id})
+- Zertifizierung: [Zertifizierung anzeigen](${ctx.appBaseUrl}/certifications/{zert-id})
+
+STIL:
+- Antworte immer auf Deutsch. Kurz, direkt, kollegial. Nutze Markdown.
+- Keine erfundenen Infos. Wenn Daten fehlen, sag das offen.`,
+  },
+
+  general_assistant: {
+    id: "general_assistant",
+    name: "Allgemein-Assistent",
+    icon: "💬",
+    description: "Allgemeiner Assistent für Begrüßungen und übergreifende Fragen.",
+    buildSystemPrompt: (ctx) => `Du bist ein freundlicher, lockerer KI-Assistent im Zertifizierungs-Management-System von CERT CONSULTING PANE.
+
+DEIN KONTEXT:
+${ctx.databaseContext}
+
+WICHTIG:
+- Du siehst absichtlich nur einen relevanten Ausschnitt der Datenbank, nicht den gesamten Bestand.
+- Wenn für eine Frage nicht genug Daten im Kontext sind, sag das klar und knapp statt zu raten.
+- Nutze nur echte Daten aus dem Kontext.
+
+LINK-FORMAT:
+- Kunde: [Kundenname](${ctx.appBaseUrl}/clients/{kunden-id})
+- Audit: [Audit anzeigen](${ctx.appBaseUrl}/audits/{audit-id})
+- Zertifizierung: [Zertifizierung anzeigen](${ctx.appBaseUrl}/certifications/{zert-id})
+
+STIL:
+- Antworte immer auf Deutsch. Kurz, direkt, kollegial. Nutze Markdown.
+- Keine erfundenen Infos.`,
+  },
+};
+
+// ─── Router: classify intent via tool-calling ────────────────────────
+
+const ROUTER_SYSTEM_PROMPT = `Du bist ein Router im Zertifizierungs-Management-System. Deine einzige Aufgabe ist es, die Benutzeranfrage dem passenden Agenten zuzuweisen.
+
+Verfügbare Agenten:
+- audit_expert: Fragen zu Audits, Audit-Terminen, Audit-Planung, Auditoren, Audit-Status
+- certification_expert: Fragen zu Zertifizierungen, Normen, ISO, FSC, PEFC, SURE, ISCC, Gültigkeiten, Zertifizierungsstellen
+- task_manager: Fragen zu Aufgaben, To-Dos, Fristen, überfälligen Tasks
+- client_advisor: Fragen zu Kunden, Kontakten, Firmen, Ansprechpartnern
+- general_assistant: Begrüßungen, allgemeine Fragen, alles was nicht klar in eine Kategorie passt
+
+Analysiere die letzte Nachricht des Benutzers und wähle den passenden Agenten.`;
+
+const ROUTER_TOOL = {
+  type: "function",
+  function: {
+    name: "route_to_agent",
+    description: "Route die Anfrage zum passenden Agenten",
+    parameters: {
+      type: "object",
+      properties: {
+        agent_id: {
+          type: "string",
+          enum: ["audit_expert", "certification_expert", "task_manager", "client_advisor", "general_assistant"],
+          description: "ID des ausgewählten Agenten",
+        },
+        reasoning: {
+          type: "string",
+          description: "Kurze Begründung (1 Satz) warum dieser Agent gewählt wurde",
+        },
+      },
+      required: ["agent_id", "reasoning"],
+      additionalProperties: false,
+    },
+  },
+};
+
+async function routeToAgent(messages: any[], apiKey: string): Promise<{ agentId: string; reasoning: string }> {
+  try {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-lite",
+        messages: [
+          { role: "system", content: ROUTER_SYSTEM_PROMPT },
+          ...messages.slice(-3), // only last few messages for routing
+        ],
+        tools: [ROUTER_TOOL],
+        tool_choice: { type: "function", function: { name: "route_to_agent" } },
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("Router error:", response.status);
+      return { agentId: "general_assistant", reasoning: "Router-Fallback" };
+    }
+
+    const data = await response.json();
+    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+
+    if (toolCall?.function?.arguments) {
+      const args = JSON.parse(toolCall.function.arguments);
+      return {
+        agentId: args.agent_id || "general_assistant",
+        reasoning: args.reasoning || "",
+      };
+    }
+
+    return { agentId: "general_assistant", reasoning: "Keine Tool-Antwort" };
+  } catch (e) {
+    console.error("Router exception:", e);
+    return { agentId: "general_assistant", reasoning: "Router-Fehler" };
+  }
+}
+
+// ─── Data Fetching (unchanged logic) ─────────────────────────────────
+
 const MAX_CHAT_HISTORY = 8;
 const MAX_CLIENTS = 12;
 const MAX_AUDITS = 12;
@@ -62,6 +275,8 @@ const limitAndSort = <T,>(items: T[], limit: number, scoreFn: (item: T) => numbe
     .map(({ item }) => item);
 };
 
+// ─── Main Handler ────────────────────────────────────────────────────
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -107,27 +322,29 @@ serve(async (req) => {
     const keywords = extractKeywords(latestUserText);
     const isGreetingRequest = normalizedLatestText.includes("begru") || normalizedLatestText.includes("willkommen zuruck");
 
-    console.log("Authenticated chat request from user:", userId, "| recent messages:", recentMessages.length, "| greeting:", isGreetingRequest);
+    // ─── Step 1: Route to the right agent ────────────────────────────
+    const routeResult = await routeToAgent(recentMessages, LOVABLE_API_KEY);
+    const agent = AGENTS[routeResult.agentId] || AGENTS.general_assistant;
 
+    console.log(`[Agent Router] User: ${userId} | Agent: ${agent.id} (${agent.name}) | Reason: ${routeResult.reasoning}`);
+
+    // ─── Step 2: Fetch database context ──────────────────────────────
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
     const now = new Date();
     const todayStr = now.toLocaleDateString("de-DE");
 
-    // Detection of focused intent
     const hasAuditWords = keywords.some(k => ["audit", "prüfung", "termin", "besuch"].includes(k));
     const hasClientWords = keywords.some(k => ["kunde", "firma", "unternehmen", "mandant"].includes(k));
     const hasTaskWords = keywords.some(k => ["aufgabe", "task", "todo", "erledigen", "fällig"].includes(k));
     const hasCertWords = keywords.some(k => ["zertifikat", "norm", "iso", "standard", "gültig"].includes(k));
     const hasAuditorWords = keywords.some(k => ["auditor", "person", "wer"].includes(k));
 
-    // Helper for keyword filtering in Supabase
     const applyKeywordFilter = (query: any, columns: string[]) => {
       if (keywords.length === 0) return query.limit(20);
       const filterString = columns.map(col => `${col}.ilike.%${keywords[0]}%`).join(",");
       return query.or(filterString).limit(50);
     };
 
-    // Optimized Data Fetching
     const fetchPromises = [];
 
     // 1. CLIENTS
@@ -241,39 +458,24 @@ serve(async (req) => {
 
     const selectedClients = isGreetingRequest
       ? []
-      : limitAndSort(
-        clients,
-        MAX_CLIENTS,
-        (client: any) => scoreByKeywords(`${client.name} ${client.client_number ?? ""} ${client.country ?? ""} ${client.consultant ?? ""} ${client.contact_person ?? ""}`, keywords),
-        (a: any, b: any) => a.name.localeCompare(b.name)
-      );
+      : limitAndSort(clients, MAX_CLIENTS, (client: any) => scoreByKeywords(`${client.name} ${client.client_number ?? ""} ${client.country ?? ""} ${client.consultant ?? ""} ${client.contact_person ?? ""}`, keywords), (a: any, b: any) => a.name.localeCompare(b.name));
 
     const selectedAudits = [
-      ...limitAndSort(
-        audits,
-        MAX_AUDITS,
-        (audit: any) => {
-          const certName = audit.client_certifications?.certifications?.name ?? "";
-          const auditorName = audit.auditors?.name ?? "";
-          const clientName = audit.clients?.name ?? "";
-          return scoreByKeywords(`${clientName} ${audit.type} ${audit.status} ${certName} ${auditorName}`, keywords);
-        },
-        (a: any, b: any) => new Date(a.scheduled_date).getTime() - new Date(b.scheduled_date).getTime()
-      ),
+      ...limitAndSort(audits, MAX_AUDITS, (audit: any) => {
+        const certName = audit.client_certifications?.certifications?.name ?? "";
+        const auditorName = audit.auditors?.name ?? "";
+        const clientName = audit.clients?.name ?? "";
+        return scoreByKeywords(`${clientName} ${audit.type} ${audit.status} ${certName} ${auditorName}`, keywords);
+      }, (a: any, b: any) => new Date(a.scheduled_date).getTime() - new Date(b.scheduled_date).getTime()),
       ...(isGreetingRequest ? upcomingAudits.slice(0, 6) : [])
     ].filter((audit: any, index: number, array: any[]) => array.findIndex((item) => item.id === audit.id) === index).slice(0, MAX_AUDITS);
 
     const selectedTasks = [
-      ...limitAndSort(
-        tasks,
-        MAX_TASKS,
-        (task: any) => {
-          const clientName = task.audits?.clients?.name ?? "";
-          const auditType = task.audits?.type ?? "";
-          return scoreByKeywords(`${task.title} ${task.description ?? ""} ${task.status} ${clientName} ${auditType} ${task.assigned_to ?? ""}`, keywords);
-        },
-        (a: any, b: any) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
-      ),
+      ...limitAndSort(tasks, MAX_TASKS, (task: any) => {
+        const clientName = task.audits?.clients?.name ?? "";
+        const auditType = task.audits?.type ?? "";
+        return scoreByKeywords(`${task.title} ${task.description ?? ""} ${task.status} ${clientName} ${auditType} ${task.assigned_to ?? ""}`, keywords);
+      }, (a: any, b: any) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime()),
       ...(isGreetingRequest ? overdueTasks.slice(0, 6) : [])
     ].filter((task: any, index: number, array: any[]) => array.findIndex((item) => item.id === task.id) === index).slice(0, MAX_TASKS);
 
@@ -285,51 +487,24 @@ serve(async (req) => {
 
     const selectedClientCerts = [
       ...clientCerts.filter((cert: any) => relatedClientIds.has(cert.clients?.id)),
-      ...limitAndSort(
-        clientCerts,
-        MAX_CERTIFICATIONS,
-        (cert: any) => {
-          const clientName = cert.clients?.name ?? "";
-          const certName = cert.certifications?.name ?? "";
-          const auditorName = cert.auditors?.name ?? "";
-          return scoreByKeywords(`${clientName} ${certName} ${cert.status ?? ""} ${cert.scope ?? ""} ${cert.certificate_number ?? ""} ${auditorName}`, keywords);
-        },
-        (a: any, b: any) => {
-          const aTime = a.valid_until ? new Date(a.valid_until).getTime() : Number.MAX_SAFE_INTEGER;
-          const bTime = b.valid_until ? new Date(b.valid_until).getTime() : Number.MAX_SAFE_INTEGER;
-          return aTime - bTime;
-        }
-      ),
+      ...limitAndSort(clientCerts, MAX_CERTIFICATIONS, (cert: any) => {
+        const clientName = cert.clients?.name ?? "";
+        const certName = cert.certifications?.name ?? "";
+        const auditorName = cert.auditors?.name ?? "";
+        return scoreByKeywords(`${clientName} ${certName} ${cert.status ?? ""} ${cert.scope ?? ""} ${cert.certificate_number ?? ""} ${auditorName}`, keywords);
+      }, (a: any, b: any) => {
+        const aTime = a.valid_until ? new Date(a.valid_until).getTime() : Number.MAX_SAFE_INTEGER;
+        const bTime = b.valid_until ? new Date(b.valid_until).getTime() : Number.MAX_SAFE_INTEGER;
+        return aTime - bTime;
+      }),
     ].filter((cert: any, index: number, array: any[]) => array.findIndex((item) => item.id === cert.id) === index).slice(0, MAX_CERTIFICATIONS);
 
-    const selectedAuditors = isGreetingRequest
-      ? []
-      : limitAndSort(
-        auditors,
-        MAX_AUDITORS,
-        (auditor: any) => scoreByKeywords(`${auditor.name} ${auditor.email ?? ""} ${auditor.certification_bodies?.name ?? ""} ${auditor.certification_bodies?.short_name ?? ""}`, keywords),
-        (a: any, b: any) => a.name.localeCompare(b.name)
-      );
+    const selectedAuditors = isGreetingRequest ? [] : limitAndSort(auditors, MAX_AUDITORS, (auditor: any) => scoreByKeywords(`${auditor.name} ${auditor.email ?? ""} ${auditor.certification_bodies?.name ?? ""} ${auditor.certification_bodies?.short_name ?? ""}`, keywords), (a: any, b: any) => a.name.localeCompare(b.name));
+    const selectedContacts = isGreetingRequest ? [] : contacts.filter((contact: any) => relatedClientIds.has(contact.clients?.id)).slice(0, MAX_CONTACTS);
+    const selectedCertBodies = isGreetingRequest ? [] : limitAndSort(certBodies, MAX_CERT_BODIES, (body: any) => scoreByKeywords(`${body.name} ${body.short_name ?? ""} ${body.contact_person ?? ""} ${body.email ?? ""}`, keywords), (a: any, b: any) => a.name.localeCompare(b.name));
+    const selectedCertTypes = isGreetingRequest ? certTypes.slice(0, 8) : certTypes.filter((cert: any) => scoreByKeywords(cert.name, keywords) > 0 || keywords.length === 0).slice(0, 8);
 
-    const selectedContacts = isGreetingRequest
-      ? []
-      : contacts
-        .filter((contact: any) => relatedClientIds.has(contact.clients?.id))
-        .slice(0, MAX_CONTACTS);
-
-    const selectedCertBodies = isGreetingRequest
-      ? []
-      : limitAndSort(
-        certBodies,
-        MAX_CERT_BODIES,
-        (body: any) => scoreByKeywords(`${body.name} ${body.short_name ?? ""} ${body.contact_person ?? ""} ${body.email ?? ""}`, keywords),
-        (a: any, b: any) => a.name.localeCompare(b.name)
-      );
-
-    const selectedCertTypes = isGreetingRequest
-      ? certTypes.slice(0, 8)
-      : certTypes.filter((cert: any) => scoreByKeywords(cert.name, keywords) > 0 || keywords.length === 0).slice(0, 8);
-
+    // ─── Build database context ──────────────────────────────────────
     const ctx: string[] = [];
     ctx.push(`AKTUELLES DATUM: ${todayStr}`);
     ctx.push(`KONTEXT-HINWEIS: Sende nur Ausschnitte der Datenbank. Wenn Informationen fehlen, sag das offen.`);
@@ -338,11 +513,8 @@ serve(async (req) => {
 
     if (selectedCertTypes.length > 0) {
       ctx.push(`\n=== RELEVANTE ZERTIFIZIERUNGSSTANDARDS (${selectedCertTypes.length}) ===`);
-      selectedCertTypes.forEach((cert: any) => {
-        ctx.push(`- ${cert.name}${cert.description ? ` – ${cert.description}` : ""}`);
-      });
+      selectedCertTypes.forEach((cert: any) => ctx.push(`- ${cert.name}${cert.description ? ` – ${cert.description}` : ""}`));
     }
-
     if (selectedClients.length > 0) {
       ctx.push(`\n=== RELEVANTE KUNDEN (${selectedClients.length}) ===`);
       selectedClients.forEach((client: any) => {
@@ -355,7 +527,6 @@ serve(async (req) => {
         ctx.push(`- ${parts.join(" | ")}`);
       });
     }
-
     if (selectedContacts.length > 0) {
       ctx.push(`\n=== RELEVANTE KONTAKTE (${selectedContacts.length}) ===`);
       selectedContacts.forEach((contact: any) => {
@@ -367,20 +538,16 @@ serve(async (req) => {
         ctx.push(`- ${parts.join(" | ")}`);
       });
     }
-
     if (selectedAuditors.length > 0) {
       ctx.push(`\n=== RELEVANTE AUDITOREN (${selectedAuditors.length}) ===`);
       selectedAuditors.forEach((auditor: any) => {
         const parts = [auditor.name];
-        if (auditor.certification_bodies?.short_name || auditor.certification_bodies?.name) {
-          parts.push(`ZS: ${auditor.certification_bodies?.short_name || auditor.certification_bodies?.name}`);
-        }
+        if (auditor.certification_bodies?.short_name || auditor.certification_bodies?.name) parts.push(`ZS: ${auditor.certification_bodies?.short_name || auditor.certification_bodies?.name}`);
         if (auditor.email) parts.push(`E-Mail: ${auditor.email}`);
         if (auditor.phone) parts.push(`Tel: ${auditor.phone}`);
         ctx.push(`- ${parts.join(" | ")}`);
       });
     }
-
     if (selectedCertBodies.length > 0) {
       ctx.push(`\n=== RELEVANTE ZERTIFIZIERUNGSSTELLEN (${selectedCertBodies.length}) ===`);
       selectedCertBodies.forEach((body: any) => {
@@ -392,7 +559,6 @@ serve(async (req) => {
         ctx.push(`- ${parts.join(" | ")}`);
       });
     }
-
     if (selectedClientCerts.length > 0) {
       ctx.push(`\n=== RELEVANTE KUNDEN-ZERTIFIZIERUNGEN (${selectedClientCerts.length}) ===`);
       selectedClientCerts.forEach((cert: any) => {
@@ -407,7 +573,6 @@ serve(async (req) => {
         ctx.push(`- ${parts.join(" | ")}`);
       });
     }
-
     if (selectedAudits.length > 0) {
       ctx.push(`\n=== RELEVANTE AUDITS (${selectedAudits.length}) ===`);
       selectedAudits.forEach((audit: any) => {
@@ -419,14 +584,11 @@ serve(async (req) => {
         parts.push(`Datum: ${new Date(audit.scheduled_date).toLocaleDateString("de-DE")}`);
         parts.push(`Status: ${audit.status}`);
         if (audit.auditors?.name) parts.push(`Auditor: ${audit.auditors.name}`);
-        if (audit.certification_bodies?.short_name || audit.certification_bodies?.name) {
-          parts.push(`ZS: ${audit.certification_bodies?.short_name || audit.certification_bodies?.name}`);
-        }
+        if (audit.certification_bodies?.short_name || audit.certification_bodies?.name) parts.push(`ZS: ${audit.certification_bodies?.short_name || audit.certification_bodies?.name}`);
         if (audit.notes) parts.push(`Notizen: ${audit.notes}`);
         ctx.push(`- ${parts.join(" | ")}`);
       });
     }
-
     if (selectedTasks.length > 0) {
       ctx.push(`\n=== RELEVANTE AUFGABEN (${selectedTasks.length}) ===`);
       selectedTasks.forEach((task: any) => {
@@ -448,27 +610,15 @@ serve(async (req) => {
     const origin = req.headers.get("origin") || req.headers.get("referer")?.replace(/\/$/, "") || "";
     const appBaseUrl = origin.replace(/\/+$/, "");
 
-    const systemPrompt = `Du bist ein freundlicher, lockerer KI-Assistent im Zertifizierungs-Management-System von CERT CONSULTING PANE.
+    // ─── Step 3: Call agent with specialized prompt ───────────────────
+    const agentContext: AgentContext = { databaseContext, appBaseUrl, todayStr };
+    const systemPrompt = agent.buildSystemPrompt(agentContext);
 
-DEIN KONTEXT:
-${databaseContext}
-
-WICHTIG:
-- Du siehst absichtlich nur einen relevanten Ausschnitt der Datenbank, nicht den gesamten Bestand.
-- Wenn für eine Frage nicht genug Daten im Kontext sind, sag das klar und knapp statt zu raten.
-- Nutze nur echte Daten aus dem Kontext.
-
-LINK-FORMAT:
-- Kunde: [Kundenname](${appBaseUrl}/clients/{kunden-id})
-- Audit: [Audit anzeigen](${appBaseUrl}/audits/{audit-id})
-- Zertifizierung: [Zertifizierung anzeigen](${appBaseUrl}/certifications/{zert-id})
-Wenn du einen Kunden, ein Audit oder eine Zertifizierung mit ID im Kontext hast, verlinke direkt dorthin.
-
-STIL:
-- Antworte immer auf Deutsch.
-- Kurz, direkt, kollegial.
-- Nutze Markdown.
-- Keine erfundenen Infos.`;
+    // Send agent metadata as the first SSE event before streaming the AI response
+    const agentMeta = JSON.stringify({
+      agent: { id: agent.id, name: agent.name, icon: agent.icon },
+      reasoning: routeResult.reasoning,
+    });
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -507,7 +657,30 @@ STIL:
       );
     }
 
-    return new Response(response.body, {
+    // Prepend agent metadata as a custom SSE event, then pipe the AI stream
+    const aiStream = response.body!;
+    const metaEvent = new TextEncoder().encode(`event: agent_meta\ndata: ${agentMeta}\n\n`);
+
+    const combinedStream = new ReadableStream({
+      async start(controller) {
+        // Send agent metadata first
+        controller.enqueue(metaEvent);
+
+        // Then pipe the AI stream
+        const reader = aiStream.getReader();
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            controller.enqueue(value);
+          }
+        } finally {
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(combinedStream, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (e) {
