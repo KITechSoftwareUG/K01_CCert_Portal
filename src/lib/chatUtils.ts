@@ -2,14 +2,21 @@ import { supabase } from "@/integrations/supabase/client";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-assistant`;
 
+export interface AgentInfo {
+  id: string;
+  name: string;
+  icon: string;
+}
+
 interface StreamChatParams {
   messages: { role: string; content: string }[];
   onDelta: (deltaText: string) => void;
   onDone: () => void;
   onError: (error: string) => void;
+  onAgentSelected?: (agent: AgentInfo, reasoning: string) => void;
 }
 
-export async function streamChat({ messages, onDelta, onDone, onError }: StreamChatParams) {
+export async function streamChat({ messages, onDelta, onDone, onError, onAgentSelected }: StreamChatParams) {
   try {
     // Get the current user's session token for authenticated requests
     const { data: { session } } = await supabase.auth.getSession();
@@ -55,6 +62,7 @@ export async function streamChat({ messages, onDelta, onDone, onError }: StreamC
     const decoder = new TextDecoder();
     let textBuffer = "";
     let streamDone = false;
+    let currentEventType = "";
 
     while (!streamDone) {
       const { done, value } = await reader.read();
@@ -67,10 +75,33 @@ export async function streamChat({ messages, onDelta, onDone, onError }: StreamC
         textBuffer = textBuffer.slice(newlineIndex + 1);
 
         if (line.endsWith("\r")) line = line.slice(0, -1);
-        if (line.startsWith(":") || line.trim() === "") continue;
+        
+        // Track SSE event types
+        if (line.startsWith("event: ")) {
+          currentEventType = line.slice(7).trim();
+          continue;
+        }
+
+        if (line.startsWith(":") || line.trim() === "") {
+          if (line.trim() === "") currentEventType = ""; // reset on blank line
+          continue;
+        }
         if (!line.startsWith("data: ")) continue;
 
         const jsonStr = line.slice(6).trim();
+
+        // Handle custom agent_meta event
+        if (currentEventType === "agent_meta") {
+          try {
+            const meta = JSON.parse(jsonStr);
+            if (meta.agent && onAgentSelected) {
+              onAgentSelected(meta.agent, meta.reasoning || "");
+            }
+          } catch { /* ignore parse errors for meta */ }
+          currentEventType = "";
+          continue;
+        }
+
         if (jsonStr === "[DONE]") {
           streamDone = true;
           break;
@@ -84,6 +115,8 @@ export async function streamChat({ messages, onDelta, onDone, onError }: StreamC
           textBuffer = line + "\n" + textBuffer;
           break;
         }
+
+        currentEventType = "";
       }
     }
 
@@ -93,6 +126,7 @@ export async function streamChat({ messages, onDelta, onDone, onError }: StreamC
         if (!raw) continue;
         if (raw.endsWith("\r")) raw = raw.slice(0, -1);
         if (raw.startsWith(":") || raw.trim() === "") continue;
+        if (raw.startsWith("event: ")) continue;
         if (!raw.startsWith("data: ")) continue;
         const jsonStr = raw.slice(6).trim();
         if (jsonStr === "[DONE]") continue;
