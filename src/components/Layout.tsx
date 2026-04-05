@@ -14,7 +14,8 @@ import {
   ChevronDown,
   ChevronRight,
   Menu,
-  History
+  History,
+  Bot
 } from 'lucide-react';
 import logo from '@/assets/logo-navy.jpg';
 import { useAuth } from '@/contexts/AuthContext';
