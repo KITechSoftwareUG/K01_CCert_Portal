@@ -47,6 +47,7 @@ const mainNavigation = [
   { name: 'Berater', href: '/consultants', icon: UserCheck },
   { name: 'Kalender', href: '/calendar', icon: Calendar },
   { name: 'Aktivitäten', href: '/activity-log', icon: History },
+  { name: 'Agenten', href: '/agents', icon: Bot },
 ];
 
 const settingsNavigation = [
