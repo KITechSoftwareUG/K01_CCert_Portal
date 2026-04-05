@@ -2,13 +2,14 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Sparkles, Loader2, MessageCircle, X, Bot, User } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import ReactMarkdown from 'react-markdown';
-import { streamChat } from '@/lib/chatUtils';
+import { streamChat, AgentInfo } from '@/lib/chatUtils';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { useNavigate } from 'react-router-dom';
 
@@ -39,6 +40,7 @@ interface DashboardAIChatProps {
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  agent?: AgentInfo;
 }
 
 interface CachedGreeting {
@@ -58,7 +60,6 @@ const getGreetingRefreshKey = (now: Date) => {
   if (now.getHours() < DAILY_GREETING_HOUR) {
     refreshDate.setDate(refreshDate.getDate() - 1);
   }
-
   const year = refreshDate.getFullYear();
   const month = String(refreshDate.getMonth() + 1).padStart(2, '0');
   const day = String(refreshDate.getDate()).padStart(2, '0');
@@ -69,14 +70,11 @@ const getGreetingStorageKey = (userId?: string) => `dashboard-ai-greeting:${user
 
 const readCachedGreeting = (userId?: string): CachedGreeting | null => {
   if (typeof window === 'undefined') return null;
-
   try {
     const raw = window.localStorage.getItem(getGreetingStorageKey(userId));
     if (!raw) return null;
-
     const parsed = JSON.parse(raw) as CachedGreeting;
     if (!parsed.content || !parsed.refreshKey) return null;
-
     return parsed;
   } catch {
     return null;
@@ -85,12 +83,9 @@ const readCachedGreeting = (userId?: string): CachedGreeting | null => {
 
 const writeCachedGreeting = (userId: string | undefined, cachedGreeting: CachedGreeting) => {
   if (typeof window === 'undefined') return;
-
   try {
     window.localStorage.setItem(getGreetingStorageKey(userId), JSON.stringify(cachedGreeting));
-  } catch {
-    // ignore storage issues silently
-  }
+  } catch { /* ignore */ }
 };
 
 export const DashboardAIChat = ({ className }: DashboardAIChatProps) => {
@@ -100,6 +95,7 @@ export const DashboardAIChat = ({ className }: DashboardAIChatProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [conversationHistory, setConversationHistory] = useState<Message[]>([]);
   const [currentResponse, setCurrentResponse] = useState<string | null>(null);
+  const [currentAgent, setCurrentAgent] = useState<AgentInfo | null>(null);
   const [greeting, setGreeting] = useState<string | null>(null);
   const [greetingLoaded, setGreetingLoaded] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -107,9 +103,7 @@ export const DashboardAIChat = ({ className }: DashboardAIChatProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const getUserName = useCallback(() => {
-    if (user?.user_metadata?.full_name) {
-      return user.user_metadata.full_name.split(' ')[0];
-    }
+    if (user?.user_metadata?.full_name) return user.user_metadata.full_name.split(' ')[0];
     if (user?.email) {
       const namePart = user.email.split('@')[0];
       return namePart.charAt(0).toUpperCase() + namePart.slice(1);
@@ -120,19 +114,16 @@ export const DashboardAIChat = ({ className }: DashboardAIChatProps) => {
   useEffect(() => {
     const refreshKey = getGreetingRefreshKey(new Date());
     const cachedGreeting = readCachedGreeting(user?.id);
-
     if (cachedGreeting?.refreshKey === refreshKey && cachedGreeting.content) {
       setGreeting(cachedGreeting.content);
       setGreetingLoaded(true);
       return;
     }
-
     if (greetingLoaded) return;
 
     const loadGreeting = async () => {
       const userName = getUserName();
       let greetingContent = '';
-
       setGreeting(null);
 
       await streamChat({
@@ -169,7 +160,6 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
     return () => window.clearTimeout(timer);
   }, [getUserName, greetingLoaded, user?.id]);
 
-  // Scroll to bottom when new messages arrive
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -184,14 +174,20 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
 
     setIsLoading(true);
     setCurrentResponse('');
+    setCurrentAgent(null);
 
     const updatedHistory = [...conversationHistory, userMessage];
     setConversationHistory(updatedHistory);
 
     let responseContent = '';
+    let selectedAgent: AgentInfo | undefined;
 
     await streamChat({
       messages: updatedHistory,
+      onAgentSelected: (agent) => {
+        selectedAgent = agent;
+        setCurrentAgent(agent);
+      },
       onDelta: (chunk) => {
         responseContent += chunk;
         setCurrentResponse(responseContent);
@@ -199,13 +195,15 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
       onDone: () => {
         setIsLoading(false);
         setCurrentResponse(null);
+        setCurrentAgent(null);
         if (responseContent) {
-          setConversationHistory(prev => [...prev, { role: 'assistant', content: responseContent }]);
+          setConversationHistory(prev => [...prev, { role: 'assistant', content: responseContent, agent: selectedAgent }]);
         }
       },
       onError: (error) => {
         toast.error(error);
         setCurrentResponse(null);
+        setCurrentAgent(null);
         setIsLoading(false);
         setConversationHistory(conversationHistory);
       },
@@ -255,11 +253,19 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
   const handleReset = () => {
     setConversationHistory([]);
     setCurrentResponse(null);
+    setCurrentAgent(null);
   };
 
   const handleExampleClick = (prompt: string) => {
     handleSend(prompt);
   };
+
+  const AgentTag = ({ agent }: { agent: AgentInfo }) => (
+    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 gap-1 font-normal text-muted-foreground border-border/50">
+      <span>{agent.icon}</span>
+      <span>{agent.name}</span>
+    </Badge>
+  );
 
   return (
     <>
@@ -267,7 +273,6 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
       <div className={cn("relative mb-6", className)}>
         <div className="rounded-2xl border border-primary/10 bg-gradient-to-br from-primary/[0.02] via-card to-accent/[0.02] shadow-sm overflow-hidden">
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-
           <div className="px-4 py-4 sm:px-10 sm:py-8">
             {/* Greeting */}
             <div className="flex items-start sm:items-center gap-2.5 sm:gap-3 mb-4 sm:mb-5 justify-center">
@@ -293,10 +298,7 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
 
             {/* Centered large input */}
             <div className="max-w-xl mx-auto">
-              <div
-                className="relative cursor-text group/input"
-                onClick={handleHeroInputFocus}
-              >
+              <div className="relative cursor-text group/input" onClick={handleHeroInputFocus}>
                 <div className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 group-hover/input:bg-primary/20 transition-colors">
                   <Bot className="h-4 w-4 text-primary" />
                 </div>
@@ -309,12 +311,7 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
                   readOnly
                 />
                 <div className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl text-muted-foreground/40 hover:text-primary hover:bg-primary/10"
-                    tabIndex={-1}
-                  >
+                  <Button size="icon" variant="ghost" className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl text-muted-foreground/40 hover:text-primary hover:bg-primary/10" tabIndex={-1}>
                     <Send className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   </Button>
                 </div>
@@ -341,7 +338,7 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-semibold text-foreground">KI-Assistent</h3>
-              <p className="text-xs text-muted-foreground truncate">Audits, Kunden & Zertifikate</p>
+              <p className="text-xs text-muted-foreground truncate">Agent-Orchestrierung • Audits, Kunden & Zertifikate</p>
             </div>
             {conversationHistory.length > 0 && (
               <Button variant="ghost" size="sm" onClick={handleReset} className="text-xs text-muted-foreground hover:text-foreground shrink-0">
@@ -352,7 +349,6 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
 
           {/* Messages */}
           <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 sm:px-5 py-3 sm:py-4 space-y-3 sm:space-y-4 min-h-0">
-            {/* Greeting (display only, not in API history) */}
             {greeting && (
               <div className="flex gap-3 justify-start">
                 <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center mt-0.5">
@@ -366,7 +362,6 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
               </div>
             )}
 
-            {/* Example prompts when no conversation yet */}
             {conversationHistory.length === 0 && !isLoading && greetingLoaded && (
               <div className="flex flex-wrap gap-2 pt-2">
                 {EXAMPLE_PROMPTS.map((prompt, i) => (
@@ -388,19 +383,24 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
                     <Bot className="h-3.5 w-3.5 text-primary" />
                   </div>
                 )}
-                <div className={cn(
-                  "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm",
-                  msg.role === 'user'
-                    ? 'bg-primary text-primary-foreground rounded-br-md'
-                    : 'bg-muted/60 text-foreground rounded-bl-md'
-                )}>
-                  {msg.role === 'assistant' ? (
-                    <div className="prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 leading-relaxed">
-                      <ReactMarkdown components={markdownLinkComponents}>{msg.content}</ReactMarkdown>
-                    </div>
-                  ) : (
-                    <p className="leading-relaxed">{msg.content}</p>
+                <div className="flex flex-col gap-0.5 max-w-[80%]">
+                  {msg.role === 'assistant' && msg.agent && (
+                    <AgentTag agent={msg.agent} />
                   )}
+                  <div className={cn(
+                    "rounded-2xl px-4 py-2.5 text-sm",
+                    msg.role === 'user'
+                      ? 'bg-primary text-primary-foreground rounded-br-md'
+                      : 'bg-muted/60 text-foreground rounded-bl-md'
+                  )}>
+                    {msg.role === 'assistant' ? (
+                      <div className="prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 leading-relaxed">
+                        <ReactMarkdown components={markdownLinkComponents}>{msg.content}</ReactMarkdown>
+                      </div>
+                    ) : (
+                      <p className="leading-relaxed">{msg.content}</p>
+                    )}
+                  </div>
                 </div>
                 {msg.role === 'user' && (
                   <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-primary/80 flex items-center justify-center mt-0.5">
@@ -416,9 +416,12 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
                 <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center mt-0.5">
                   <Bot className="h-3.5 w-3.5 text-primary" />
                 </div>
-                <div className="max-w-[80%] rounded-2xl rounded-bl-md bg-muted/60 px-4 py-2.5 text-sm">
-                  <div className="prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 leading-relaxed">
-                    <ReactMarkdown components={markdownLinkComponents}>{currentResponse}</ReactMarkdown>
+                <div className="flex flex-col gap-0.5 max-w-[80%]">
+                  {currentAgent && <AgentTag agent={currentAgent} />}
+                  <div className="rounded-2xl rounded-bl-md bg-muted/60 px-4 py-2.5 text-sm">
+                    <div className="prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 leading-relaxed">
+                      <ReactMarkdown components={markdownLinkComponents}>{currentResponse}</ReactMarkdown>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -430,11 +433,14 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
                 <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
                   <Bot className="h-3.5 w-3.5 text-primary" />
                 </div>
-                <div className="rounded-2xl rounded-bl-md bg-muted/60 px-4 py-3">
-                  <div className="flex gap-1.5">
-                    <span className="w-2 h-2 bg-primary/40 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
-                    <span className="w-2 h-2 bg-primary/40 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
-                    <span className="w-2 h-2 bg-primary/40 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+                <div className="flex flex-col gap-0.5">
+                  {currentAgent && <AgentTag agent={currentAgent} />}
+                  <div className="rounded-2xl rounded-bl-md bg-muted/60 px-4 py-3">
+                    <div className="flex gap-1.5">
+                      <span className="w-2 h-2 bg-primary/40 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
+                      <span className="w-2 h-2 bg-primary/40 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
+                      <span className="w-2 h-2 bg-primary/40 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -442,28 +448,24 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
           </div>
 
           {/* Input */}
-          <div className="shrink-0 px-3 sm:px-5 py-3 sm:py-4 border-t border-border/50 bg-background safe-area-bottom">
-            <div className="flex gap-2 items-center">
+          <div className="border-t border-border/50 px-3 sm:px-5 py-3 sm:py-4 bg-gradient-to-t from-background to-transparent">
+            <div className="flex gap-2 max-w-xl mx-auto">
               <Input
                 ref={dialogInputRef}
                 value={dialogInput}
                 onChange={(e) => setDialogInput(e.target.value)}
                 onKeyDown={handleDialogKeyPress}
-                placeholder="Nachricht eingeben..."
-                className="flex-1 h-10 sm:h-11 rounded-xl bg-muted/30 border-border/50 focus:border-primary/40 text-sm"
+                placeholder="Frag mich etwas..."
+                className="flex-1 h-10 sm:h-11 rounded-xl border-border/60 bg-muted/30 focus:bg-background transition-colors"
                 disabled={isLoading}
               />
               <Button
                 onClick={handleDialogSend}
-                size="icon"
                 disabled={!dialogInput.trim() || isLoading}
-                className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl shadow-sm"
+                size="icon"
+                className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl shrink-0"
               >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
+                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
             </div>
           </div>
