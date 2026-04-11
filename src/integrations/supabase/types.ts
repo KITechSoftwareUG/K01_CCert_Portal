@@ -112,6 +112,7 @@ export type Database = {
           sort_order: number
           template_id: string
           title: string
+          updated_at: string
         }
         Insert: {
           created_at?: string
@@ -121,6 +122,7 @@ export type Database = {
           sort_order?: number
           template_id: string
           title: string
+          updated_at?: string
         }
         Update: {
           created_at?: string
@@ -130,6 +132,7 @@ export type Database = {
           sort_order?: number
           template_id?: string
           title?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -348,6 +351,7 @@ export type Database = {
           file_size: number | null
           id: string
           mime_type: string | null
+          updated_at: string
           uploaded_by: string | null
         }
         Insert: {
@@ -358,6 +362,7 @@ export type Database = {
           file_size?: number | null
           id?: string
           mime_type?: string | null
+          updated_at?: string
           uploaded_by?: string | null
         }
         Update: {
@@ -368,6 +373,7 @@ export type Database = {
           file_size?: number | null
           id?: string
           mime_type?: string | null
+          updated_at?: string
           uploaded_by?: string | null
         }
         Relationships: [
@@ -386,18 +392,21 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          updated_at: string
         }
         Insert: {
           created_at?: string
           description?: string | null
           id?: string
           name: string
+          updated_at?: string
         }
         Update: {
           created_at?: string
           description?: string | null
           id?: string
           name?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -441,6 +450,7 @@ export type Database = {
         Row: {
           auditor_id: string | null
           certificate_number: string | null
+          certification_body_id: string | null
           certification_id: string
           client_id: string
           created_at: string
@@ -455,6 +465,7 @@ export type Database = {
         Insert: {
           auditor_id?: string | null
           certificate_number?: string | null
+          certification_body_id?: string | null
           certification_id: string
           client_id: string
           created_at?: string
@@ -469,6 +480,7 @@ export type Database = {
         Update: {
           auditor_id?: string | null
           certificate_number?: string | null
+          certification_body_id?: string | null
           certification_id?: string
           client_id?: string
           created_at?: string
@@ -486,6 +498,13 @@ export type Database = {
             columns: ["auditor_id"]
             isOneToOne: false
             referencedRelation: "auditors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_certifications_certification_body_id_fkey"
+            columns: ["certification_body_id"]
+            isOneToOne: false
+            referencedRelation: "certification_bodies"
             referencedColumns: ["id"]
           },
           {
