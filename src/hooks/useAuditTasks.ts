@@ -6,6 +6,10 @@ export type DbAuditTask = Tables<'audit_tasks'>;
 export type DbAuditTaskInsert = TablesInsert<'audit_tasks'>;
 export type TaskStatus = Enums<'task_status'>;
 
+export interface DbAuditTaskWithAudit extends DbAuditTask {
+  audits: { id: string; client_id: string; type: string; date: string } | null;
+}
+
 export const useAuditTasks = (auditId?: string) => {
   return useQuery({
     queryKey: ['audit_tasks', auditId],
@@ -46,7 +50,7 @@ export const useClientAuditTasks = (clientId: string) => {
         .order('due_date', { ascending: true });
 
       if (error) throw error;
-      return data;
+      return data as DbAuditTaskWithAudit[];
     },
     enabled: !!clientId,
   });

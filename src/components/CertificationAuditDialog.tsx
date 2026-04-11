@@ -442,13 +442,13 @@ export const CertificationAuditDialog = ({
 
           {/* Certification Body */}
           <div className="space-y-2">
-            <Label htmlFor="cert-body">Zertifizierungsstelle</Label>
+            <Label htmlFor="cert-body">Zertifizierer</Label>
             <Select value={certificationBodyId || 'none'} onValueChange={(v) => setCertificationBodyId(v === 'none' ? '' : v)}>
               <SelectTrigger id="cert-body">
-                <SelectValue placeholder="Zertifizierungsstelle auswählen" />
+                <SelectValue placeholder="Zertifizierer auswählen" />
               </SelectTrigger>
               <SelectContent className="bg-background border shadow-lg z-50">
-                <SelectItem value="none">Keine Zertifizierungsstelle</SelectItem>
+                <SelectItem value="none">Kein Zertifizierer</SelectItem>
                 {certificationBodies.map((body) => (
                   <SelectItem key={body.id} value={body.id}>
                     {body.short_name || body.name}

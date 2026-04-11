@@ -129,10 +129,10 @@ const CertificationBodies = () => {
     try {
       if (isAdding) {
         await createBody.mutateAsync(formData);
-        toast.success('Zertifizierungsgesellschaft erstellt');
+        toast.success('Zertifizierer erstellt');
       } else if (editingId) {
         await updateBody.mutateAsync({ id: editingId, ...formData });
-        toast.success('Zertifizierungsgesellschaft aktualisiert');
+        toast.success('Zertifizierer aktualisiert');
       }
       handleCancel();
     } catch (error) {
@@ -144,7 +144,7 @@ const CertificationBodies = () => {
     if (!deleteId) return;
     try {
       await deleteBody.mutateAsync(deleteId);
-      toast.success('Zertifizierungsgesellschaft gelöscht');
+      toast.success('Zertifizierer gelöscht');
       setDeleteId(null);
     } catch (error) {
       toast.error('Fehler beim Löschen');
@@ -260,7 +260,7 @@ const CertificationBodies = () => {
       <div className="p-4 sm:p-8 space-y-4">
         <div className="flex justify-between items-center gap-3">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Zertifizierungsgesellschaften</h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Zertifizierer</h1>
             <p className="text-sm text-muted-foreground">Verwalten Sie Ihre Zertifizierungspartner</p>
           </div>
           {!isAdding && !editingId && (
@@ -275,7 +275,7 @@ const CertificationBodies = () => {
         {isAdding && (
           <Card className="border-primary/50">
             <CardHeader className="pb-3 pt-4">
-              <CardTitle className="text-base">Neue Zertifizierungsgesellschaft</CardTitle>
+              <CardTitle className="text-base">Neuer Zertifizierer</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 pb-4">
               {renderFormFields(true)}
@@ -405,7 +405,7 @@ const CertificationBodies = () => {
             <Card>
               <CardContent className="py-8 text-center">
                 <Building2 className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
-                <p className="text-muted-foreground text-sm">Keine Zertifizierungsgesellschaften vorhanden</p>
+                <p className="text-muted-foreground text-sm">Keine Zertifizierer vorhanden</p>
                 <Button variant="outline" size="sm" className="mt-3" onClick={handleAdd}>
                   <Plus className="h-3 w-3 mr-1" />
                   Erste hinzufügen
@@ -419,7 +419,7 @@ const CertificationBodies = () => {
         <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Zertifizierungsgesellschaft löschen?</AlertDialogTitle>
+              <AlertDialogTitle>Zertifizierer löschen?</AlertDialogTitle>
               <AlertDialogDescription>
                 Diese Aktion kann nicht rückgängig gemacht werden. Die Zuordnungen zu Kunden werden ebenfalls entfernt.
               </AlertDialogDescription>

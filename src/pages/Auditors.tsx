@@ -194,7 +194,7 @@ const Auditors = () => {
                 <TableHeader className="bg-muted/30">
                   <TableRow>
                     <TableHead className="font-bold">Name</TableHead>
-                    <TableHead className="font-bold">Zertifizierungsstelle</TableHead>
+                    <TableHead className="font-bold">Zertifizierer</TableHead>
                     <TableHead className="font-bold">Kontakt</TableHead>
                     <TableHead className="w-[100px] font-bold">Aktionen</TableHead>
                   </TableRow>
@@ -380,13 +380,13 @@ const Auditors = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="cert-body">Zertifizierungsstelle</Label>
+                <Label htmlFor="cert-body">Zertifizierer</Label>
                 <Select
                   value={certBodyId}
                   onValueChange={(v) => setCertBodyId(v === '__none__' ? '' : v)}
                 >
                   <SelectTrigger id="cert-body">
-                    <SelectValue placeholder="Zertifizierungsstelle auswählen" />
+                    <SelectValue placeholder="Zertifizierer auswählen" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">Keine</SelectItem>

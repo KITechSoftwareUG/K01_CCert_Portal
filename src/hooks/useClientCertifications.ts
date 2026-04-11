@@ -9,6 +9,7 @@ export type DbClientCertificationUpdate = TablesUpdate<'client_certifications'>;
 
 export type ClientCertificationWithDetails = DbClientCertification & {
   certifications: Tables<'certifications'> | null;
+  certification_bodies: Tables<'certification_bodies'> | null;
 };
 
 // Get all client certifications for a specific client
@@ -20,7 +21,8 @@ export const useClientCertifications = (clientId: string | undefined) => {
         .from('client_certifications')
         .select(`
           *,
-          certifications (*)
+          certifications (*),
+          certification_bodies (*)
         `)
         .eq('client_id', clientId!)
         .order('created_at', { ascending: false });
@@ -63,6 +65,7 @@ export const useAllClientCertifications = () => {
         .select(`
           *,
           certifications (*),
+          certification_bodies (*),
           clients (*)
         `)
         .order('created_at', { ascending: false });

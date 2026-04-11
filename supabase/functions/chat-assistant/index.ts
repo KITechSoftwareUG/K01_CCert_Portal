@@ -97,7 +97,6 @@ interface CertTypeRecord {
 }
 
 // ── Generic PostgREST query builder type ──────────────────────────────────────
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseQueryBuilder = ReturnType<ReturnType<typeof createClient>["from"]>;
 
 const corsHeaders = {
@@ -274,7 +273,7 @@ const ROUTER_TOOL = {
   },
 };
 
-async function routeToAgent(messages: any[], apiKey: string): Promise<{ agentId: string; reasoning: string }> {
+async function routeToAgent(messages: Message[], apiKey: string): Promise<{ agentId: string; reasoning: string }> {
   try {
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -656,11 +655,11 @@ serve(async (req) => {
 
     if (selectedCertTypes.length > 0) {
       ctx.push(`\n=== RELEVANTE ZERTIFIZIERUNGSSTANDARDS (${selectedCertTypes.length}) ===`);
-      selectedCertTypes.forEach((cert: any) => ctx.push(`- ${cert.name}${cert.description ? ` – ${cert.description}` : ""}`));
+      selectedCertTypes.forEach((cert: CertTypeRecord) => ctx.push(`- ${cert.name}${cert.description ? ` – ${cert.description}` : ""}`));
     }
     if (selectedClients.length > 0) {
       ctx.push(`\n=== RELEVANTE KUNDEN (${selectedClients.length}) ===`);
-      selectedClients.forEach((client: any) => {
+      selectedClients.forEach((client: ClientRecord) => {
         const parts = [client.name, `ID: ${client.id}`];
         if (client.client_number) parts.push(`KD-Nr: ${client.client_number}`);
         if (client.country) parts.push(`Land: ${client.country}`);
@@ -672,7 +671,7 @@ serve(async (req) => {
     }
     if (selectedContacts.length > 0) {
       ctx.push(`\n=== RELEVANTE KONTAKTE (${selectedContacts.length}) ===`);
-      selectedContacts.forEach((contact: any) => {
+      selectedContacts.forEach((contact: ContactRecord) => {
         const parts = [`${contact.name} (${contact.clients?.name ?? "Unbekannt"})`];
         if (contact.role) parts.push(`Rolle: ${contact.role}`);
         if (contact.email) parts.push(`E-Mail: ${contact.email}`);
@@ -683,7 +682,7 @@ serve(async (req) => {
     }
     if (selectedAuditors.length > 0) {
       ctx.push(`\n=== RELEVANTE AUDITOREN (${selectedAuditors.length}) ===`);
-      selectedAuditors.forEach((auditor: any) => {
+      selectedAuditors.forEach((auditor: AuditorRecord) => {
         const parts = [auditor.name];
         if (auditor.certification_bodies?.short_name || auditor.certification_bodies?.name) parts.push(`ZS: ${auditor.certification_bodies?.short_name || auditor.certification_bodies?.name}`);
         if (auditor.email) parts.push(`E-Mail: ${auditor.email}`);
@@ -693,7 +692,7 @@ serve(async (req) => {
     }
     if (selectedCertBodies.length > 0) {
       ctx.push(`\n=== RELEVANTE ZERTIFIZIERUNGSSTELLEN (${selectedCertBodies.length}) ===`);
-      selectedCertBodies.forEach((body: any) => {
+      selectedCertBodies.forEach((body: CertBodyRecord) => {
         const parts = [body.name];
         if (body.short_name) parts.push(`Kürzel: ${body.short_name}`);
         if (body.contact_person) parts.push(`Kontakt: ${body.contact_person}`);
@@ -704,7 +703,7 @@ serve(async (req) => {
     }
     if (selectedClientCerts.length > 0) {
       ctx.push(`\n=== RELEVANTE KUNDEN-ZERTIFIZIERUNGEN (${selectedClientCerts.length}) ===`);
-      selectedClientCerts.forEach((cert: any) => {
+      selectedClientCerts.forEach((cert: ClientCertRecord) => {
         const parts = [`${cert.clients?.name ?? "Unbekannt"}: ${cert.certifications?.name ?? "N/A"}`, `Zert-ID: ${cert.id}`];
         if (cert.clients?.id) parts.push(`Kunden-ID: ${cert.clients.id}`);
         if (cert.certifications?.id) parts.push(`Standard-ID: ${cert.certifications.id}`);
@@ -718,7 +717,7 @@ serve(async (req) => {
     }
     if (selectedAudits.length > 0) {
       ctx.push(`\n=== RELEVANTE AUDITS (${selectedAudits.length}) ===`);
-      selectedAudits.forEach((audit: any) => {
+      selectedAudits.forEach((audit: AuditRecord) => {
         const parts = [`${audit.type} bei ${audit.clients?.name ?? "Unbekannt"}`, `Audit-ID: ${audit.id}`];
         if (audit.clients?.id) parts.push(`Kunden-ID: ${audit.clients.id}`);
         if (audit.client_certifications?.id) parts.push(`Zert-ID: ${audit.client_certifications.id}`);
@@ -734,7 +733,7 @@ serve(async (req) => {
     }
     if (selectedTasks.length > 0) {
       ctx.push(`\n=== RELEVANTE AUFGABEN (${selectedTasks.length}) ===`);
-      selectedTasks.forEach((task: any) => {
+      selectedTasks.forEach((task: TaskRecord) => {
         const overdue = task.status !== "completed" && new Date(task.due_date) < now;
         const parts = [`${task.title}`, `Task-ID: ${task.id}`];
         if (task.audits?.clients?.name) parts.push(`Kunde: ${task.audits.clients.name}`);

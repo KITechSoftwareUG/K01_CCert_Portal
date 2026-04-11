@@ -4,8 +4,7 @@ import { cn } from '@/lib/utils';
 import { useClient, useUpdateClient, useDeleteClient, useParentClients } from '@/hooks/useClients';
 import { ContactManagement } from '@/components/ContactManagement';
 import { useClientCertifications, useCreateClientCertification } from '@/hooks/useClientCertifications';
-import { useCertificationBodies, useAddClientCertificationBodyLink } from '@/hooks/useCertificationBodies';
-import { supabase } from '@/integrations/supabase/client';
+import { useCertificationBodies } from '@/hooks/useCertificationBodies';
 import { useClientAuditTasks } from '@/hooks/useAuditTasks';
 import { ClientAuditHistory } from '@/components/ClientAuditHistory';
 import { useCertifications } from '@/hooks/useCertifications';
@@ -121,7 +120,6 @@ const ClientDetail = () => {
   const { data: availableCertifications = [] } = useCertifications();
   const { data: certificationBodies = [] } = useCertificationBodies();
   const createClientCertification = useCreateClientCertification();
-  const addBodyLink = useAddClientCertificationBodyLink();
   const updateClient = useUpdateClient();
   const deleteClient = useDeleteClient();
   const { isLockedByOther, isLockedByMe, lockedByName, acquireLock, releaseLock } = useClientLock(id);
@@ -233,7 +231,7 @@ const ClientDetail = () => {
         is_active: isActive,
         notes: notes || null,
         audit_mode: auditMode,
-      } as any);
+      });
 
       toast.success('Kunde erfolgreich aktualisiert');
       setIsEditing(false);
@@ -255,9 +253,9 @@ const ClientDetail = () => {
       setAddress(client.address || '');
       setCountry(client.country || 'Deutschland');
       setParentClientId(client.parent_client_id || '');
-      setIsActive((client as any).is_active !== false);
-      setNotes((client as any).notes || '');
-      setAuditMode((client as any).audit_mode || 'on-site');
+      setIsActive(client.is_active !== false);
+      setNotes(client.notes || '');
+      setAuditMode(client.audit_mode || 'on-site');
     }
     setIsEditing(false);
     releaseLock();
@@ -282,34 +280,28 @@ const ClientDetail = () => {
       return;
     }
     if (!selectedCertBodyId) {
-      toast.error('Bitte wählen Sie eine Zertifizierungsgesellschaft aus');
+      toast.error('Bitte wählen Sie einen Zertifizierer aus');
       return;
     }
 
     setIsAddingCert(true);
-    let createdCertId: string | undefined;
     try {
-      const created = await createClientCertification.mutateAsync({
+      await createClientCertification.mutateAsync({
         client_id: id,
         certification_id: selectedCertificationId,
+        certification_body_id: selectedCertBodyId,
       });
-      createdCertId = created.id;
-      await addBodyLink.mutateAsync({ clientId: id, certificationBodyId: selectedCertBodyId });
       toast.success('Zertifizierung erfolgreich hinzugefügt');
       setShowAddCertDialog(false);
       setSelectedCertificationId('');
       setSelectedCertBodyId('');
     } catch (error) {
       console.error('Error adding certification:', error);
-      // Rollback: Zertifizierung löschen falls Body-Link fehlschlug
-      if (createdCertId) {
-        await supabase.from('client_certifications').delete().eq('id', createdCertId);
-      }
       toast.error('Fehler beim Hinzufügen der Zertifizierung');
     } finally {
       setIsAddingCert(false);
     }
-  }, [id, selectedCertificationId, selectedCertBodyId, createClientCertification, addBodyLink]);
+  }, [id, selectedCertificationId, selectedCertBodyId, createClientCertification]);
 
   if (isLoading) {
     return <ClientDetailSkeleton />;
@@ -355,13 +347,13 @@ const ClientDetail = () => {
                   </Badge>
                 )}
                 <h1 className="text-xl sm:text-3xl font-bold text-foreground truncate">{client.name}</h1>
-                {(client as any).is_active === false && (
+                {client.is_active === false && (
                   <Badge variant="destructive" className="text-xs sm:text-sm">
                     Inaktiv
                   </Badge>
                 )}
-                {(client as any).audit_mode && (client as any).audit_mode !== 'on-site' && (() => {
-                  const mode = AUDIT_MODE_LABELS[(client as any).audit_mode] || AUDIT_MODE_LABELS['on-site'];
+                {client.audit_mode && client.audit_mode !== 'on-site' && (() => {
+                  const mode = AUDIT_MODE_LABELS[client.audit_mode!] || AUDIT_MODE_LABELS['on-site'];
                   const ModeIcon = mode.icon;
                   return (
                     <Badge variant="outline" className="text-xs sm:text-sm gap-1">
@@ -634,10 +626,10 @@ const ClientDetail = () => {
                         </div>
                       </div>
                     )}
-                    {(client as any).notes && (
+                    {client.notes && (
                       <div className="p-3 rounded-lg bg-muted/50">
                         <p className="text-sm text-muted-foreground mb-1">Bemerkungen</p>
-                        <p className="font-medium whitespace-pre-wrap">{(client as any).notes}</p>
+                        <p className="font-medium whitespace-pre-wrap">{client.notes}</p>
                       </div>
                     )}
                   </div>
@@ -668,7 +660,7 @@ const ClientDetail = () => {
                     <DialogHeader>
                       <DialogTitle>Neue Zertifizierung hinzufügen</DialogTitle>
                       <DialogDescription>
-                        Wählen Sie die Zertifizierung und die zuständige Zertifizierungsgesellschaft aus.
+                        Wählen Sie die Zertifizierung und den zuständigen Zertifizierer aus.
                       </DialogDescription>
                     </DialogHeader>
                     <div className="py-4 space-y-4">
@@ -688,7 +680,7 @@ const ClientDetail = () => {
                         </Select>
                       </div>
                       <div>
-                        <Label htmlFor="cert-body">Zertifizierungsgesellschaft <span className="text-destructive">*</span></Label>
+                        <Label htmlFor="cert-body">Zertifizierer <span className="text-destructive">*</span></Label>
                         <Select value={selectedCertBodyId} onValueChange={setSelectedCertBodyId}>
                           <SelectTrigger id="cert-body" className="mt-2">
                             <SelectValue placeholder="Zertifizierer auswählen" />
@@ -823,7 +815,7 @@ const ClientDetail = () => {
                           <div className="min-w-0">
                             <p className="font-medium text-sm truncate">{task.title}</p>
                             <p className="text-xs text-muted-foreground truncate">
-                              Audit: {(task as any).audits?.type} am {format(new Date((task as any).audits?.date), 'dd.MM.yyyy')}
+                              Audit: {task.audits?.type} am {task.audits?.date ? format(new Date(task.audits.date), 'dd.MM.yyyy') : '–'}
                             </p>
                           </div>
                         </div>

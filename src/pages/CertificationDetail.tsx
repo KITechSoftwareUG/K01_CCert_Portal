@@ -13,6 +13,7 @@ import {
   getDocumentUrl,
 } from '@/hooks/useCertificationDocuments';
 import { useAuditors } from '@/hooks/useAuditors';
+import { useCertificationBodies } from '@/hooks/useCertificationBodies';
 import { AuditorPopover } from '@/components/AuditorPopover';
 import { CertificationAuditsList } from '@/components/CertificationAuditsList';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -105,6 +106,7 @@ const CertificationDetail = () => {
   const { data: client } = useClient(certification?.client_id || '');
   const { data: documents = [], isLoading: documentsLoading } = useCertificationDocuments(id);
   const { data: auditors = [] } = useAuditors();
+  const { data: certificationBodies = [] } = useCertificationBodies();
 
   const updateCertification = useUpdateClientCertification();
   const deleteCertification = useDeleteClientCertification();
@@ -119,6 +121,7 @@ const CertificationDetail = () => {
   const [notes, setNotes] = useState('');
   const [scope, setScope] = useState('');
   const [auditorId, setAuditorId] = useState<string | null>(null);
+  const [certificationBodyId, setCertificationBodyId] = useState<string | null>(null);
 
   // Initialize form when certification loads
   useEffect(() => {
@@ -130,6 +133,7 @@ const CertificationDetail = () => {
       setNotes(certification.notes || '');
       setScope(certification.scope || '');
       setAuditorId(certification.auditor_id || null);
+      setCertificationBodyId(certification.certification_body_id || null);
     }
   }, [certification]);
 
@@ -146,6 +150,7 @@ const CertificationDetail = () => {
         notes: notes || null,
         scope: scope || null,
         auditor_id: auditorId || null,
+        certification_body_id: certificationBodyId || null,
       });
 
       toast.success('Zertifikat erfolgreich aktualisiert');
@@ -154,7 +159,7 @@ const CertificationDetail = () => {
       console.error('Error updating certification:', error);
       toast.error('Fehler beim Aktualisieren des Zertifikats');
     }
-  }, [id, certificateNumber, validFrom, validUntil, status, notes, scope, auditorId, updateCertification]);
+  }, [id, certificateNumber, validFrom, validUntil, status, notes, scope, auditorId, certificationBodyId, updateCertification]);
 
   const handleCancel = useCallback(() => {
     if (certification) {
@@ -165,6 +170,7 @@ const CertificationDetail = () => {
       setNotes(certification.notes || '');
       setScope(certification.scope || '');
       setAuditorId(certification.auditor_id || null);
+      setCertificationBodyId(certification.certification_body_id || null);
     }
     setIsEditing(false);
   }, [certification]);
@@ -410,6 +416,22 @@ const CertificationDetail = () => {
                       </Select>
                     </div>
                     <div className="space-y-2">
+                      <Label htmlFor="cert-body">Zertifizierer</Label>
+                      <Select value={certificationBodyId || 'none'} onValueChange={(v) => setCertificationBodyId(v === 'none' ? null : v)}>
+                        <SelectTrigger id="cert-body">
+                          <SelectValue placeholder="Zertifizierer auswählen" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background border shadow-lg z-50">
+                          <SelectItem value="none">Kein Zertifizierer</SelectItem>
+                          {certificationBodies.map((body) => (
+                            <SelectItem key={body.id} value={body.id}>
+                              {body.short_name || body.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
                       <Label htmlFor="scope">Scope</Label>
                       <Textarea
                         id="scope"
@@ -487,6 +509,16 @@ const CertificationDetail = () => {
                             <p className="font-medium text-muted-foreground">Nicht zugewiesen</p>
                           );
                         })()}
+                      </div>
+                    </div>
+                    {/* Zertifizierer display */}
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                      <Users className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Zertifizierer</p>
+                        <p className="font-medium">
+                          {certification.certification_bodies?.name || 'Nicht zugewiesen'}
+                        </p>
                       </div>
                     </div>
                     {certification.scope && (

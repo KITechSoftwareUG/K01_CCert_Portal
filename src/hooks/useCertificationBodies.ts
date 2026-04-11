@@ -7,6 +7,9 @@ interface CertDataRow {
   id: string;
   client_id: string;
   clients: { id: string; is_active: boolean } | null;
+  // Direkte Zertifizierer-Zuordnung (primäre Quelle nach Migration)
+  certification_bodies: { id: string; name: string; short_name: string | null } | null;
+  // Fallback: Zertifizierer über Auditor
   auditors: {
     id: string;
     certification_body_id: string | null;
@@ -32,13 +35,15 @@ export const useCertificationBodyStats = () => {
   return useQuery({
     queryKey: ['certification_body_stats'],
     queryFn: async () => {
-      // 1. Primary source: Active client certifications linked via auditors
+      // 1. Primäre Quelle: certification_body_id direkt auf client_certifications
+      //    + Fallback auf auditors.certification_body_id für Altdaten
       const { data: certData, error: certError } = await supabase
         .from('client_certifications')
         .select(`
           id,
           client_id,
           clients!inner ( id, is_active ),
+          certification_bodies ( id, name, short_name ),
           auditors (
             id,
             certification_body_id,
@@ -48,7 +53,7 @@ export const useCertificationBodyStats = () => {
 
       if (certError) throw certError;
 
-      // 2. Secondary source: Direct links from client to certification bodies (fallback for missing auditors)
+      // 2. Letzter Fallback: allgemeine client_certification_bodies-Links (Altdaten ohne Auditor)
       const { data: linkData, error: linkError } = await supabase
         .from('client_certification_bodies')
         .select(`
@@ -73,17 +78,20 @@ export const useCertificationBodyStats = () => {
         counts[body.id].count += 1;
       };
 
-      // Process primary data (Certificates -> Auditors -> Body)
-      for (const row of certData as CertDataRow[]) {
+      // Priorität 1: direktes certification_body_id-Feld
+      // Priorität 2: Auditor-Zertifizierer (Fallback für Altdaten)
+      for (const row of certData as unknown as CertDataRow[]) {
         if (row.clients?.is_active === false) continue;
 
-        const body = row.auditors?.certification_bodies;
+        const directBody = row.certification_bodies;
+        const auditorBody = row.auditors?.certification_bodies;
+        const body = directBody ?? auditorBody;
         if (!body?.id) continue;
 
         upsertCount(body, row.client_id);
       }
 
-      // Process secondary data (Direct Client -> Body links)
+      // Priorität 3: allgemeine Body-Links (nur falls noch nicht gezählt)
       for (const row of linkData as LinkDataRow[]) {
         if (row.clients?.is_active === false) continue;
 
@@ -217,7 +225,7 @@ export const useDeleteCertificationBody = () => {
         action: 'deleted',
         entity_type: 'certification_body',
         entity_id: id,
-        details: { note: 'Zertifizierungsstelle gelöscht' }
+        details: { note: 'Zertifizierer gelöscht' }
       });
     },
   });
