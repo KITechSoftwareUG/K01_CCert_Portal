@@ -148,25 +148,25 @@ const Auditors = () => {
     <>
       <div className="p-4 sm:p-8 space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold">Auditoren</h1>
-            <p className="text-muted-foreground text-sm">{auditors.length} Einträge</p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex flex-col gap-1">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Auditoren</h1>
+            <p className="text-muted-foreground text-sm font-medium">{auditors.length} Einträge im System</p>
           </div>
-          <Button size="sm" className="sm:size-default" onClick={openCreateDialog}>
-            <Plus className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Neuer Auditor</span>
+          <Button size="lg" className="w-full sm:w-auto shadow-sm" onClick={openCreateDialog}>
+            <Plus className="h-5 w-5 mr-2" />
+            Neuer Auditor
           </Button>
         </div>
 
         {/* Search */}
-        <div className="relative sm:max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="relative w-full sm:max-w-md">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
           <Input
-            placeholder="Suchen..."
+            placeholder="Suchen nach Name, Zertifizierer..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+            className="pl-10 h-11 sm:h-10 bg-background/50 border-border/60 focus:bg-background transition-all"
           />
         </div>
 
@@ -187,87 +187,173 @@ const Auditors = () => {
             </CardContent>
           </Card>
         ) : (
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Zertifizierungsstelle</TableHead>
-                  <TableHead>Kontakt</TableHead>
-                  <TableHead className="w-[100px]">Aktionen</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedAndFilteredAuditors.map((auditor) => (
-                  <TableRow key={auditor.id}>
-                    <TableCell className="font-medium">{formatAuditorName(auditor.name)}</TableCell>
-                    <TableCell>
-                      {auditor.certification_bodies ? (
-                        <Badge variant="outline" className="gap-1">
-                          <Building2 className="h-3 w-3" />
-                          {auditor.certification_bodies.short_name || auditor.certification_bodies.name}
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col gap-1 text-sm">
-                        {auditor.email && (
-                          <div className="flex items-center gap-1 text-muted-foreground">
-                            <Mail className="h-3 w-3" />
-                            <a href={`mailto:${auditor.email}`} className="hover:text-primary hover:underline">
-                              {auditor.email}
-                            </a>
-                          </div>
-                        )}
-                        {auditor.phone && (
-                          <div className="flex items-center gap-1 text-muted-foreground">
-                            <Phone className="h-3 w-3" />
-                            <a href={`tel:${auditor.phone}`} className="hover:text-primary hover:underline">
-                              {auditor.phone}
-                            </a>
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openEditDialog(auditor)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Auditor löschen?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Möchten Sie "{auditor.name}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDelete(auditor.id)}>
-                                Löschen
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </TableCell>
+          <div className="grid grid-cols-1 gap-4">
+            {/* Desktop View: Table */}
+            <Card className="hidden lg:block overflow-hidden border-border/50 shadow-sm">
+              <Table>
+                <TableHeader className="bg-muted/30">
+                  <TableRow>
+                    <TableHead className="font-bold">Name</TableHead>
+                    <TableHead className="font-bold">Zertifizierungsstelle</TableHead>
+                    <TableHead className="font-bold">Kontakt</TableHead>
+                    <TableHead className="w-[100px] font-bold">Aktionen</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Card>
+                </TableHeader>
+                <TableBody>
+                  {sortedAndFilteredAuditors.map((auditor) => (
+                    <TableRow key={auditor.id} className="group transition-colors hover:bg-primary/[0.01]">
+                      <TableCell className="font-semibold text-foreground">{formatAuditorName(auditor.name)}</TableCell>
+                      <TableCell>
+                        {auditor.certification_bodies ? (
+                          <Badge variant="outline" className="gap-1.5 bg-primary/[0.03] border-primary/20 text-primary px-2.5 py-1">
+                            <Building2 className="h-3.5 w-3.5" />
+                            {auditor.certification_bodies.short_name || auditor.certification_bodies.name}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground italic text-xs">Nicht zugeordnet</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1.5 text-sm">
+                          {auditor.email && (
+                            <div className="flex items-center gap-2 text-muted-foreground group-hover:text-foreground transition-colors">
+                              <Mail className="h-3.5 w-3.5 text-primary/60" />
+                              <a href={`mailto:${auditor.email}`} className="hover:text-primary transition-colors">
+                                {auditor.email}
+                              </a>
+                            </div>
+                          )}
+                          {auditor.phone && (
+                            <div className="flex items-center gap-2 text-muted-foreground group-hover:text-foreground transition-colors">
+                              <Phone className="h-3.5 w-3.5 text-primary/60" />
+                              <a href={`tel:${auditor.phone}`} className="hover:text-primary transition-colors">
+                                {auditor.phone}
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-primary"
+                            onClick={() => openEditDialog(auditor)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent className="rounded-2xl border-border/40 shadow-2xl">
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Auditor löschen?</AlertDialogTitle>
+                                <AlertDialogDescription className="text-muted-foreground">
+                                  Möchten Sie "{auditor.name}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel className="rounded-xl">Abbrechen</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDelete(auditor.id)} className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors">
+                                  Löschen
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+
+            {/* Mobile/Tablet View: Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:hidden gap-4">
+              {sortedAndFilteredAuditors.map((auditor) => (
+                <Card key={auditor.id} className="overflow-hidden border-border/50 shadow-sm transition-all hover:shadow-md hover:border-primary/20 group">
+                  <CardHeader className="p-4 pb-2 flex flex-row items-start justify-between space-y-0">
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0 shadow-inner">
+                        {auditor.name.substring(0, 2).toUpperCase()}
+                      </div>
+                      <div className="overflow-hidden">
+                        <CardTitle className="text-base truncate">{formatAuditorName(auditor.name)}</CardTitle>
+                        {auditor.certification_bodies && (
+                          <div className="text-xs text-primary font-medium flex items-center gap-1 mt-0.5 truncate">
+                            <Building2 className="h-3 w-3" />
+                            {auditor.certification_bodies.short_name || auditor.certification_bodies.name}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground rounded-lg"
+                        onClick={() => openEditDialog(auditor)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground rounded-lg">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="w-[90%] max-w-md rounded-2xl border-border/40 shadow-2xl">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Auditor löschen?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Möchten Sie "{auditor.name}" wirklich löschen?
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter className="flex-row gap-2">
+                            <AlertDialogCancel className="mt-0 flex-1 rounded-xl">Nein</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(auditor.id)} className="flex-1 rounded-xl bg-destructive hover:bg-destructive/90 transition-colors">
+                              Löschen
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-4 pt-2 space-y-3">
+                    <div className="grid grid-cols-1 gap-2">
+                      {auditor.email && (
+                        <a 
+                          href={`mailto:${auditor.email}`} 
+                          className="flex items-center gap-3 p-2.5 rounded-xl bg-muted/30 text-sm text-muted-foreground hover:text-primary transition-all active:scale-[0.98]"
+                        >
+                          <Mail className="h-4 w-4 text-primary/60" />
+                          <span className="truncate">{auditor.email}</span>
+                        </a>
+                      )}
+                      {auditor.phone && (
+                        <a 
+                          href={`tel:${auditor.phone}`} 
+                          className="flex items-center gap-3 p-2.5 rounded-xl bg-muted/30 text-sm text-muted-foreground hover:text-primary transition-all active:scale-[0.98]"
+                        >
+                          <Phone className="h-4 w-4 text-primary/60" />
+                          <span>{auditor.phone}</span>
+                        </a>
+                      )}
+                    </div>
+                    {auditor.notes && (
+                      <div className="p-2.5 rounded-xl border border-dashed border-border/60 text-xs text-muted-foreground italic">
+                        {auditor.notes}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
         )}
 
         {/* Create/Edit Dialog */}

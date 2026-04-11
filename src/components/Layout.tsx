@@ -1,4 +1,5 @@
 import { ReactNode, useState } from 'react';
+import { User } from '@supabase/supabase-js';
 import { Link, useLocation, Outlet } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
@@ -64,7 +65,7 @@ const SidebarContent = ({
   location: ReturnType<typeof useLocation>;
   settingsOpen: boolean;
   setSettingsOpen: (open: boolean) => void;
-  user: any;
+  user: User | null;
   handleSignOut: () => void;
   onNavClick?: () => void;
 }) => {
@@ -179,43 +180,91 @@ export const Layout = ({ children }: LayoutProps) => {
   if (isMobile) {
     return (
       <div className="flex flex-col h-screen overflow-hidden bg-background">
-        {/* Mobile Header */}
-        <header className="sticky top-0 z-40 flex items-center gap-3 px-4 py-3 bg-sidebar border-b border-sidebar-border">
-          <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-sidebar-foreground hover:bg-sidebar-accent">
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-72 p-0 bg-sidebar border-sidebar-border">
-              <div className="flex flex-col h-full">
-                <SidebarContent
-                  location={location}
-                  settingsOpen={settingsOpen}
-                  setSettingsOpen={setSettingsOpen}
-                  user={user}
-                  handleSignOut={handleSignOut}
-                  onNavClick={() => setSheetOpen(false)}
-                />
-              </div>
-            </SheetContent>
-          </Sheet>
-          <img src={logo} alt="cert consulting" className="h-8 w-auto" />
+        {/* Mobile Header - Compact and modern */}
+        <header className="sticky top-0 z-40 flex items-center justify-between px-4 h-14 bg-background/80 backdrop-blur-md border-b border-border/50 safe-top">
+          <div className="flex items-center gap-2">
+            <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-10 w-10">
+                  <Menu className="h-6 w-6" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[80%] max-w-[320px] p-0 bg-sidebar border-sidebar-border">
+                <div className="flex flex-col h-full">
+                  <SidebarContent
+                    location={location}
+                    settingsOpen={settingsOpen}
+                    setSettingsOpen={setSettingsOpen}
+                    user={user}
+                    handleSignOut={handleSignOut}
+                    onNavClick={() => setSheetOpen(false)}
+                  />
+                </div>
+              </SheetContent>
+            </Sheet>
+            <img src={logo} alt="cert consulting" className="h-8 w-auto ml-1" />
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary border border-primary/20 shadow-sm">
+              {user?.email?.substring(0, 2).toUpperCase()}
+            </div>
+          </div>
         </header>
 
-        {/* Main Content - overflow-hidden so children can use h-full reliably */}
-        <main className="flex-1 overflow-hidden flex flex-col">
+        {/* Main Content */}
+        <main className="flex-1 overflow-hidden flex flex-col pb-16">
           {location.pathname === '/audits' ? (
             children || <Outlet />
           ) : (
-            <div ref={scrollRef} className="flex-1 overflow-auto">
+            <div ref={scrollRef} className="flex-1 overflow-auto bg-muted/5">
               {children || <Outlet />}
             </div>
           )}
         </main>
+
+        {/* Bottom Navigation for Mobile Auth Users */}
+        {user && (
+          <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-md border-t border-border/40 flex items-center justify-around px-2 z-50 shadow-[0_-5px_15px_rgba(0,0,0,0.03)] safe-bottom">
+            {[
+              { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+              { name: 'Kunden', href: '/clients', icon: Users },
+              { name: 'Audits', href: '/audits', icon: ClipboardCheck },
+              { name: 'Kalender', href: '/calendar', icon: Calendar },
+            ].map((item) => {
+              const isActive = location.pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={cn(
+                    "relative flex flex-col items-center justify-center gap-1 w-20 h-full transition-all duration-300",
+                    isActive ? "text-primary" : "text-muted-foreground/80 hover:text-foreground"
+                  )}
+                >
+                  <div className={cn(
+                    "p-1.5 rounded-xl transition-all duration-300",
+                    isActive ? "bg-primary/10 scale-110 shadow-sm" : ""
+                  )}>
+                    <item.icon className={cn("h-5 w-5", isActive ? "stroke-[2.5px]" : "stroke-2")} />
+                  </div>
+                  <span className={cn(
+                    "text-[10px] font-semibold tracking-tight transition-all duration-300",
+                    isActive ? "opacity-100" : "opacity-70"
+                  )}>
+                    {item.name}
+                  </span>
+                  {isActive && (
+                    <div className="absolute -top-[1px] w-10 h-[3px] bg-primary rounded-b-full shadow-[0_2px_8px_rgba(37,99,235,0.4)] animate-fade-in" />
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
+        )}
       </div>
     );
   }
+
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">

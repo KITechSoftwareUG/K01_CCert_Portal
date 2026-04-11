@@ -34,7 +34,12 @@ import { Calendar } from '@/components/ui/calendar';
 import { toast } from 'sonner';
 import { useClients, CertificationStandard } from '@/hooks/useClients';
 import { useCreateAudit, AuditType } from '@/hooks/useAudits';
-import { useCreateBulkAuditTasks, useAllAuditTasks } from '@/hooks/useAuditTasks';
+import { useCreateBulkAuditTasks, useAllAuditTasks, DbAuditTask, DbAuditTaskInsert } from '@/hooks/useAuditTasks';
+import { Tables, Enums } from '@/integrations/supabase/types';
+
+interface AuditTaskWithAudit extends DbAuditTask {
+  audits: (Tables<'audits'> & { clients: Tables<'clients'> | null }) | null;
+}
 import { useCertifications } from '@/hooks/useCertifications';
 import { useCreateClientCertification, useAllClientCertifications } from '@/hooks/useClientCertifications';
 import { useAuditors } from '@/hooks/useAuditors';
@@ -140,7 +145,7 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
   // Open findings for selected client
   const openFindings = useMemo(() => {
     if (!selectedClient) return [];
-    return allTasks.filter((t: any) =>
+    return (allTasks as AuditTaskWithAudit[]).filter((t) =>
       t.category === 'finding' &&
       t.status !== 'completed' &&
       t.audits?.client_id === selectedClient
@@ -150,7 +155,7 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
   const openFindingsSummary = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const f of openFindings) {
-      const sev = (f as any).severity || 'unknown';
+      const sev = f.severity || 'unknown';
       counts[sev] = (counts[sev] || 0) + 1;
     }
     return Object.entries(counts)
@@ -176,7 +181,7 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
     if (selectedNks.length === openFindings.length) {
       setSelectedNks([]);
     } else {
-      setSelectedNks(openFindings.map((f: any) => f.id));
+      setSelectedNks(openFindings.map((f) => f.id));
     }
   };
 
@@ -211,7 +216,7 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
       const audit = await createAudit.mutateAsync({
         client_id: selectedClient,
         type: auditType,
-        certifications: selectedCertifications as any,
+        certifications: selectedCertifications as Enums<'certification_standard'>[],
         scheduled_date: parsedDate.toISOString(),
         notes: notes || null,
         status: 'scheduled',
@@ -220,16 +225,16 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
       });
 
       const defaultTasks = getDefaultTasksForAuditType(auditType, parsedDate);
-      const tasksToCreate: any[] = defaultTasks.map(task => ({
+      const tasksToCreate: DbAuditTaskInsert[] = defaultTasks.map(task => ({
         ...task,
         audit_id: audit.id,
       }));
 
       // Copy selected NKs
       if (selectedNks.length > 0) {
-        const nksToCopy = openFindings.filter((f: any) => selectedNks.includes(f.id));
+        const nksToCopy = openFindings.filter((f) => selectedNks.includes(f.id));
         tasksToCreate.push(
-          ...nksToCopy.map((f: any) => ({
+          ...nksToCopy.map((f) => ({
             title: f.title,
             description: f.description || undefined,
             severity: f.severity || undefined,
@@ -319,7 +324,7 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
                     )}
                   </div>
                   <div className="divide-y">
-                    {openFindings.map((f: any) => (
+                    {openFindings.map((f) => (
                       <div key={f.id} className="p-3 text-sm flex items-center gap-3">
                         <Checkbox
                           checked={selectedNks.includes(f.id)}

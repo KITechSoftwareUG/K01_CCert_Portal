@@ -2,6 +2,12 @@ import { useMemo } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAllClientCertifications } from '@/hooks/useClientCertifications';
+import { Tables } from '@/integrations/supabase/types';
+
+interface ClientCertificationWithClients extends Tables<'client_certifications'> {
+  certifications: Tables<'certifications'> | null;
+  clients: Pick<Tables<'clients'>, 'id' | 'is_active'> | null;
+}
 
 interface CertificationYearStat {
   name: string;
@@ -9,7 +15,8 @@ interface CertificationYearStat {
 }
 
 export const CertificationYearStatsCard = () => {
-  const { data: certifications = [], isLoading } = useAllClientCertifications();
+  const { data: rawCertifications = [], isLoading } = useAllClientCertifications();
+  const certifications = rawCertifications as ClientCertificationWithClients[];
 
   const stats = useMemo(() => {
     const currentYear = new Date().getFullYear();
@@ -17,7 +24,7 @@ export const CertificationYearStatsCard = () => {
     const yearEnd = new Date(currentYear, 11, 31, 23, 59, 59, 999);
 
     const yearCertifications = certifications.filter((cert) => {
-      if ((cert as any).clients?.is_active === false) return false;
+      if (cert.clients?.is_active === false) return false;
 
       const validFrom = cert.valid_from ? new Date(cert.valid_from) : new Date(cert.created_at);
       const validUntil = cert.valid_until ? new Date(cert.valid_until) : null;

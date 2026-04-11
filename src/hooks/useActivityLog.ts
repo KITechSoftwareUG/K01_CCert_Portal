@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { Json } from '@/integrations/supabase/types';
 
 export interface ActivityLogEntry {
   id: string;
@@ -9,7 +10,7 @@ export interface ActivityLogEntry {
   entity_type: string;
   entity_id: string | null;
   entity_name: string | null;
-  details: Record<string, any> | null;
+  details: Json | null;
   created_at: string;
 }
 
@@ -38,7 +39,7 @@ export const useLogActivity = () => {
       entity_type: string;
       entity_id?: string;
       entity_name?: string;
-      details?: Record<string, any>;
+      details?: Json;
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
@@ -69,7 +70,7 @@ export const logActivity = async (entry: {
   entity_type: string;
   entity_id?: string;
   entity_name?: string;
-  details?: Record<string, any>;
+  details?: Json;
 }) => {
   try {
     const { data: { user } } = await supabase.auth.getUser();

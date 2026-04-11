@@ -249,12 +249,12 @@ const AuditDetail = () => {
 
   // Separate tasks and findings
   const tasks = useMemo(() =>
-    allItems.filter((t: any) => !t.category || t.category === 'task'),
+    allItems.filter((t: DbAuditTask) => !t.category || t.category === 'task'),
     [allItems]
   );
 
   const findings = useMemo(() =>
-    allItems.filter((t: any) => t.category === 'finding'),
+    allItems.filter((t: DbAuditTask) => t.category === 'finding'),
     [allItems]
   );
 
@@ -476,7 +476,7 @@ const AuditDetail = () => {
                   tasks.map((task, index) => (
                     <TaskItem
                       key={task.id}
-                      task={task as any}
+                      task={task}
                       index={index}
                       onToggle={toggleTaskStatus}
                       onDelete={handleDeleteTask}
@@ -520,7 +520,7 @@ const AuditDetail = () => {
                   findings.map((finding, index) => (
                     <TaskItem
                       key={finding.id}
-                      task={finding as any}
+                      task={finding}
                       index={index}
                       onToggle={toggleTaskStatus}
                       onDelete={handleDeleteTask}

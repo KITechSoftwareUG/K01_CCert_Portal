@@ -6,6 +6,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertTriangle, UserX, CalendarX, FileWarning } from 'lucide-react';
 import { useAllClientCertifications } from '@/hooks/useClientCertifications';
+import { Tables } from '@/integrations/supabase/types';
+
+interface ClientCertificationWithClients extends Tables<'client_certifications'> {
+  certifications: Tables<'certifications'> | null;
+  clients: Pick<Tables<'clients'>, 'id' | 'name' | 'is_active'> | null;
+}
 
 interface DataQualityIssue {
   id: string;
@@ -36,14 +42,15 @@ const TYPE_CONFIG = {
 
 export const DataQualityWarningsCard = () => {
   const navigate = useNavigate();
-  const { data: certifications = [], isLoading } = useAllClientCertifications();
+  const { data: rawCertifications = [], isLoading } = useAllClientCertifications();
+  const certifications = rawCertifications as ClientCertificationWithClients[];
 
   const issues = useMemo(() => {
     const result: DataQualityIssue[] = [];
 
     for (const cert of certifications) {
       // Nur aktive Kunden anzeigen
-      if ((cert as any).clients?.is_active === false) continue;
+      if (cert.clients?.is_active === false) continue;
       const hasAuditor = !!cert.auditor_id;
       const hasValidity = !!cert.valid_until;
 
@@ -51,7 +58,7 @@ export const DataQualityWarningsCard = () => {
         result.push({
           id: `both-${cert.id}`,
           clientCertificationId: cert.id,
-          clientName: (cert as any).clients?.name || 'Unbekannt',
+          clientName: cert.clients?.name || 'Unbekannt',
           certificationName: cert.certifications?.name || 'Unbekannt',
           type: 'missing_both',
           description: 'Auditor und Gültigkeitsdatum fehlen',
@@ -60,7 +67,7 @@ export const DataQualityWarningsCard = () => {
         result.push({
           id: `auditor-${cert.id}`,
           clientCertificationId: cert.id,
-          clientName: (cert as any).clients?.name || 'Unbekannt',
+          clientName: cert.clients?.name || 'Unbekannt',
           certificationName: cert.certifications?.name || 'Unbekannt',
           type: 'missing_auditor',
           description: 'Kein Auditor zugewiesen',
@@ -69,7 +76,7 @@ export const DataQualityWarningsCard = () => {
         result.push({
           id: `validity-${cert.id}`,
           clientCertificationId: cert.id,
-          clientName: (cert as any).clients?.name || 'Unbekannt',
+          clientName: cert.clients?.name || 'Unbekannt',
           certificationName: cert.certifications?.name || 'Unbekannt',
           type: 'missing_validity',
           description: 'Gültigkeitsdatum fehlt',

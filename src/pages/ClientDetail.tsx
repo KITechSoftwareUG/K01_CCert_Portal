@@ -4,6 +4,8 @@ import { cn } from '@/lib/utils';
 import { useClient, useUpdateClient, useDeleteClient, useParentClients } from '@/hooks/useClients';
 import { ContactManagement } from '@/components/ContactManagement';
 import { useClientCertifications, useCreateClientCertification } from '@/hooks/useClientCertifications';
+import { useCertificationBodies, useAddClientCertificationBodyLink } from '@/hooks/useCertificationBodies';
+import { supabase } from '@/integrations/supabase/client';
 import { useClientAuditTasks } from '@/hooks/useAuditTasks';
 import { ClientAuditHistory } from '@/components/ClientAuditHistory';
 import { useCertifications } from '@/hooks/useCertifications';
@@ -117,7 +119,9 @@ const ClientDetail = () => {
   const { data: clientCertifications = [], isLoading: certificationsLoading } = useClientCertifications(id);
   const { data: clientTasks = [], isLoading: tasksLoading } = useClientAuditTasks(id || '');
   const { data: availableCertifications = [] } = useCertifications();
+  const { data: certificationBodies = [] } = useCertificationBodies();
   const createClientCertification = useCreateClientCertification();
+  const addBodyLink = useAddClientCertificationBodyLink();
   const updateClient = useUpdateClient();
   const deleteClient = useDeleteClient();
   const { isLockedByOther, isLockedByMe, lockedByName, acquireLock, releaseLock } = useClientLock(id);
@@ -127,6 +131,7 @@ const ClientDetail = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [showAddCertDialog, setShowAddCertDialog] = useState(false);
   const [selectedCertificationId, setSelectedCertificationId] = useState<string>('');
+  const [selectedCertBodyId, setSelectedCertBodyId] = useState<string>('');
   const [isAddingCert, setIsAddingCert] = useState(false);
 
   const [name, setName] = useState('');
@@ -181,9 +186,9 @@ const ClientDetail = () => {
       setAddress(client.address || '');
       setCountry(client.country || 'Deutschland');
       setParentClientId(client.parent_client_id || '');
-      setIsActive((client as any).is_active !== false);
-      setNotes((client as any).notes || '');
-      setAuditMode((client as any).audit_mode || 'on-site');
+      setIsActive(client.is_active !== false);
+      setNotes(client.notes || '');
+      setAuditMode(client.audit_mode || 'on-site');
     }
   }, [client]);
 
@@ -276,23 +281,35 @@ const ClientDetail = () => {
       toast.error('Bitte wählen Sie eine Zertifizierung aus');
       return;
     }
+    if (!selectedCertBodyId) {
+      toast.error('Bitte wählen Sie eine Zertifizierungsgesellschaft aus');
+      return;
+    }
 
     setIsAddingCert(true);
+    let createdCertId: string | undefined;
     try {
-      await createClientCertification.mutateAsync({
+      const created = await createClientCertification.mutateAsync({
         client_id: id,
         certification_id: selectedCertificationId,
       });
+      createdCertId = created.id;
+      await addBodyLink.mutateAsync({ clientId: id, certificationBodyId: selectedCertBodyId });
       toast.success('Zertifizierung erfolgreich hinzugefügt');
       setShowAddCertDialog(false);
       setSelectedCertificationId('');
+      setSelectedCertBodyId('');
     } catch (error) {
       console.error('Error adding certification:', error);
+      // Rollback: Zertifizierung löschen falls Body-Link fehlschlug
+      if (createdCertId) {
+        await supabase.from('client_certifications').delete().eq('id', createdCertId);
+      }
       toast.error('Fehler beim Hinzufügen der Zertifizierung');
     } finally {
       setIsAddingCert(false);
     }
-  }, [id, selectedCertificationId, createClientCertification]);
+  }, [id, selectedCertificationId, selectedCertBodyId, createClientCertification, addBodyLink]);
 
   if (isLoading) {
     return <ClientDetailSkeleton />;
@@ -635,7 +652,7 @@ const ClientDetail = () => {
                   <Award className="h-5 w-5" />
                   Systeme
                 </CardTitle>
-                <Dialog open={showAddCertDialog} onOpenChange={setShowAddCertDialog}>
+                <Dialog open={showAddCertDialog} onOpenChange={(open) => { setShowAddCertDialog(open); if (!open) { setSelectedCertificationId(''); setSelectedCertBodyId(''); } }}>
                   <DialogTrigger asChild>
                     <Button
                       size="sm"
@@ -651,29 +668,46 @@ const ClientDetail = () => {
                     <DialogHeader>
                       <DialogTitle>Neue Zertifizierung hinzufügen</DialogTitle>
                       <DialogDescription>
-                        Wählen Sie eine Zertifizierung aus, die diesem Kunden hinzugefügt werden soll.
+                        Wählen Sie die Zertifizierung und die zuständige Zertifizierungsgesellschaft aus.
                       </DialogDescription>
                     </DialogHeader>
-                    <div className="py-4">
-                      <Label htmlFor="certification">Zertifizierung</Label>
-                      <Select value={selectedCertificationId} onValueChange={setSelectedCertificationId}>
-                        <SelectTrigger id="certification" className="mt-2">
-                          <SelectValue placeholder="Zertifizierung auswählen" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-background border shadow-lg z-50">
-                          {availableCertsToAdd.map((cert) => (
-                            <SelectItem key={cert.id} value={cert.id}>
-                              {cert.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <div className="py-4 space-y-4">
+                      <div>
+                        <Label htmlFor="certification">Zertifizierung <span className="text-destructive">*</span></Label>
+                        <Select value={selectedCertificationId} onValueChange={setSelectedCertificationId}>
+                          <SelectTrigger id="certification" className="mt-2">
+                            <SelectValue placeholder="Zertifizierung auswählen" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border shadow-lg z-50">
+                            {availableCertsToAdd.map((cert) => (
+                              <SelectItem key={cert.id} value={cert.id}>
+                                {cert.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="cert-body">Zertifizierungsgesellschaft <span className="text-destructive">*</span></Label>
+                        <Select value={selectedCertBodyId} onValueChange={setSelectedCertBodyId}>
+                          <SelectTrigger id="cert-body" className="mt-2">
+                            <SelectValue placeholder="Zertifizierer auswählen" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border shadow-lg z-50">
+                            {certificationBodies.map((body) => (
+                              <SelectItem key={body.id} value={body.id}>
+                                {body.short_name || body.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                     <DialogFooter>
                       <Button variant="outline" onClick={() => setShowAddCertDialog(false)}>
                         Abbrechen
                       </Button>
-                      <Button onClick={handleAddCertification} disabled={!selectedCertificationId || isAddingCert}>
+                      <Button onClick={handleAddCertification} disabled={!selectedCertificationId || !selectedCertBodyId || isAddingCert}>
                         {isAddingCert ? 'Wird hinzugefügt...' : 'Hinzufügen'}
                       </Button>
                     </DialogFooter>

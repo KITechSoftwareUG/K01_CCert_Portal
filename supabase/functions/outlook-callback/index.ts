@@ -5,11 +5,15 @@ const AZURE_CLIENT_ID = (Deno.env.get('AZURE_CLIENT_ID') ?? '').trim();
 const AZURE_CLIENT_SECRET = (Deno.env.get('AZURE_CLIENT_SECRET') ?? '').trim();
 const SUPABASE_URL = (Deno.env.get('SUPABASE_URL') ?? '').trim();
 const SUPABASE_SERVICE_ROLE_KEY = (Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '').trim();
-
 if (!AZURE_CLIENT_ID) throw new Error('Missing AZURE_CLIENT_ID');
 if (!AZURE_CLIENT_SECRET) throw new Error('Missing AZURE_CLIENT_SECRET');
 if (!SUPABASE_URL) throw new Error('Missing SUPABASE_URL');
 if (!SUPABASE_SERVICE_ROLE_KEY) throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY');
+
+// Optionaler Secret für sicheres postMessage.
+// Wenn gesetzt: postMessage wird nur an diese Origin geschickt.
+// Wenn nicht gesetzt: Fallback auf '*' (weniger sicher, aber OAuth-Popup hat begrenzten Angriffsvector).
+const ALLOWED_ORIGIN = (Deno.env.get('ALLOWED_ORIGIN') ?? '').trim() || '*';
 
 // Must match the scopes used when generating the authorize URL
 const OUTLOOK_SCOPE = 'offline_access Calendars.ReadWrite';
@@ -29,7 +33,7 @@ serve(async (req) => {
         <html>
           <body>
             <script>
-              window.opener.postMessage({ type: 'outlook-auth-error', error: 'auth_failed' }, '*');
+              window.opener.postMessage({ type: 'outlook-auth-error', error: 'auth_failed' }, ALLOWED_ORIGIN);
               window.close();
             </script>
             <p>Fehler bei der Authentifizierung. Dieses Fenster schließt sich automatisch.</p>
@@ -46,7 +50,7 @@ serve(async (req) => {
         <html>
           <body>
             <script>
-              window.opener.postMessage({ type: 'outlook-auth-error', error: 'missing_params' }, '*');
+              window.opener.postMessage({ type: 'outlook-auth-error', error: 'missing_params' }, ALLOWED_ORIGIN);
               window.close();
             </script>
             <p>Fehler: Fehlende Parameter. Dieses Fenster schließt sich automatisch.</p>
@@ -76,13 +80,13 @@ serve(async (req) => {
 
     const tokenData = await tokenResponse.json();
 
-    if (!tokenResponse.ok) {
-      console.error('Token exchange failed');
+    if (!tokenResponse.ok || !tokenData.access_token || typeof tokenData.expires_in !== 'number') {
+      console.error('Token exchange failed or response missing required fields');
       return new Response(`
         <html>
           <body>
             <script>
-              window.opener.postMessage({ type: 'outlook-auth-error', error: 'token_exchange_failed' }, '*');
+              window.opener.postMessage({ type: 'outlook-auth-error', error: 'token_exchange_failed' }, ALLOWED_ORIGIN);
               window.close();
             </script>
             <p>Fehler beim Token-Austausch. Dieses Fenster schließt sich automatisch.</p>
@@ -115,7 +119,7 @@ serve(async (req) => {
         <html>
           <body>
             <script>
-              window.opener.postMessage({ type: 'outlook-auth-error', error: 'storage_failed' }, '*');
+              window.opener.postMessage({ type: 'outlook-auth-error', error: 'storage_failed' }, ALLOWED_ORIGIN);
               window.close();
             </script>
             <p>Fehler beim Speichern. Dieses Fenster schließt sich automatisch.</p>
@@ -131,7 +135,7 @@ serve(async (req) => {
       <html>
         <body>
           <script>
-            window.opener.postMessage({ type: 'outlook-auth-success' }, '*');
+            window.opener.postMessage({ type: 'outlook-auth-success' }, ALLOWED_ORIGIN);
             window.close();
           </script>
           <p>Erfolgreich verbunden! Dieses Fenster schließt sich automatisch.</p>
@@ -147,7 +151,7 @@ serve(async (req) => {
       <html>
         <body>
           <script>
-            window.opener.postMessage({ type: 'outlook-auth-error', error: 'internal_error' }, '*');
+            window.opener.postMessage({ type: 'outlook-auth-error', error: 'internal_error' }, ALLOWED_ORIGIN);
             window.close();
           </script>
           <p>Ein Fehler ist aufgetreten. Dieses Fenster schließt sich automatisch.</p>

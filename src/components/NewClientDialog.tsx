@@ -462,7 +462,7 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
               {/* Audit Mode */}
               <div className="space-y-2">
                 <Label htmlFor="audit-mode">Audit-Modus</Label>
-                <Select value={auditMode} onValueChange={(val: any) => setAuditMode(val)}>
+                <Select value={auditMode} onValueChange={(val: 'on-site' | 'remote' | 'hybrid') => setAuditMode(val)}>
                   <SelectTrigger id="audit-mode">
                     <SelectValue />
                   </SelectTrigger>

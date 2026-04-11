@@ -56,7 +56,7 @@ export const AuditYearStatsCard = () => {
             Audits
           </CardTitle>
           <div className="flex items-center gap-3">
-            <Select value={viewMode} onValueChange={(val: any) => setViewMode(val)}>
+            <Select value={viewMode} onValueChange={(val: 'calendar' | 'rolling') => setViewMode(val)}>
               <SelectTrigger className="h-6 w-[120px] text-[10px]">
                 <Calendar className="h-3 w-3 mr-1" />
                 <SelectValue />

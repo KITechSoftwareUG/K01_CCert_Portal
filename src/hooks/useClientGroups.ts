@@ -1,6 +1,12 @@
 import { useMemo } from 'react';
 import { COUNTRY_PREFIXES } from '@/lib/clientNumberUtils';
 import { DbClient } from '@/hooks/useClients';
+import { Tables } from '@/integrations/supabase/types';
+
+export interface RawClientCertification extends Tables<'client_certifications'> {
+  clients: Pick<Tables<'clients'>, 'name' | 'client_number'> | null;
+  certifications: Pick<Tables<'certifications'>, 'name'> | null;
+}
 
 export interface CertificationInfo {
   id: string;
@@ -41,13 +47,13 @@ export interface CountryGroup {
 /**
  * Build a map of certification rows grouped by certificate_number per client.
  */
-export const useCertificationsByClient = (allCertifications: any[]) => {
+export const useCertificationsByClient = (allCertifications: RawClientCertification[]) => {
   return useMemo(() => {
     const map: Record<string, CertificationRow[]> = {};
     const rawCertsByClient: Record<string, CertificationInfo[]> = {};
     const clientInfoMap: Record<string, { name: string; number: string | null }> = {};
 
-    allCertifications.forEach((cc: any) => {
+    allCertifications.forEach((cc) => {
       if (!cc.clients || !cc.certifications) return;
       const clientId = cc.client_id;
 

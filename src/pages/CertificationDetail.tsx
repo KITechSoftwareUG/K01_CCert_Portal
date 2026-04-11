@@ -128,8 +128,8 @@ const CertificationDetail = () => {
       setValidUntil(certification.valid_until || '');
       setStatus(certification.status || 'active');
       setNotes(certification.notes || '');
-      setScope((certification as any).scope || '');
-      setAuditorId((certification as any).auditor_id || null);
+      setScope(certification.scope || '');
+      setAuditorId(certification.auditor_id || null);
     }
   }, [certification]);
 
@@ -163,8 +163,8 @@ const CertificationDetail = () => {
       setValidUntil(certification.valid_until || '');
       setStatus(certification.status || 'active');
       setNotes(certification.notes || '');
-      setScope((certification as any).scope || '');
-      setAuditorId((certification as any).auditor_id || null);
+      setScope(certification.scope || '');
+      setAuditorId(certification.auditor_id || null);
     }
     setIsEditing(false);
   }, [certification]);
@@ -471,7 +471,7 @@ const CertificationDetail = () => {
                       <div className="flex-1">
                         <p className="text-sm text-muted-foreground">Auditor</p>
                         {(() => {
-                          const currentAuditor = auditors.find(a => a.id === (certification as any).auditor_id);
+                          const currentAuditor = auditors.find(a => a.id === certification.auditor_id);
                           return currentAuditor ? (
                             <div className="flex items-center gap-2">
                               <AuditorPopover
@@ -489,10 +489,10 @@ const CertificationDetail = () => {
                         })()}
                       </div>
                     </div>
-                    {(certification as any).scope && (
+                    {certification.scope && (
                       <div className="p-3 rounded-lg bg-muted/50">
                         <p className="text-sm text-muted-foreground mb-1">Scope</p>
-                        <p className="whitespace-pre-wrap">{(certification as any).scope}</p>
+                        <p className="whitespace-pre-wrap">{certification.scope}</p>
                       </div>
                     )}
                     {certification.notes && (

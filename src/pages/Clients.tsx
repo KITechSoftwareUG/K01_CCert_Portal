@@ -323,66 +323,74 @@ const Clients = () => {
         <div
           key={`${row.clientId}-${idx}`}
           className={cn(
-            "flex items-center justify-between gap-4 pl-16 pr-4 py-2 text-sm border-t border-border/30 hover:bg-muted/30 cursor-pointer",
-            row.certifications.some(c => c.status === 'expired') && "bg-red-50 dark:bg-red-950/20",
-            row.certifications.some(c => c.status === 'suspended') && "bg-orange-50 dark:bg-orange-950/20"
+            "flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 pl-12 sm:pl-16 pr-4 py-3 sm:py-2 text-sm border-t border-border/30 hover:bg-muted/30 cursor-pointer transition-colors",
+            row.certifications.some(c => c.status === 'expired') && "bg-red-50/50 dark:bg-red-950/10",
+            row.certifications.some(c => c.status === 'suspended') && "bg-orange-50/50 dark:bg-orange-950/10"
           )}
           onClick={() => navigate(`/certifications/${row.primaryCertificationId}`)}
         >
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 overflow-hidden">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               {row.certifications.map((cert) => (
-                <Badge key={cert.certificationId} variant="secondary" className="gap-1">
+                <Badge key={cert.certificationId} variant="secondary" className="gap-1 text-[10px] sm:text-xs">
                   <Award className="h-3 w-3" />
                   {cert.certificationName}
                 </Badge>
               ))}
             </div>
-            {row.certifications[0]?.certificateNumber && (
-              <span className="text-muted-foreground">
-                Nr. {row.certifications[0].certificateNumber}
-              </span>
-            )}
-            {row.earliestValidUntil && (
-              <span className="text-muted-foreground">
-                bis {format(new Date(row.earliestValidUntil), 'dd.MM.yyyy', { locale: de })}
-              </span>
-            )}
-            {row.certifications.map(c => c.status).filter(Boolean).map((status, i) => {
-              const statusColors: Record<string, string> = {
-                active: 'bg-green-100 text-green-800 border-green-300',
-                valid: 'bg-green-100 text-green-800 border-green-300',
-                suspended: 'bg-orange-100 text-orange-800 border-orange-300',
-                expired: 'bg-red-100 text-red-800 border-red-300',
-                pending: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-                withdrawn: 'bg-gray-100 text-gray-800 border-gray-300',
-              };
-              const statusLabel: Record<string, string> = {
-                active: 'Aktiv', valid: 'Gültig', suspended: 'Ausgesetzt', expired: 'Abgelaufen', pending: 'Ausstehend', withdrawn: 'Zurückgezogen',
-              };
-              return (
-                <Badge key={i} variant="outline" className={`text-xs ${statusColors[status!] || ''}`}>
-                  {statusLabel[status!] || status}
-                </Badge>
-              );
-            })}
-          </div>
-          {/* Auditor on the right side - show warning if missing */}
-          {auditorInfo ? (
-            <AuditorPopover
-              auditor={{
-                id: auditorInfo.auditorId,
-                name: auditorInfo.auditorName,
-                email: auditorInfo.auditorEmail,
-                phone: auditorInfo.auditorPhone,
-              }}
-            />
-          ) : (
-            <div className="flex items-center gap-1.5 text-warning">
-              <AlertTriangle className="h-4 w-4" />
-              <span className="text-xs font-medium">Kein Auditor</span>
+            
+            <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm text-muted-foreground">
+              {row.certifications[0]?.certificateNumber && (
+                <span className="truncate">
+                  Nr. {row.certifications[0].certificateNumber}
+                </span>
+              )}
+              {row.earliestValidUntil && (
+                <span>
+                  bis {format(new Date(row.earliestValidUntil), 'dd.MM.yyyy', { locale: de })}
+                </span>
+              )}
+              <div className="flex gap-1.5">
+                {Array.from(new Set(row.certifications.map(c => c.status).filter(Boolean))).map((status, i) => {
+                  const statusColors: Record<string, string> = {
+                    active: 'bg-green-100/80 text-green-800 border-green-200',
+                    valid: 'bg-green-100/80 text-green-800 border-green-200',
+                    suspended: 'bg-orange-100/80 text-orange-800 border-orange-200',
+                    expired: 'bg-red-100/80 text-red-800 border-red-200',
+                    pending: 'bg-yellow-100/80 text-yellow-800 border-yellow-200',
+                    withdrawn: 'bg-gray-100/80 text-gray-800 border-gray-200',
+                  };
+                  const statusLabel: Record<string, string> = {
+                    active: 'Aktiv', valid: 'Gültig', suspended: 'Ausgesetzt', expired: 'Abgelaufen', pending: 'Ausstehend', withdrawn: 'Zurückgezogen',
+                  };
+                  return (
+                    <Badge key={i} variant="outline" className={`text-[9px] sm:text-[10px] font-medium ${statusColors[status!] || ''}`}>
+                      {statusLabel[status!] || status}
+                    </Badge>
+                  );
+                })}
+              </div>
             </div>
-          )}
+          </div>
+          
+          {/* Auditor */}
+          <div className="flex items-center gap-1.5 self-end sm:self-auto">
+            {auditorInfo ? (
+              <AuditorPopover
+                auditor={{
+                  id: auditorInfo.auditorId,
+                  name: auditorInfo.auditorName,
+                  email: auditorInfo.auditorEmail,
+                  phone: auditorInfo.auditorPhone,
+                }}
+              />
+            ) : (
+              <div className="flex items-center gap-1.5 text-warning/80">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                <span className="text-[10px] sm:text-xs font-medium">Kein Auditor</span>
+              </div>
+            )}
+          </div>
         </div>
       );
     });
@@ -394,7 +402,7 @@ const Clients = () => {
     const hasCerts = certs.length > 0 || legacyCerts.length > 0;
     const isExpanded = expandedClients.has(client.id);
     const contacts = contactsMap[client.id] || [];
-    const clientIsActive = (client as any).is_active !== false;
+    const clientIsActive = client.is_active !== false;
 
     return (
       <div key={client.id}>
@@ -417,7 +425,7 @@ const Clients = () => {
               <span className={cn('truncate', indent ? '' : 'font-medium')}>{client.name}</span>
               <ClientNumberBadge clientNumber={client.client_number} />
               {(() => {
-                const mode = (client as any).audit_mode || 'on-site';
+                const mode = client.audit_mode || 'on-site';
                 if (mode === 'remote') {
                   return <Badge variant="outline" className="text-[10px] sm:text-xs gap-1 bg-blue-50 text-blue-700 border-blue-200">
                     <Globe className="h-3 w-3" /> Remote
@@ -518,7 +526,7 @@ const Clients = () => {
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold">Kunden</h1>
             <p className="text-muted-foreground text-sm">
-              {countryGroups.reduce((sum, cg) => sum + cg.companyGroups.length, 0)} Unternehmen • {clients.length} Standorte
+              {countryGroups.reduce((sum, cg) => sum + cg.companyGroups.length, 0)} Unternehmensgruppen • {clients.filter(c => c.client_number !== null).length} Kunden
             </p>
           </div>
           <div className="flex gap-2 flex-wrap">
@@ -563,21 +571,21 @@ const Clients = () => {
         )}
 
         {/* Search + View Toggle + Filters */}
-        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:items-center sm:justify-between">
-          <div className="relative flex-1 min-w-0 sm:max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="flex flex-col gap-3 sm:gap-4">
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
             <Input
-              placeholder="Suchen..."
+              placeholder="Suchen nach Name, Nummer, Stadt..."
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
                 sessionStorage.setItem('clients-search-query', e.target.value);
               }}
-              className="pl-10"
+              className="pl-10 h-11 sm:h-10 bg-background/50 border-border/60 focus:bg-background transition-all"
             />
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
+          <div className="grid grid-cols-2 sm:flex items-center gap-2 sm:gap-4">
             {/* Auditor Filter */}
             <Select
               value={auditorFilter}
@@ -586,11 +594,13 @@ const Clients = () => {
                 sessionStorage.setItem('clients-auditor-filter', val);
               }}
             >
-              <SelectTrigger className="w-[140px] sm:w-[180px] h-9">
-                <User className="h-4 w-4 text-muted-foreground mr-1 sm:mr-2 shrink-0" />
-                <SelectValue placeholder="Alle Auditoren" />
+              <SelectTrigger className="h-10 sm:h-9 bg-background/50">
+                <div className="flex items-center gap-2 truncate">
+                  <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <SelectValue placeholder="Auditor" />
+                </div>
               </SelectTrigger>
-              <SelectContent className="bg-background border shadow-lg z-50">
+              <SelectContent className="bg-background border shadow-xl z-50">
                 <SelectItem value="all">Alle Auditoren</SelectItem>
                 <SelectItem value="none">
                   <span className="flex items-center gap-1.5 text-warning">
@@ -614,12 +624,14 @@ const Clients = () => {
                 sessionStorage.setItem('clients-status-filter', filter);
               }}
             >
-              <SelectTrigger className="w-[140px] sm:w-[180px] h-9">
-                <Eye className="h-4 w-4 text-muted-foreground mr-1 sm:mr-2 shrink-0" />
-                <SelectValue />
+              <SelectTrigger className="h-10 sm:h-9 bg-background/50">
+                <div className="flex items-center gap-2 truncate">
+                  <Eye className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <SelectValue />
+                </div>
               </SelectTrigger>
-              <SelectContent className="bg-background border shadow-lg z-50">
-                <SelectItem value="all">Alle Kunden</SelectItem>
+              <SelectContent className="bg-background border shadow-xl z-50">
+                <SelectItem value="all">Alle Stati</SelectItem>
                 <SelectItem value="active">Nur aktive</SelectItem>
                 <SelectItem value="inactive">Nur inaktive</SelectItem>
               </SelectContent>
@@ -647,18 +659,20 @@ const Clients = () => {
                 <div key={countryGroup.country} className="border rounded-lg overflow-hidden">
                   {/* Country Header */}
                   <div
-                    className="flex items-center justify-between px-3 sm:px-4 py-3 cursor-pointer hover:bg-muted/50 bg-primary/5"
+                    className="flex items-center justify-between px-3 sm:px-4 py-3.5 cursor-pointer hover:bg-muted/50 bg-primary/[0.04] transition-colors"
                     onClick={() => toggleCountry(countryGroup.country)}
                   >
-                    <div className="flex items-center gap-2 sm:gap-3">
-                      {isCountryExpanded ? (
-                        <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                      )}
-                      <Globe className="h-4 w-4 text-primary shrink-0" />
-                      <span className="font-bold text-base sm:text-lg">{countryGroup.country}</span>
-                      <Badge variant="outline" className="text-xs">
+                    <div className="flex items-center gap-2.5 sm:gap-3">
+                      <div className="flex items-center justify-center w-6 h-6 rounded-md bg-primary/10 text-primary">
+                        {isCountryExpanded ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                      </div>
+                      <Globe className="h-4 w-4 text-primary/70 shrink-0" />
+                      <span className="font-bold text-base sm:text-lg tracking-tight uppercase">{countryGroup.country}</span>
+                      <Badge variant="secondary" className="text-[10px] font-bold px-1.5 h-5 min-w-[20px] justify-center">
                         {totalCompanies}
                       </Badge>
                     </div>
@@ -679,27 +693,32 @@ const Clients = () => {
                           <div key={group.id}>
                             {/* Group Header */}
                             <div
-                              className="flex items-start sm:items-center justify-between px-3 sm:px-4 py-3 cursor-pointer hover:bg-muted/50 bg-card pl-5 sm:pl-8"
+                              className="flex items-start sm:items-center justify-between px-3 sm:px-4 py-4 cursor-pointer hover:bg-muted/50 bg-card border-l-2 border-transparent transition-all pl-6 sm:pl-8"
                               onClick={() => toggleGroup(group.id)}
                             >
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  {isExpanded ? (
-                                    <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-                                  ) : (
-                                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                                  )}
-                                  {isMultiClient ? (
-                                    <FolderTree className="h-4 w-4 text-primary shrink-0" />
-                                  ) : (
-                                    <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
-                                  )}
-                                  <span className="font-semibold truncate">{group.name}</span>
+                                <div className="flex items-center gap-2.5">
+                                  <div className="flex items-center justify-center w-5 h-5 text-muted-foreground/60">
+                                    {isExpanded ? (
+                                      <ChevronDown className="h-4 w-4" />
+                                    ) : (
+                                      <ChevronRight className="h-4 w-4" />
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2 font-semibold">
+                                    {isMultiClient ? (
+                                      <FolderTree className="h-4 w-4 text-primary/70 shrink-0" />
+                                    ) : (
+                                      <Building2 className="h-4 w-4 text-muted-foreground/60 shrink-0" />
+                                    )}
+                                    <span className="truncate">{group.name}</span>
+                                  </div>
+                                  
                                   {!isMobile && (
-                                    <>
+                                    <div className="flex items-center gap-2">
                                       {isMultiClient ? (
                                         <>
-                                          <Badge variant="outline" className="text-xs">Gruppe</Badge>
+                                          <Badge variant="outline" className="text-xs font-normal">Gruppe</Badge>
                                           <GroupClientNumbers
                                             clientNumbers={group.children.map(c => c.client.client_number)}
                                           />
@@ -708,23 +727,23 @@ const Clients = () => {
                                         <ClientNumberBadge clientNumber={headerClient.client_number} />
                                       )}
                                       {totalCerts > 0 && (
-                                        <Badge variant="secondary" className="text-xs">
+                                        <Badge variant="secondary" className="text-xs h-5">
                                           {totalCerts} Zertifikat{totalCerts !== 1 ? 'e' : ''}
                                         </Badge>
                                       )}
-                                    </>
+                                    </div>
                                   )}
                                 </div>
                                 {isMobile && (
-                                  <div className="flex items-center gap-2 mt-1 ml-6 flex-wrap">
+                                  <div className="flex items-center gap-2 mt-2 ml-7 flex-wrap">
                                     {isMultiClient && (
-                                      <Badge variant="outline" className="text-xs">Gruppe</Badge>
+                                      <Badge variant="outline" className="text-[10px] h-5 font-normal">Gruppe</Badge>
                                     )}
                                     {!isMultiClient && (
                                       <ClientNumberBadge clientNumber={headerClient.client_number} />
                                     )}
                                     {totalCerts > 0 && (
-                                      <Badge variant="secondary" className="text-xs">
+                                      <Badge variant="secondary" className="text-[10px] h-5 px-1.5 font-medium">
                                         {totalCerts} Zert.
                                       </Badge>
                                     )}
@@ -810,14 +829,14 @@ const Clients = () => {
                               <div className="bg-muted/20">
                                 {group.children.length === 0 ? (
                                   <div className="py-2 text-sm text-muted-foreground italic pl-8 sm:pl-14 border-t border-border/30">
-                                    Noch keine Standorte in dieser Unternehmensgruppe.
+                                    Noch keine Kunden in dieser Unternehmensgruppe.
                                   </div>
                                 ) : (
                                   group.children.map((childWithCerts) => {
                                     const { client, certifications } = childWithCerts;
                                     const contacts = contactsMap[client.id] || [];
                                     const isClientExpanded = expandedClients.has(client.id);
-                                    const clientIsActive = (client as any).is_active !== false;
+                                    const clientIsActive = client.is_active !== false;
 
                                     return (
                                       <div key={client.id}>
@@ -1017,8 +1036,8 @@ const Clients = () => {
               {deleteGroupClient && deleteGroupClient.childCount > 0 ? (
                 <>
                   Die Unternehmensgruppe <strong>„{deleteGroupClient.client.name}"</strong> enthält noch{' '}
-                  <strong>{deleteGroupClient.childCount} Standort{deleteGroupClient.childCount > 1 ? 'e' : ''}</strong>.
-                  Beim Löschen werden alle Standorte zu eigenständigen Kunden ohne Gruppenzugehörigkeit.
+                  <strong>{deleteGroupClient.childCount} Kunde{deleteGroupClient.childCount > 1 ? 'n' : ''}</strong>.
+                  Beim Löschen werden alle Kunden zu eigenständigen Kunden ohne Gruppenzugehörigkeit.
                 </>
               ) : (
                 <>
@@ -1046,8 +1065,8 @@ const Clients = () => {
                   await deleteClient.mutateAsync(deleteGroupClient.client.id);
                   toast.success(`Unternehmensgruppe „${deleteGroupClient.client.name}" wurde gelöscht.`);
                 } catch (err) {
-                  console.error('Error deleting group:', err);
-                  toast.error('Fehler beim Löschen der Unternehmensgruppe.');
+                  const message = err instanceof Error ? err.message : 'Fehler beim Löschen der Unternehmensgruppe.';
+                  toast.error(message);
                 }
                 setDeleteGroupClient(null);
               }}

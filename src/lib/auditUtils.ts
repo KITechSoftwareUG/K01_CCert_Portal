@@ -1,12 +1,13 @@
 import { Audit, AuditTask } from '@/types/audit';
 import { isOverdue } from './dateUtils';
 import { AuditWithClient } from '@/hooks/useAudits';
+import { Tables } from '@/integrations/supabase/types';
 
 /**
  * Transform a database audit (AuditWithClient) to the local Audit type.
  * Accepts optional tasks array for Audits page variant.
  */
-export const transformAuditToLocal = (dbAudit: AuditWithClient, tasks?: any[]): Audit => ({
+export const transformAuditToLocal = (dbAudit: AuditWithClient, tasks?: Tables<'audit_tasks'>[]): Audit => ({
   id: dbAudit.id,
   clientId: dbAudit.client_id,
   clientName: dbAudit.clients?.name || 'Unbekannt',

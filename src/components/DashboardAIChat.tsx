@@ -268,23 +268,23 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
         <div className="rounded-2xl border border-primary/10 bg-gradient-to-br from-primary/[0.02] via-card to-accent/[0.02] shadow-sm overflow-hidden">
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
 
-          <div className="px-4 py-4 sm:px-10 sm:py-8">
+          <div className="px-4 py-6 sm:px-10 sm:py-8">
             {/* Greeting */}
-            <div className="flex items-start sm:items-center gap-2.5 sm:gap-3 mb-4 sm:mb-5 justify-center">
-              <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+            <div className="flex items-start sm:items-center gap-3 mb-5 justify-center max-w-2xl mx-auto">
+              <div className="flex-shrink-0 w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-primary/10 flex items-center justify-center shadow-inner">
+                <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-primary animate-pulse" />
               </div>
               <div className="min-h-[1.5rem] flex-1">
                 {greeting ? (
-                  <div className="text-xs sm:text-sm text-foreground/80 leading-relaxed animate-fade-in prose prose-sm max-w-none prose-p:my-0">
+                  <div className="text-[13px] sm:text-[15px] text-foreground/80 leading-snug animate-fade-in prose prose-sm max-w-none prose-p:my-0 font-medium">
                     <ReactMarkdown components={markdownLinkComponents}>{greeting}</ReactMarkdown>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <div className="flex gap-1">
-                      <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
-                      <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
-                      <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+                  <div className="flex items-center gap-2 h-6">
+                    <div className="flex gap-1.5">
+                      <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                     </div>
                   </div>
                 )}
@@ -297,26 +297,21 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
                 className="relative cursor-text group/input"
                 onClick={handleHeroInputFocus}
               >
-                <div className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 group-hover/input:bg-primary/20 transition-colors">
+                <div className="absolute left-3.5 sm:left-4 top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 group-hover/input:bg-primary/20 transition-colors">
                   <Bot className="h-4 w-4 text-primary" />
                 </div>
                 <Input
                   value={input}
                   onChange={handleHeroInputChange}
                   onFocus={handleHeroInputFocus}
-                  placeholder="Frag mich etwas..."
-                  className="pl-14 sm:pl-16 pr-12 sm:pr-14 h-12 sm:h-14 bg-background border-border/60 rounded-2xl text-sm sm:text-base shadow-sm hover:shadow-md hover:border-primary/30 focus:shadow-md focus:border-primary/40 transition-all placeholder:text-muted-foreground/40"
+                  placeholder="Wie kann ich dir heute helfen?"
+                  className="pl-14 sm:pl-16 pr-12 sm:pr-14 h-13 sm:h-15 bg-background/80 backdrop-blur-sm border-border/40 rounded-2xl text-sm sm:text-base shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:shadow-md hover:border-primary/20 focus:shadow-md focus:border-primary/30 transition-all placeholder:text-muted-foreground/50 border-2"
                   readOnly
                 />
-                <div className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl text-muted-foreground/40 hover:text-primary hover:bg-primary/10"
-                    tabIndex={-1}
-                  >
-                    <Send className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                  </Button>
+                <div className="absolute right-2.5 sm:right-3 top-1/2 -translate-y-1/2">
+                  <div className="h-9 w-9 flex items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+                    <Send className="h-4 w-4" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -327,7 +322,7 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
       {/* Chat Dialog */}
       <Dialog open={chatOpen} onOpenChange={setChatOpen}>
         <DialogContent
-          className="sm:max-w-2xl p-0 gap-0 rounded-none sm:rounded-2xl overflow-hidden w-full h-full sm:h-[80vh] sm:w-auto fixed inset-0 sm:inset-auto sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] flex flex-col"
+          className="sm:max-w-2xl p-0 gap-0 rounded-none sm:rounded-2xl overflow-hidden w-full h-[100dvh] sm:h-[80vh] sm:w-auto fixed inset-0 sm:inset-auto sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] flex flex-col border-none sm:border"
           aria-describedby={undefined}
         >
           <VisuallyHidden>
@@ -335,19 +330,24 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
           </VisuallyHidden>
 
           {/* Header */}
-          <div className="flex items-center gap-2.5 sm:gap-3 px-4 sm:px-5 py-3 sm:py-4 border-b border-border/50 bg-gradient-to-r from-primary/[0.04] to-transparent">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Sparkles className="h-4 w-4 text-primary" />
+          <div className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b border-border/40 bg-background/80 backdrop-blur-md safe-top">
+            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shadow-sm">
+              <Sparkles className="h-5 w-5 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-semibold text-foreground">KI-Assistent</h3>
-              <p className="text-xs text-muted-foreground truncate">Audits, Kunden & Zertifikate</p>
+              <h3 className="text-[15px] font-bold text-foreground tracking-tight">KI-Assistent</h3>
+              <p className="text-[11px] text-muted-foreground/80 font-medium">Audits, Kunden & Zertifikate</p>
             </div>
-            {conversationHistory.length > 0 && (
-              <Button variant="ghost" size="sm" onClick={handleReset} className="text-xs text-muted-foreground hover:text-foreground shrink-0">
-                Zurücksetzen
+            <div className="flex items-center gap-2">
+              {conversationHistory.length > 0 && (
+                <Button variant="ghost" size="sm" onClick={handleReset} className="h-8 px-2 text-[11px] font-bold text-muted-foreground hover:text-foreground">
+                  Reset
+                </Button>
+              )}
+              <Button variant="ghost" size="icon" onClick={() => setChatOpen(false)} className="sm:hidden h-8 w-8">
+                <X className="h-5 w-5" />
               </Button>
-            )}
+            </div>
           </div>
 
           {/* Messages */}

@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { useCreateAuditTask } from '@/hooks/useAuditTasks';
+import { useCreateAuditTask, DbAuditTaskInsert } from '@/hooks/useAuditTasks';
 
 interface NewFindingDialogProps {
   open: boolean;
@@ -69,7 +69,7 @@ export const NewFindingDialog = ({ open, onOpenChange, auditId, category }: NewF
         status: 'pending',
         category,
         severity: category === 'finding' ? severity : null,
-      } as any);
+      } as DbAuditTaskInsert);
 
       toast.success(category === 'finding' ? 'Feststellung hinzugefügt' : 'Aufgabe hinzugefügt');
       onOpenChange(false);

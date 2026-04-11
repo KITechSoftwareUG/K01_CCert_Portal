@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -18,7 +18,7 @@ if (!SUPABASE_SERVICE_ROLE_KEY) throw new Error('Missing SUPABASE_SERVICE_ROLE_K
 
 const OUTLOOK_SCOPE = 'offline_access Calendars.ReadWrite';
 
-async function refreshAccessToken(supabase: any, userId: string, refreshToken: string): Promise<string | null> {
+async function refreshAccessToken(supabase: SupabaseClient, userId: string, refreshToken: string): Promise<string | null> {
   console.log('Refreshing access token for user:', userId);
 
   const tokenResponse = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
@@ -56,7 +56,7 @@ async function refreshAccessToken(supabase: any, userId: string, refreshToken: s
   return tokenData.access_token;
 }
 
-async function getValidAccessToken(supabase: any, userId: string): Promise<string | null> {
+async function getValidAccessToken(supabase: SupabaseClient, userId: string): Promise<string | null> {
   const { data: tokens, error } = await supabase
     .from('outlook_tokens')
     .select('*')

@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { useUpdateAuditTask, DbAuditTask } from '@/hooks/useAuditTasks';
+import { useUpdateAuditTask, DbAuditTask, TaskStatus } from '@/hooks/useAuditTasks';
 import { format } from 'date-fns';
 
 interface EditFindingDialogProps {
@@ -78,7 +78,7 @@ export const EditFindingDialog = ({ open, onOpenChange, task }: EditFindingDialo
         due_date: new Date(dueDate).toISOString(),
         assigned_to: assignedTo || null,
         severity: task.category === 'finding' ? severity : null,
-        status: status as any,
+        status: status as TaskStatus,
         completed_at: status === 'completed' ? (task.completed_at || new Date().toISOString()) : null,
       });
 

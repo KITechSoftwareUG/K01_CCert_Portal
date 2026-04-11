@@ -4,19 +4,27 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ClipboardCheck, Calendar, Building2, ChevronRight } from 'lucide-react';
-import { useAllAuditTasks } from '@/hooks/useAuditTasks';
+import { useAllAuditTasks, DbAuditTask } from '@/hooks/useAuditTasks';
+import { Tables } from '@/integrations/supabase/types';
+
+interface AuditTaskWithAudit extends DbAuditTask {
+  audits: (Tables<'audits'> & {
+    clients: Tables<'clients'> | null;
+  }) | null;
+}
 import { format, isPast, isToday } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
 export const OpenTasksCard = () => {
     const navigate = useNavigate();
-    const { data: allTasks = [], isLoading } = useAllAuditTasks();
+    const { data: rawTasks = [], isLoading } = useAllAuditTasks();
+    const allTasks = rawTasks as AuditTaskWithAudit[];
 
     const openTasks = useMemo(() => {
         return allTasks
-            .filter((task: any) => task.status !== 'completed')
-            .sort((a: any, b: any) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
+            .filter((task) => task.status !== 'completed')
+            .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
     }, [allTasks]);
 
     if (isLoading) {
@@ -44,7 +52,7 @@ export const OpenTasksCard = () => {
                         Wichtige Aufgaben
                     </div>
                     <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                        {allTasks.filter((t: any) => t.status !== 'completed').length} gesamt
+                        {allTasks.filter((t) => t.status !== 'completed').length} gesamt
                     </Badge>
                 </CardTitle>
             </CardHeader>
@@ -58,13 +66,13 @@ export const OpenTasksCard = () => {
                     ) : (
                         <div className="space-y-2 py-1">
                             {Object.entries(
-                                openTasks.reduce((acc: any, task: any) => {
+                                openTasks.reduce<Record<string, AuditTaskWithAudit[]>>((acc, task) => {
                                     const monthKey = format(new Date(task.due_date), 'MMMM yyyy', { locale: de });
                                     if (!acc[monthKey]) acc[monthKey] = [];
                                     acc[monthKey].push(task);
                                     return acc;
                                 }, {})
-                            ).map(([month, tasks]: [string, any]) => (
+                            ).map(([month, tasks]) => (
                                 <div key={month} className="space-y-2">
                                     <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm py-1.5 px-2 -mx-2 border-b border-border/50">
                                         <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
@@ -73,7 +81,7 @@ export const OpenTasksCard = () => {
                                         </h3>
                                     </div>
                                     <div className="space-y-2">
-                                        {tasks.map((task: any) => {
+                                        {tasks.map((task) => {
                                             const dueDate = new Date(task.due_date);
                                             const isOverdue = isPast(dueDate) && !isToday(dueDate);
 

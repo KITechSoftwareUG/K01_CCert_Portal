@@ -277,7 +277,7 @@ function TemplateTaskList({ template }: { template: AuditTemplate }) {
           )
         );
         toast.success('Reihenfolge aktualisiert');
-      } catch (error: any) {
+      } catch {
         toast.error('Fehler beim Aktualisieren der Reihenfolge');
       }
     }
@@ -300,8 +300,8 @@ function TemplateTaskList({ template }: { template: AuditTemplate }) {
       toast.success('Aufgabe hinzugefügt');
       setNewTask({ title: '', description: '', days_before_audit: 14 });
       setIsAddingTask(false);
-    } catch (error: any) {
-      toast.error(error.message || 'Fehler beim Hinzufügen');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Fehler beim Hinzufügen');
     }
   };
 
@@ -329,8 +329,8 @@ function TemplateTaskList({ template }: { template: AuditTemplate }) {
       });
       toast.success('Aufgabe aktualisiert');
       setEditingTaskId(null);
-    } catch (error: any) {
-      toast.error(error.message || 'Fehler beim Speichern');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Fehler beim Speichern');
     }
   };
 
@@ -343,8 +343,8 @@ function TemplateTaskList({ template }: { template: AuditTemplate }) {
     try {
       await deleteTask.mutateAsync({ id: task.id, templateId: template.id });
       toast.success('Aufgabe entfernt');
-    } catch (error: any) {
-      toast.error(error.message || 'Fehler beim Löschen');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Fehler beim Löschen');
     }
   };
 
@@ -471,8 +471,8 @@ function EditableTemplateCard({
       });
       toast.success('Vorlage aktualisiert');
       setIsEditing(false);
-    } catch (error: any) {
-      toast.error(error.message || 'Fehler beim Speichern');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Fehler beim Speichern');
     }
   };
 
@@ -605,11 +605,11 @@ export default function AuditTemplates() {
       toast.success('Vorlage erstellt');
       setNewTemplate({ certification_id: '', audit_type: '', name: '', description: '' });
       setIsCreateDialogOpen(false);
-    } catch (error: any) {
-      if (error.message?.includes('duplicate')) {
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message?.includes('duplicate')) {
         toast.error('Diese Kombination existiert bereits');
       } else {
-        toast.error(error.message || 'Fehler beim Erstellen');
+        toast.error(err instanceof Error ? err.message : 'Fehler beim Erstellen');
       }
     }
   };
@@ -620,8 +620,8 @@ export default function AuditTemplates() {
     try {
       await deleteTemplate.mutateAsync(deleteDialogTemplate.id);
       toast.success('Vorlage gelöscht');
-    } catch (error: any) {
-      toast.error(error.message || 'Fehler beim Löschen');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Fehler beim Löschen');
     } finally {
       setDeleteDialogTemplate(null);
     }
@@ -744,7 +744,7 @@ export default function AuditTemplates() {
               <Label>Audittyp *</Label>
               <Select
                 value={newTemplate.audit_type}
-                onValueChange={(value) => setNewTemplate({ ...newTemplate, audit_type: value as any })}
+                onValueChange={(value) => setNewTemplate({ ...newTemplate, audit_type: value as AuditTemplate['audit_type'] | '' })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Audittyp wählen..." />

@@ -7,6 +7,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useCertificationBodies, useCreateCertificationBody, useUpdateCertificationBody, useDeleteCertificationBody, useClientsByCertificationBody, CertificationBody } from '@/hooks/useCertificationBodies';
+import { Tables } from '@/integrations/supabase/types';
+
+interface ClientByCertBody {
+  id: string;
+  client_id: string;
+  clients: Tables<'clients'> | null;
+}
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -36,7 +43,7 @@ const LinkedClients = ({ certificationBodyId }: { certificationBodyId: string })
         <Users className="h-3 w-3" />
         Kunden:
       </span>
-      {linkedClients.map((item: any) => (
+      {(linkedClients as ClientByCertBody[]).map((item) => (
         <Badge
           key={item.id}
           variant="secondary"

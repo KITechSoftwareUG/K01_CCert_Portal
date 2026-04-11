@@ -110,8 +110,8 @@ export default function CertificationsManagement() {
       queryClient.invalidateQueries({ queryKey: ['certifications'] });
       setIsDialogOpen(false);
       resetForm();
-    } catch (error: any) {
-      toast.error(error.message || 'Fehler beim Speichern');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Fehler beim Speichern');
     } finally {
       setIsSubmitting(false);
     }
@@ -129,8 +129,8 @@ export default function CertificationsManagement() {
       if (error) throw error;
       toast.success('Zertifizierung gelöscht');
       queryClient.invalidateQueries({ queryKey: ['certifications'] });
-    } catch (error: any) {
-      toast.error(error.message || 'Fehler beim Löschen');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Fehler beim Löschen');
     } finally {
       setIsDeleteDialogOpen(false);
       setDeletingCertification(null);
@@ -140,82 +140,76 @@ export default function CertificationsManagement() {
   return (
     <>
       <div className="p-4 sm:p-8">
-        <div className="mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Systeme</h1>
-          <p className="text-muted-foreground mt-1">
-            Verwalten Sie die verfügbaren Managementsysteme
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8 bg-card/50 p-4 rounded-2xl border border-border/40 shadow-sm">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Systeme</h1>
+            <p className="text-muted-foreground text-sm font-medium mt-1">
+              Verwalten Sie die verfügbaren Managementsysteme
+            </p>
+          </div>
+          <Button size="lg" onClick={openCreateDialog} className="w-full sm:w-auto shadow-sm">
+            <Plus className="h-5 w-5 mr-2" />
+            Neues System
+          </Button>
         </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Award className="h-5 w-5" />
-                Systeme
-              </CardTitle>
-              <CardDescription>
-                Liste aller verfügbaren Systeme im Portal
-              </CardDescription>
-            </div>
-            <Button onClick={openCreateDialog}>
-              <Plus className="h-4 w-4 mr-2" />
-              Neues System
-            </Button>
-          </CardHeader>
-          <CardContent>
             {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-10 w-10 animate-spin text-primary/40" />
               </div>
             ) : certifications && certifications.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Beschreibung</TableHead>
-                    <TableHead className="w-[100px]">Aktionen</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {certifications.map((cert) => (
-                    <TableRow key={cert.id}>
-                      <TableCell className="font-medium">{cert.name}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {cert.description || '—'}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openEditDialog(cert)}
-                            title="Bearbeiten"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openDeleteDialog(cert)}
-                            className="text-destructive hover:text-destructive"
-                            title="Löschen"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                Keine Zertifizierungen vorhanden. Erstellen Sie die erste Zertifizierung.
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {certifications.map((cert) => (
+                  <Card key={cert.id} className="group border-border/50 shadow-sm hover:shadow-md transition-all hover:border-primary/20 bg-card/40 backdrop-blur-sm overflow-hidden">
+                    <CardHeader className="p-4 pb-2 space-y-0 flex flex-row items-start justify-between">
+                      <div className="p-2.5 rounded-xl bg-primary/10 text-primary mb-2 shadow-inner">
+                        <Award className="h-5 w-5" />
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                          onClick={() => openEditDialog(cert)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                          onClick={() => openDeleteDialog(cert)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                      <h4 className="font-bold text-lg text-foreground mb-1 group-hover:text-primary transition-colors">{cert.name}</h4>
+                      <p className="text-sm text-muted-foreground line-clamp-3 min-h-[3rem]">
+                        {cert.description || <span className="italic opacity-50">Keine Beschreibung</span>}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
+            ) : (
+              <Card className="border-dashed border-2 bg-muted/20">
+                <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                    <Award className="h-8 w-8 text-muted-foreground/40" />
+                  </div>
+                  <h3 className="text-lg font-bold mb-1">Keine Systeme</h3>
+                  <p className="text-sm text-muted-foreground max-w-[250px] mb-6">
+                    Es wurden noch keine Managementsysteme im Portal angelegt.
+                  </p>
+                  <Button onClick={openCreateDialog} variant="outline" className="rounded-xl">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Erstes System anlegen
+                  </Button>
+                </CardContent>
+              </Card>
             )}
-          </CardContent>
-        </Card>
       </div>
 
       {/* Create/Edit Dialog */}

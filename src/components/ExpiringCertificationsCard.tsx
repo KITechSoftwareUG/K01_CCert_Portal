@@ -5,7 +5,13 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ShieldAlert, ShieldCheck, AlertTriangle, Clock, CalendarClock } from 'lucide-react';
 import { useAllClientCertifications } from '@/hooks/useClientCertifications';
+import { Tables } from '@/integrations/supabase/types';
 import { format, differenceInDays, isPast, isToday } from 'date-fns';
+
+interface ClientCertificationWithClients extends Tables<'client_certifications'> {
+  certifications: Tables<'certifications'> | null;
+  clients: Pick<Tables<'clients'>, 'id' | 'name' | 'is_active'> | null;
+}
 import { de } from 'date-fns/locale';
 
 interface ExpiringCertification {
@@ -76,14 +82,15 @@ const KanbanColumn = ({
 
 export const ExpiringCertificationsCard = () => {
   const navigate = useNavigate();
-  const { data: certifications = [], isLoading } = useAllClientCertifications();
+  const { data: rawCertifications = [], isLoading } = useAllClientCertifications();
+  const certifications = rawCertifications as ClientCertificationWithClients[];
 
   const expiringCertifications = useMemo(() => {
     const result: ExpiringCertification[] = [];
 
     for (const cert of certifications) {
       // Nur aktive Kunden anzeigen
-      if ((cert as any).clients?.is_active === false) continue;
+      if (cert.clients?.is_active === false) continue;
       if (!cert.valid_until) continue;
 
       const validUntil = new Date(cert.valid_until);
@@ -104,7 +111,7 @@ export const ExpiringCertificationsCard = () => {
 
       result.push({
         id: cert.id,
-        clientName: (cert as any).clients?.name || 'Unbekannt',
+        clientName: cert.clients?.name || 'Unbekannt',
         clientId: cert.client_id,
         certificationName: cert.certifications?.name || 'Unbekannt',
         validUntil,

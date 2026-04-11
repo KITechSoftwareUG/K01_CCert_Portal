@@ -1,7 +1,14 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAudits } from '@/hooks/useAudits';
-import { useAllAuditTasks } from '@/hooks/useAuditTasks';
+import { useAllAuditTasks, DbAuditTask } from '@/hooks/useAuditTasks';
+import { Tables } from '@/integrations/supabase/types';
+
+interface AuditTaskWithAudit extends DbAuditTask {
+  audits: (Tables<'audits'> & {
+    clients: Tables<'clients'> | null;
+  }) | null;
+}
 import { transformAuditToLocal } from '@/lib/auditUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -60,7 +67,7 @@ const Calendar = () => {
 
   // Get finding deadlines (category = 'finding', not completed)
   const findingDeadlines = useMemo(() => {
-    return (allTasks as any[])
+    return (allTasks as AuditTaskWithAudit[])
       .filter(t => t.category === 'finding' && t.status !== 'completed')
       .map(t => ({
         id: t.id,

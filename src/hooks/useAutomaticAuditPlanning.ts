@@ -2,6 +2,12 @@ import { useMemo } from 'react';
 import { useAllClientCertifications } from './useClientCertifications';
 import { useAudits } from './useAudits';
 import { addMonths, differenceInMonths, isBefore, isAfter, addDays, format } from 'date-fns';
+import { Tables } from '@/integrations/supabase/types';
+
+interface ClientCertificationWithAll extends Tables<'client_certifications'> {
+  clients: Pick<Tables<'clients'>, 'name'> | null;
+  certifications: Pick<Tables<'certifications'>, 'name'> | null;
+}
 
 export interface SuggestedAudit {
   clientCertificationId: string;
@@ -25,11 +31,11 @@ export const useAutomaticAuditPlanning = () => {
     const now = new Date();
     const threeMonthsAhead = addMonths(now, 3);
 
-    for (const cert of certifications) {
+    for (const cert of (certifications as ClientCertificationWithAll[])) {
       if (!cert.valid_until) continue;
 
       const validUntil = new Date(cert.valid_until);
-      const clientName = (cert as any).clients?.name || 'Unbekannt';
+      const clientName = cert.clients?.name || 'Unbekannt';
       const certificationName = cert.certifications?.name || 'Unbekannt';
 
       // Check if there are already scheduled audits for this certification

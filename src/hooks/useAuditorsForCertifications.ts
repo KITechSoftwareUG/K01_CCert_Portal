@@ -9,6 +9,17 @@ export interface AuditorByClientCertification {
   auditorPhone: string | null;
 }
 
+interface ClientCertificationWithAuditor {
+  id: string;
+  auditor_id: string | null;
+  auditors: {
+    id: string;
+    name: string;
+    email: string | null;
+    phone: string | null;
+  } | null;
+}
+
 // Fetches auditors directly linked to client certifications via auditor_id
 export const useAuditorsForCertifications = () => {
   return useQuery({
@@ -33,7 +44,7 @@ export const useAuditorsForCertifications = () => {
       // Create a map of client_certification_id -> auditor info
       const auditorMap: Record<string, AuditorByClientCertification> = {};
       
-      data?.forEach((cc: any) => {
+      (data as ClientCertificationWithAuditor[] | null)?.forEach((cc) => {
         if (cc.id && cc.auditors) {
           auditorMap[cc.id] = {
             clientCertificationId: cc.id,

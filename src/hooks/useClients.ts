@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables, TablesInsert, Enums } from '@/integrations/supabase/types';
-import { calculateNextClientNumber, getCountryPrefix } from '@/lib/clientNumberUtils';
+import { calculateNextClientNumber } from '@/lib/clientNumberUtils';
 import { logActivity } from '@/hooks/useActivityLog';
 
 export type DbClient = Tables<'clients'>;
@@ -164,15 +164,24 @@ export const useUpdateClient = () => {
 
 export const useDeleteClient = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
         .from('clients')
         .delete()
         .eq('id', id);
-      
-      if (error) throw error;
+
+      if (error) {
+        // Postgres FK-Verletzung (23503): RESTRICT greift — Client hat noch verknüpfte Daten
+        if (error.code === '23503') {
+          throw new Error(
+            'Dieser Kunde kann nicht gelöscht werden, da noch Audits oder Zertifizierungen verknüpft sind. ' +
+            'Bitte zuerst alle Audits und Zertifizierungen des Kunden entfernen.'
+          );
+        }
+        throw error;
+      }
     },
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });

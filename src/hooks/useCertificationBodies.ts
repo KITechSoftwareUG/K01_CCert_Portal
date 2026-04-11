@@ -2,6 +2,24 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { logActivity } from '@/hooks/useActivityLog';
 
+// Explizite Typen für die Supabase-Join-Ergebnisse (Nested Selects)
+interface CertDataRow {
+  id: string;
+  client_id: string;
+  clients: { id: string; is_active: boolean } | null;
+  auditors: {
+    id: string;
+    certification_body_id: string | null;
+    certification_bodies: { id: string; name: string; short_name: string | null } | null;
+  } | null;
+}
+
+interface LinkDataRow {
+  id: string;
+  client_id: string;
+  clients: { id: string; is_active: boolean } | null;
+  certification_bodies: { id: string; name: string; short_name: string | null } | null;
+}
 
 export interface CertificationBodyStat {
   bodyId: string;
@@ -39,58 +57,40 @@ export const useCertificationBodyStats = () => {
           clients!inner ( id, is_active ),
           certification_bodies ( id, name, short_name )
         `);
-        
+
       if (linkError) throw linkError;
 
       const counts: Record<string, CertificationBodyStat> = {};
       const countedClientBodies = new Set<string>();
 
-      // Process primary data first (Certificates -> Auditors -> Body)
-      for (const row of certData) {
-        const client = row.clients as any;
-        if (client?.is_active === false) continue;
-
-        const auditor = row.auditors as any;
-        const body = auditor?.certification_bodies;
-        if (!body?.id) continue;
-
-        // Remember we counted this client-body combo so we don't double count it from linkData
-        countedClientBodies.add(`${row.client_id}-${body.id}`);
-
+      const upsertCount = (body: { id: string; name: string; short_name: string | null }, clientId: string) => {
+        const comboKey = `${clientId}-${body.id}`;
+        if (countedClientBodies.has(comboKey)) return;
+        countedClientBodies.add(comboKey);
         if (!counts[body.id]) {
-          counts[body.id] = {
-            bodyId: body.id,
-            bodyName: body.name,
-            bodyShortName: body.short_name,
-            count: 0,
-          };
+          counts[body.id] = { bodyId: body.id, bodyName: body.name, bodyShortName: body.short_name, count: 0 };
         }
         counts[body.id].count += 1;
+      };
+
+      // Process primary data (Certificates -> Auditors -> Body)
+      for (const row of certData as CertDataRow[]) {
+        if (row.clients?.is_active === false) continue;
+
+        const body = row.auditors?.certification_bodies;
+        if (!body?.id) continue;
+
+        upsertCount(body, row.client_id);
       }
 
       // Process secondary data (Direct Client -> Body links)
-      for (const row of linkData) {
-        const client = row.clients as any;
-        if (client?.is_active === false) continue;
+      for (const row of linkData as LinkDataRow[]) {
+        if (row.clients?.is_active === false) continue;
 
-        const body = row.certification_bodies as any;
+        const body = row.certification_bodies;
         if (!body?.id) continue;
 
-        // Only count it if we haven't already counted this body for this client via certificates
-        const comboKey = `${row.client_id}-${body.id}`;
-        if (!countedClientBodies.has(comboKey)) {
-          countedClientBodies.add(comboKey);
-          
-          if (!counts[body.id]) {
-            counts[body.id] = {
-              bodyId: body.id,
-              bodyName: body.name,
-              bodyShortName: body.short_name,
-              count: 0,
-            };
-          }
-          counts[body.id].count += 1;
-        }
+        upsertCount(body, row.client_id);
       }
 
       return Object.values(counts).sort((a, b) => b.count - a.count || a.bodyName.localeCompare(b.bodyName, 'de'));
@@ -149,7 +149,7 @@ export const useCreateCertificationBody = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['certification_bodies'] });
       logActivity({
         action: 'created',
@@ -186,7 +186,7 @@ export const useUpdateCertificationBody = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['certification_bodies'] });
       logActivity({
         action: 'updated',
@@ -216,7 +216,8 @@ export const useDeleteCertificationBody = () => {
       logActivity({
         action: 'deleted',
         entity_type: 'certification_body',
-        entity_id: id
+        entity_id: id,
+        details: { note: 'Zertifizierungsstelle gelöscht' }
       });
     },
   });
@@ -295,10 +296,39 @@ export const useUpdateClientCertificationBodies = () => {
         if (insertError) throw insertError;
       }
     },
-    onSuccess: (_, { clientId }) => {
+    onSuccess: (_, { clientId, certificationBodyIds }) => {
       queryClient.invalidateQueries({ queryKey: ['client_certification_bodies', clientId] });
       queryClient.invalidateQueries({ queryKey: ['clients_by_certification_body'] });
       queryClient.invalidateQueries({ queryKey: ['clients'] });
+      
+      logActivity({
+        action: 'updated_client_links',
+        entity_type: 'certification_body',
+        details: {
+          client_id: clientId,
+          linked_bodies_count: certificationBodyIds.length
+        }
+      });
+    },
+  });
+};
+
+// Add a single certification body link for a client (upsert — safe to call even if link already exists)
+export const useAddClientCertificationBodyLink = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ clientId, certificationBodyId }: { clientId: string; certificationBodyId: string }) => {
+      const { error } = await supabase
+        .from('client_certification_bodies')
+        .upsert({ client_id: clientId, certification_body_id: certificationBodyId }, { onConflict: 'client_id,certification_body_id', ignoreDuplicates: true });
+
+      if (error) throw error;
+    },
+    onSuccess: (_, { clientId }) => {
+      queryClient.invalidateQueries({ queryKey: ['client_certification_bodies', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['clients_by_certification_body'] });
+      queryClient.invalidateQueries({ queryKey: ['certification_body_stats'] });
     },
   });
 };

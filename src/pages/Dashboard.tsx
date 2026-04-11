@@ -51,7 +51,7 @@ const Dashboard = () => {
 
   const availableGreetings = useMemo(() => {
     const countries = new Set<string>();
-    clients.forEach((c: any) => {
+    clients.forEach((c) => {
       if (c.country) countries.add(c.country.toUpperCase());
     });
 
@@ -92,26 +92,20 @@ const Dashboard = () => {
   }, [dbAudits, dbTasks]);
 
   const clientStats = useMemo(() => {
-    const totalLocations = clients.length;
-    const activeLocations = clients.filter((c: any) => c.is_active !== false).length;
-    const inactiveLocations = totalLocations - activeLocations;
+    // Nur echte Kunden zählen (Gruppen-Header haben client_number === null)
+    const realClients = clients.filter((c) => c.client_number !== null);
+    const totalClients = realClients.length;
+    const activeClients = realClients.filter((c) => c.is_active !== false).length;
+    const inactiveClients = totalClients - activeClients;
 
-    // Count unique groups/independent companies
-    const companyIds = new Set();
-    clients.forEach((c: any) => {
-      if (c.parent_client_id) {
-        companyIds.add(c.parent_client_id);
-      } else {
-        companyIds.add(c.id);
-      }
-    });
-    const totalCompanies = companyIds.size;
+    // Unternehmensgruppen = Einträge ohne client_number (reine Dach-Container)
+    const totalGroups = clients.filter((c) => c.client_number === null).length;
 
     return {
-      totalLocations,
-      activeLocations,
-      inactiveLocations,
-      totalCompanies,
+      totalClients,
+      activeClients,
+      inactiveClients,
+      totalGroups,
     };
   }, [clients]);
 
@@ -128,57 +122,57 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="p-4 sm:p-8 space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground transition-opacity duration-500 min-h-[1.5rem]" style={{ opacity: fade ? 1 : 0 }}>
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 animate-fade-in safe-bottom">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent italic">Dashboard</h1>
+        <p className="text-sm text-muted-foreground transition-opacity duration-500 min-h-[1.5rem]" style={{ opacity: fade ? 1 : 0 }}>
           {availableGreetings[greetingIndex]} <span className="font-semibold text-foreground">Certconsulting Pane.</span>
         </p>
       </div>
 
-      <DashboardAIChat />
+      <DashboardAIChat className="-mx-1 sm:mx-0" />
 
       {/* Main Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-        <Card className="flex flex-col h-full bg-primary/5 border-primary/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center justify-between text-base">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        <Card className="flex flex-col h-full bg-primary/[0.03] border-primary/10 shadow-sm overflow-hidden">
+          <CardHeader className="pb-3 px-4 pt-4 border-b border-primary/5">
+            <CardTitle className="flex items-center justify-between text-sm sm:text-base">
               <div className="flex items-center gap-2 text-primary">
-                <Building2 className="h-4 w-4" />
+                <Building2 className="h-4 w-4" strokeWidth={2.5} />
                 Kundenübersicht
               </div>
-              <span className="text-2xl font-bold text-primary">{clientStats.totalLocations}</span>
+              <span className="text-xl font-bold text-primary">{clientStats.totalClients}</span>
             </CardTitle>
-            <p className="text-[10px] text-primary/70 -mt-1">Aktueller Stand</p>
+            <p className="text-[10px] text-primary/60 mt-0.5 uppercase tracking-wider font-medium">Aktueller Stand</p>
           </CardHeader>
-          <CardContent className="pt-0 flex-1">
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs">
+          <CardContent className="p-4 flex-1">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs sm:text-sm">
                 <span className="text-muted-foreground truncate mr-2">Kunden (gesamt)</span>
-                <span className="font-semibold tabular-nums">{clientStats.totalLocations}</span>
+                <span className="font-semibold tabular-nums">{clientStats.totalClients}</span>
               </div>
-              <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center justify-between text-xs sm:text-sm">
                 <span className="text-muted-foreground truncate mr-2">Kunden (aktiv)</span>
-                <span className="font-semibold text-green-600 tabular-nums">{clientStats.activeLocations}</span>
+                <span className="font-semibold text-green-600 tabular-nums">{clientStats.activeClients}</span>
               </div>
-              <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center justify-between text-xs sm:text-sm">
                 <span className="text-muted-foreground truncate mr-2">Kunden (inaktiv)</span>
-                <span className="font-semibold text-destructive tabular-nums">{clientStats.inactiveLocations}</span>
+                <span className="font-semibold text-destructive tabular-nums">{clientStats.inactiveClients}</span>
               </div>
 
               {bodyStats.length > 0 && (
-                <div className="flex flex-col">
-                  <div className="border-t border-primary/20 my-2" />
-                  <p className="text-[10px] text-primary/70 font-medium uppercase tracking-wider pb-1">
+                <div className="flex flex-col mt-4">
+                  <div className="border-t border-primary/10 my-3" />
+                  <p className="text-[10px] text-primary/70 font-bold uppercase tracking-widest pb-2">
                     Zertifizierungen je Zertifizierer
                   </p>
-                  <div className="max-h-[120px] overflow-y-auto pr-1 space-y-1.5 scrollbar-thin scrollbar-thumb-primary/10 scrollbar-track-transparent">
+                  <div className="max-h-[160px] lg:max-h-[120px] overflow-y-auto pr-1 space-y-1.5 scrollbar-thin scrollbar-thumb-primary/10 scrollbar-track-transparent">
                     {bodyStats.map((stat) => (
-                      <div key={stat.bodyId} className="flex items-center justify-between text-xs">
+                      <div key={stat.bodyId} className="flex items-center justify-between text-xs py-0.5 border-b border-primary/[0.02] last:border-0 hover:bg-primary/[0.02] rounded px-1 -mx-1 transition-colors">
                         <span className="text-muted-foreground truncate mr-2" title={stat.bodyName}>
                           {stat.bodyShortName || stat.bodyName}
                         </span>
-                        <span className="font-semibold tabular-nums">{stat.count}</span>
+                        <span className="font-bold tabular-nums text-primary/80">{stat.count}</span>
                       </div>
                     ))}
                   </div>
@@ -194,25 +188,22 @@ const Dashboard = () => {
 
       {/* Second Row: Alerts and Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-5 space-y-6">
+        <div className="lg:col-span-5">
           <AlertsCard audits={audits} />
         </div>
-        <div className="lg:col-span-7 space-y-6">
+        <div className="lg:col-span-7">
           <OpenTasksCard />
         </div>
       </div>
 
-      {/* Third Row: Expiring Certifications */}
+      {/* Rows: Expiring and Quality */}
       <div className="grid grid-cols-1 gap-6">
         <ExpiringCertificationsCard />
-      </div>
-
-      {/* Fourth Row: Data Quality */}
-      <div className="grid grid-cols-1 gap-6">
         <DataQualityWarningsCard />
       </div>
     </div>
   );
+
 };
 
 export default Dashboard;

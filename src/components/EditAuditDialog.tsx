@@ -161,8 +161,11 @@ export function EditAuditDialog({ audit, open, onOpenChange }: EditAuditDialogPr
                 <PopoverContent className="w-auto p-0 z-[100]" align="end">
                   <Calendar
                     mode="single"
+                    captionLayout="dropdown"
+                    fromYear={2020}
+                    toYear={2035}
                     selected={
-                      isMatch(dateInput, 'dd.MM.yyyy') ? parse(dateInput, 'dd.MM.yyyy', new Date()) : 
+                      isMatch(dateInput, 'dd.MM.yyyy') ? parse(dateInput, 'dd.MM.yyyy', new Date()) :
                       isMatch(dateInput, 'yyyy-MM-dd') ? parse(dateInput, 'yyyy-MM-dd', new Date()) :
                       undefined
                     }
