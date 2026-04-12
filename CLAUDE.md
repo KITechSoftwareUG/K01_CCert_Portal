@@ -2,6 +2,15 @@
 
 This file provides guidance to Claude Code when working with this repository.
 
+## Antwort-Stil (Token-Effizienz)
+
+- **So kurz wie möglich** — keine Zusammenfassungen am Ende, kein "Hier ist was ich gemacht habe"
+- Keine Wiederholungen, kein Boilerplate, kein erklärtes Offensichtliches
+- Code-Änderungen kommentarlos ausgeben, es sei denn Logik ist nicht selbsterklärend
+- Bei Fehlern: Ursache nennen + Fix — kein Kontext-Padding
+
+---
+
 ## Commands
 
 ```bash
@@ -13,6 +22,8 @@ npx tsc --noEmit   # Echter TypeScript-Check (Vite baut auch bei TS-Fehlern durc
 ```
 
 No test suite is configured. The app was bootstrapped with [Lovable](https://lovable.dev).
+
+> ⚠️ **Vite baut auch bei TS-Fehlern durch** — kein Fehler im Terminal, aber das **Error Overlay blockiert ALLE Seiten** (inkl. Dashboard). `npx tsc --noEmit` nach jeder Typänderung zwingend.
 
 ## Environment Variables
 
@@ -40,6 +51,29 @@ Every entity follows the same pattern:
 - **Hook file** in `src/hooks/use<Entity>.ts` — exports `useQuery`/`useMutation` wrappers around Supabase
 - **Types** come from `src/integrations/supabase/types.ts` — **never hand-write DB types**, always use `Tables<'table_name'>`, `TablesInsert<'table_name'>`, `Enums<'enum_name'>`
 - **Activity logging** on every mutation via `logActivity()` from `src/hooks/useActivityLog.ts`
+
+### Seiten & Hooks (Stand April 2026)
+
+| Route | Datei | Primärer Hook | Hinweis |
+|-------|-------|--------------|---------|
+| `/` | `Dashboard.tsx` | `useClients()`, `useAudits()`, `useAllAuditTasks()` | `useAllAuditTasks()` via `OpenTasksCard` — Fehler dort bricht Dashboard |
+| `/audits` | `Audits.tsx` | `useAudits()` | |
+| `/audits/:id` | `AuditDetail.tsx` | `useAuditTasks(auditId)` | |
+| `/tasks` | `Tasks.tsx` | `useAllAuditTasks()` → `DbAuditTaskFull` | |
+| `/clients` | `Clients.tsx` | `useClients()` | |
+
+### Layout: Scroll-Ausnahmen
+Pfade `/audits` und `/tasks` werden **nicht** in `scrollRef`-div gewrapped — sie verwalten ihren Scroll intern. Bei neuen Seiten mit eigenem Scroll: in `Layout.tsx` der Bedingung `['/audits', '/tasks'].includes(location.pathname)` hinzufügen.
+
+### sessionStorage-Key-Konventionen
+Schema: `{seite}-{schlüssel}` — am Seitenanfang als `const SS_KEY = '...'` definieren.
+
+| Prefix | Seite |
+|--------|-------|
+| `audits-*` | Audits.tsx (search, status, group-by, …) |
+| `tasks-*` | Tasks.tsx (search, status, category, due, group-by) |
+| `clients-*` | Clients.tsx |
+| `scroll-pos-{path}` | automatisch via `useScrollPersistence()` |
 
 ---
 
@@ -112,6 +146,19 @@ Die lokale `Audit.certifications: string[]` wird aus `client_certifications?.cer
 ### 5. `src/types/audit.ts` ist der lokale Frontend-Typ
 `Audit` und `Client` in `src/types/audit.ts` sind lokale UI-Typen (camelCase, Dates als `Date`-Objekte). Sie unterscheiden sich bewusst von den DB-Typen (`Tables<'audits'>` etc.). `transformAuditToLocal()` in `src/lib/auditUtils.ts` übersetzt zwischen beiden.
 
+### 6. ⚠️ Supabase `.select()` — Spaltennamen 1:1 aus `types.ts` abschreiben, NIE raten
+Falsche Namen → Runtime-Fehler oder leeres Ergebnis (Supabase gibt kein Error zurück). Immer `src/integrations/supabase/types.ts` öffnen und exakten Namen kopieren.
+
+| ✅ Richtig | ❌ Falsch |
+|-----------|---------|
+| `scheduled_date` | `date`, `audit_date` |
+| `assigned_to` | `assignee` |
+| `due_date` | `deadline` |
+| `valid_from` / `valid_until` | `start_date` / `end_date` |
+
+### 7. ⚠️ `useAllAuditTasks()` bricht Dashboard — immer Dashboard testen nach Änderungen
+`OpenTasksCard` auf dem Dashboard nutzt `useAllAuditTasks()`. Fehler in `useAuditTasks.ts` → Error Overlay auf allen Seiten. Nach jeder Änderung an diesem Hook Dashboard öffnen und prüfen.
+
 ---
 
 ## Bekannte Altlasten — NICHT anfassen ohne expliziten Migrationsplan
@@ -126,6 +173,13 @@ Die lokale `Audit.certifications: string[]` wird aus `client_certifications?.cer
 
 ### Noch vorhandener toter Code (bekannt, nicht kritisch)
 - `Calendar.tsx` Zeile ~159: `certifications: [] as string[]` in lokalem UI-Objekt — kein DB-Write, nur irreführend.
+
+### Bekannte Fallstricke (bereits passiert — nicht wiederholen)
+
+| Bug | Ursache | Prävention |
+|-----|---------|-----------|
+| Dashboard blank (alle Seiten) | `task.audits.date` statt `.scheduled_date` → Vite Error Overlay | `npx tsc --noEmit` nach jeder Typänderung |
+| Supabase liefert `null`/leer | Spaltenname in `.select()` falsch | Immer aus `types.ts` kopieren, nie raten |
 
 ---
 
@@ -162,6 +216,17 @@ Located in `supabase/functions/`:
 - Business logic in `src/lib/` or hooks, not in page/component files
 - `src/lib/constants.ts` — alle Display-Labels und Config-Objekte für audit types, statuses, urgency
 - Toast notifications via `sonner` (`import { toast } from "sonner"`)
+
+### logActivity()
+```typescript
+// fire-and-forget — kein await in Komponenten
+logActivity({ action, entity_type, entity_id?, entity_name?, details? });
+// action: 'created' | 'updated' | 'deleted'  entity_type: Tabellenname z.B. 'audit_task'
+// Aufruf immer in onSuccess-Callback der Mutation, nie im mutationFn
+```
+
+### Mobile Bottom Navigation
+Nur 4 feste Items: **Dashboard** `/` · **Kunden** `/clients` · **Audits** `/audits` · **Aufgaben** `/tasks`. Alle weiteren Punkte nur in Desktop-Sidebar. Änderungen in `Layout.tsx` im inline-Array bei `{user && <nav ...>}`.
 
 ---
 
