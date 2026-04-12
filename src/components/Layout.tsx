@@ -16,7 +16,8 @@ import {
   ChevronRight,
   Menu,
   History,
-  Bot
+  Bot,
+  CheckSquare,
 } from 'lucide-react';
 import logo from '@/assets/logo-navy.jpg';
 import { useAuth } from '@/contexts/AuthContext';
@@ -43,6 +44,7 @@ const mainNavigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Kunden', href: '/clients', icon: Users },
   { name: 'Audits', href: '/audits', icon: ClipboardCheck },
+  { name: 'Aufgaben', href: '/tasks', icon: CheckSquare },
   { name: 'Zertifizierer', href: '/certification-bodies', icon: Building2 },
   { name: 'Auditoren', href: '/auditors', icon: UserCheck },
   { name: 'Berater', href: '/consultants', icon: UserCheck },
@@ -215,7 +217,7 @@ export const Layout = ({ children }: LayoutProps) => {
 
         {/* Main Content */}
         <main className="flex-1 overflow-hidden flex flex-col pb-16">
-          {location.pathname === '/audits' ? (
+          {['/audits', '/tasks'].includes(location.pathname) ? (
             children || <Outlet />
           ) : (
             <div ref={scrollRef} className="flex-1 overflow-auto bg-muted/5">
@@ -231,7 +233,7 @@ export const Layout = ({ children }: LayoutProps) => {
               { name: 'Dashboard', href: '/', icon: LayoutDashboard },
               { name: 'Kunden', href: '/clients', icon: Users },
               { name: 'Audits', href: '/audits', icon: ClipboardCheck },
-              { name: 'Kalender', href: '/calendar', icon: Calendar },
+              { name: 'Aufgaben', href: '/tasks', icon: CheckSquare },
             ].map((item) => {
               const isActive = location.pathname === item.href;
               return (
@@ -283,7 +285,7 @@ export const Layout = ({ children }: LayoutProps) => {
 
       {/* Main Content - overflow-hidden so children can use h-full reliably */}
       <main className="flex-1 overflow-hidden flex flex-col">
-        {location.pathname === '/audits' ? (
+        {['/audits', '/tasks'].includes(location.pathname) ? (
           children || <Outlet />
         ) : (
           <div ref={scrollRef} className="flex-1 overflow-auto">

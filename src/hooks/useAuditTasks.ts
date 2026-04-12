@@ -10,6 +10,16 @@ export interface DbAuditTaskWithAudit extends DbAuditTask {
   audits: { id: string; client_id: string; type: string; date: string } | null;
 }
 
+export interface DbAuditTaskFull extends DbAuditTask {
+  audits: {
+    id: string;
+    type: string;
+    date: string;
+    client_id: string;
+    clients: { id: string; name: string } | null;
+  } | null;
+}
+
 export const useAuditTasks = (auditId?: string) => {
   return useQuery({
     queryKey: ['audit_tasks', auditId],
@@ -65,14 +75,20 @@ export const useAllAuditTasks = () => {
         .select(`
           *,
           audits (
-            *,
-            clients (*)
+            id,
+            type,
+            date,
+            client_id,
+            clients (
+              id,
+              name
+            )
           )
         `)
         .order('due_date', { ascending: true });
 
       if (error) throw error;
-      return data;
+      return data as DbAuditTaskFull[];
     },
   });
 };

@@ -65,4 +65,11 @@ Located in `supabase/functions/`:
 
 ### Supabase Migrations
 
-New migrations go in `supabase/migrations/` with descriptive filenames. Every table must have RLS enabled + `created_at`/`updated_at`. Apply via `supabase db push` or the Supabase MCP tools.
+**WICHTIG:** Dieses Projekt läuft auf [Lovable](https://lovable.dev). Die Supabase-Datenbank ist dort integriert — es gibt keinen direkten CLI-Zugriff (`supabase db push` funktioniert NICHT).
+
+Migrations-Dateien in `supabase/migrations/` dienen nur zur Dokumentation. Alle Datenbankänderungen müssen als **fertiges SQL** geliefert werden, das der Nutzer manuell im Supabase-Dashboard (SQL Editor) ausführt.
+
+**Workflow bei DB-Änderungen:**
+1. Migration-Datei in `supabase/migrations/` schreiben (zur Dokumentation)
+2. Das vollständige SQL separat ausgeben mit dem Hinweis: "Im Supabase-Dashboard → SQL Editor ausführen"
+3. Niemals `supabase db push`, `supabase migration up` oder ähnliche CLI-Befehle empfehlen

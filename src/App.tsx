@@ -21,6 +21,7 @@ import CertificationsManagement from "./pages/CertificationsManagement";
 import AuditTemplates from "./pages/AuditTemplates";
 import CertificationDetail from "./pages/CertificationDetail";
 import Agents from "./pages/Agents";
+import Tasks from "./pages/Tasks";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +41,7 @@ const App = () => (
               <Route path="/clients/:id" element={<ClientDetail />} />
               <Route path="/audits" element={<Audits />} />
               <Route path="/audits/:id" element={<AuditDetail />} />
+              <Route path="/tasks" element={<Tasks />} />
               <Route path="/certification-bodies" element={<CertificationBodies />} />
               <Route path="/auditors" element={<Auditors />} />
               <Route path="/consultants" element={<Consultants />} />

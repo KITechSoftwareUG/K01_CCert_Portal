@@ -52,6 +52,7 @@ import { EditAuditDialog } from '@/components/EditAuditDialog';
 import { NewFindingDialog } from '@/components/NewFindingDialog';
 import { EditFindingDialog } from '@/components/EditFindingDialog';
 import { FindingsCsvUpload } from '@/components/FindingsCsvUpload';
+import { AuditDocumentsCard } from '@/components/AuditDocumentsCard';
 import { useOutlookSync } from '@/hooks/useOutlookSync';
 
 const StatusIcon = {
@@ -555,6 +556,9 @@ const AuditDetail = () => {
                 </Button>
               </CardContent>
             </Card>
+
+            {/* Documents Card */}
+            <AuditDocumentsCard auditId={id!} />
           </div>
 
           {/* Sidebar */}

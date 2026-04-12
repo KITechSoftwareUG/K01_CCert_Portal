@@ -19,10 +19,10 @@ export const useAuditors = () => {
         .from('auditors')
         .select(`
           *,
-          certification_bodies (*)
+          certification_bodies!auditors_certification_body_id_fkey (*)
         `)
         .order('name', { ascending: true });
-      
+
       if (error) throw error;
       return data as AuditorWithCertificationBody[];
     },
@@ -38,7 +38,7 @@ export const useAuditor = (id: string | undefined) => {
         .from('auditors')
         .select(`
           *,
-          certification_bodies (*)
+          certification_bodies!auditors_certification_body_id_fkey (*)
         `)
         .eq('id', id!)
         .maybeSingle();
@@ -59,7 +59,7 @@ export const useAuditorsByCertificationBody = (certificationBodyId: string | und
         .from('auditors')
         .select(`
           *,
-          certification_bodies (*)
+          certification_bodies!auditors_certification_body_id_fkey (*)
         `)
         .eq('certification_body_id', certificationBodyId!)
         .order('name', { ascending: true });
@@ -82,7 +82,7 @@ export const useCreateAuditor = () => {
         .insert(auditor)
         .select(`
           *,
-          certification_bodies (*)
+          certification_bodies!auditors_certification_body_id_fkey (*)
         `)
         .single();
       
@@ -107,7 +107,7 @@ export const useUpdateAuditor = () => {
         .eq('id', id)
         .select(`
           *,
-          certification_bodies (*)
+          certification_bodies!auditors_certification_body_id_fkey (*)
         `)
         .single();
       
