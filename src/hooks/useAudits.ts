@@ -93,29 +93,6 @@ export const useCreateAudit = () => {
 
       if (error) throw error;
 
-      // Auto-link certification body to client if not already linked
-      try {
-        if (data.certification_body_id && data.client_id) {
-          const { data: existingLink } = await supabase
-            .from('client_certification_bodies')
-            .select('id')
-            .eq('client_id', data.client_id)
-            .eq('certification_body_id', data.certification_body_id)
-            .maybeSingle();
-
-          if (!existingLink) {
-            await supabase
-              .from('client_certification_bodies')
-              .insert({
-                client_id: data.client_id,
-                certification_body_id: data.certification_body_id
-              });
-          }
-        }
-      } catch (err) {
-        console.error('Error auto-linking certification body:', err);
-      }
-
       return data;
     },
     onSuccess: async (data) => {
@@ -129,7 +106,7 @@ export const useCreateAudit = () => {
           clientName: data.clients.name || 'Unbekannt',
           type: data.type,
           scheduledDate: data.scheduled_date,
-          certifications: data.certifications || [],
+          certifications: [],
           notes: data.notes || undefined,
           clientAddress: data.clients.address || undefined,
         });
@@ -156,29 +133,6 @@ export const useUpdateAudit = () => {
 
       if (error) throw error;
 
-      // Auto-link certification body to client if not already linked
-      try {
-        if (data.certification_body_id && data.client_id) {
-          const { data: existingLink } = await supabase
-            .from('client_certification_bodies')
-            .select('id')
-            .eq('client_id', data.client_id)
-            .eq('certification_body_id', data.certification_body_id)
-            .maybeSingle();
-
-          if (!existingLink) {
-            await supabase
-              .from('client_certification_bodies')
-              .insert({
-                client_id: data.client_id,
-                certification_body_id: data.certification_body_id
-              });
-          }
-        }
-      } catch (err) {
-        console.error('Error auto-linking certification body:', err);
-      }
-
       return data;
     },
     onSuccess: async (data) => {
@@ -192,7 +146,7 @@ export const useUpdateAudit = () => {
           clientName: data.clients.name || 'Unbekannt',
           type: data.type,
           scheduledDate: data.scheduled_date,
-          certifications: data.certifications || [],
+          certifications: [],
           notes: data.notes || undefined,
           clientAddress: data.clients.address || undefined,
         });

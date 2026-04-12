@@ -182,6 +182,50 @@ export type Database = {
           },
         ]
       }
+      audit_documents: {
+        Row: {
+          audit_id: string
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number | null
+          id: string
+          mime_type: string | null
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          audit_id: string
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          audit_id?: string
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_documents_audit_id_fkey"
+            columns: ["audit_id"]
+            isOneToOne: false
+            referencedRelation: "audits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       auditors: {
         Row: {
           certification_body_id: string | null
@@ -305,6 +349,7 @@ export type Database = {
           notes: string | null
           phone: string | null
           short_name: string | null
+          updated_at: string
           website: string | null
         }
         Insert: {
@@ -317,6 +362,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           short_name?: string | null
+          updated_at?: string
           website?: string | null
         }
         Update: {
@@ -329,6 +375,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           short_name?: string | null
+          updated_at?: string
           website?: string | null
         }
         Relationships: []
@@ -517,27 +564,33 @@ export type Database = {
       client_locks: {
         Row: {
           client_id: string
+          created_at: string
           expires_at: string
           id: string
           locked_at: string
           locked_by: string
           locked_by_name: string | null
+          updated_at: string
         }
         Insert: {
           client_id: string
+          created_at?: string
           expires_at?: string
           id?: string
           locked_at?: string
           locked_by: string
           locked_by_name?: string | null
+          updated_at?: string
         }
         Update: {
           client_id?: string
+          created_at?: string
           expires_at?: string
           id?: string
           locked_at?: string
           locked_by?: string
           locked_by_name?: string | null
+          updated_at?: string
         }
         Relationships: [
           {
@@ -555,6 +608,7 @@ export type Database = {
           audit_mode: string | null
           client_number: string | null
           consultant: string | null
+          consultant_id: string | null
           contact_person: string
           country: string | null
           created_at: string
@@ -572,6 +626,7 @@ export type Database = {
           audit_mode?: string | null
           client_number?: string | null
           consultant?: string | null
+          consultant_id?: string | null
           contact_person: string
           country?: string | null
           created_at?: string
@@ -589,6 +644,7 @@ export type Database = {
           audit_mode?: string | null
           client_number?: string | null
           consultant?: string | null
+          consultant_id?: string | null
           contact_person?: string
           country?: string | null
           created_at?: string
@@ -602,6 +658,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "clients_consultant_id_fkey"
+            columns: ["consultant_id"]
+            isOneToOne: false
+            referencedRelation: "consultants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "clients_parent_client_id_fkey"
             columns: ["parent_client_id"]
@@ -747,18 +810,21 @@ export type Database = {
           created_at: string
           id: string
           role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
           user_id?: string
         }
         Relationships: []

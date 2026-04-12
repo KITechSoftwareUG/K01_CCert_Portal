@@ -7,21 +7,12 @@ interface CertDataRow {
   id: string;
   client_id: string;
   clients: { id: string; is_active: boolean } | null;
-  // Direkte Zertifizierer-Zuordnung (primäre Quelle nach Migration)
   certification_bodies: { id: string; name: string; short_name: string | null } | null;
-  // Fallback: Zertifizierer über Auditor
   auditors: {
     id: string;
     certification_body_id: string | null;
     certification_bodies: { id: string; name: string; short_name: string | null } | null;
   } | null;
-}
-
-interface LinkDataRow {
-  id: string;
-  client_id: string;
-  clients: { id: string; is_active: boolean } | null;
-  certification_bodies: { id: string; name: string; short_name: string | null } | null;
 }
 
 export interface CertificationBodyStat {
@@ -35,8 +26,8 @@ export const useCertificationBodyStats = () => {
   return useQuery({
     queryKey: ['certification_body_stats'],
     queryFn: async () => {
-      // 1. Primäre Quelle: certification_body_id direkt auf client_certifications
-      //    + Fallback auf auditors.certification_body_id für Altdaten
+      // Quelle: certification_body_id direkt auf client_certifications
+      // Fallback: auditors.certification_body_id für Altdaten
       const { data: certData, error: certError } = await supabase
         .from('client_certifications')
         .select(`
@@ -53,18 +44,6 @@ export const useCertificationBodyStats = () => {
 
       if (certError) throw certError;
 
-      // 2. Letzter Fallback: allgemeine client_certification_bodies-Links (Altdaten ohne Auditor)
-      const { data: linkData, error: linkError } = await supabase
-        .from('client_certification_bodies')
-        .select(`
-          id,
-          client_id,
-          clients!inner ( id, is_active ),
-          certification_bodies ( id, name, short_name )
-        `);
-
-      if (linkError) throw linkError;
-
       const counts: Record<string, CertificationBodyStat> = {};
       const countedClientBodies = new Set<string>();
 
@@ -78,24 +57,12 @@ export const useCertificationBodyStats = () => {
         counts[body.id].count += 1;
       };
 
-      // Priorität 1: direktes certification_body_id-Feld
-      // Priorität 2: Auditor-Zertifizierer (Fallback für Altdaten)
       for (const row of certData as unknown as CertDataRow[]) {
         if (row.clients?.is_active === false) continue;
 
         const directBody = row.certification_bodies;
         const auditorBody = row.auditors?.certification_bodies;
         const body = directBody ?? auditorBody;
-        if (!body?.id) continue;
-
-        upsertCount(body, row.client_id);
-      }
-
-      // Priorität 3: allgemeine Body-Links (nur falls noch nicht gezählt)
-      for (const row of linkData as LinkDataRow[]) {
-        if (row.clients?.is_active === false) continue;
-
-        const body = row.certification_bodies;
         if (!body?.id) continue;
 
         upsertCount(body, row.client_id);
@@ -220,7 +187,6 @@ export const useDeleteCertificationBody = () => {
     },
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: ['certification_bodies'] });
-      queryClient.invalidateQueries({ queryKey: ['client_certification_bodies'] });
       logActivity({
         action: 'deleted',
         entity_type: 'certification_body',
@@ -231,18 +197,20 @@ export const useDeleteCertificationBody = () => {
   });
 };
 
+// Returns distinct certification bodies linked to a client via client_certifications
 export const useClientCertificationBodies = (clientId?: string) => {
   return useQuery({
     queryKey: ['client_certification_bodies', clientId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('client_certification_bodies')
+        .from('client_certifications')
         .select(`
           id,
           certification_body_id,
           certification_bodies (*)
         `)
-        .eq('client_id', clientId);
+        .eq('client_id', clientId!)
+        .not('certification_body_id', 'is', null);
 
       if (error) throw error;
       return data;
@@ -251,92 +219,30 @@ export const useClientCertificationBodies = (clientId?: string) => {
   });
 };
 
+// Returns distinct clients linked to a certification body via client_certifications
 export const useClientsByCertificationBody = (certificationBodyId?: string) => {
   return useQuery({
     queryKey: ['clients_by_certification_body', certificationBodyId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('client_certification_bodies')
+        .from('client_certifications')
         .select(`
           id,
           client_id,
           clients (*)
         `)
-        .eq('certification_body_id', certificationBodyId);
+        .eq('certification_body_id', certificationBodyId!);
 
       if (error) throw error;
-      return data;
-    },
-    enabled: !!certificationBodyId,
-  });
-};
 
-export const useUpdateClientCertificationBodies = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({
-      clientId,
-      certificationBodyIds
-    }: {
-      clientId: string;
-      certificationBodyIds: string[]
-    }) => {
-      // First, delete all existing relationships
-      const { error: deleteError } = await supabase
-        .from('client_certification_bodies')
-        .delete()
-        .eq('client_id', clientId);
-
-      if (deleteError) throw deleteError;
-
-      // Then, insert new relationships
-      if (certificationBodyIds.length > 0) {
-        const { error: insertError } = await supabase
-          .from('client_certification_bodies')
-          .insert(
-            certificationBodyIds.map(bodyId => ({
-              client_id: clientId,
-              certification_body_id: bodyId,
-            }))
-          );
-
-        if (insertError) throw insertError;
-      }
-    },
-    onSuccess: (_, { clientId, certificationBodyIds }) => {
-      queryClient.invalidateQueries({ queryKey: ['client_certification_bodies', clientId] });
-      queryClient.invalidateQueries({ queryKey: ['clients_by_certification_body'] });
-      queryClient.invalidateQueries({ queryKey: ['clients'] });
-      
-      logActivity({
-        action: 'updated_client_links',
-        entity_type: 'certification_body',
-        details: {
-          client_id: clientId,
-          linked_bodies_count: certificationBodyIds.length
-        }
+      // Deduplicate by client_id (a client may have multiple certifications with the same body)
+      const seen = new Set<string>();
+      return (data || []).filter(row => {
+        if (!row.client_id || seen.has(row.client_id)) return false;
+        seen.add(row.client_id);
+        return true;
       });
     },
-  });
-};
-
-// Add a single certification body link for a client (upsert — safe to call even if link already exists)
-export const useAddClientCertificationBodyLink = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ clientId, certificationBodyId }: { clientId: string; certificationBodyId: string }) => {
-      const { error } = await supabase
-        .from('client_certification_bodies')
-        .upsert({ client_id: clientId, certification_body_id: certificationBodyId }, { onConflict: 'client_id,certification_body_id', ignoreDuplicates: true });
-
-      if (error) throw error;
-    },
-    onSuccess: (_, { clientId }) => {
-      queryClient.invalidateQueries({ queryKey: ['client_certification_bodies', clientId] });
-      queryClient.invalidateQueries({ queryKey: ['clients_by_certification_body'] });
-      queryClient.invalidateQueries({ queryKey: ['certification_body_stats'] });
-    },
+    enabled: !!certificationBodyId,
   });
 };

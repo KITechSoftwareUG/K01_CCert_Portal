@@ -301,7 +301,7 @@ const AuditDetail = () => {
       clientName: audit.clients?.name || 'Unbekannt',
       type: audit.type,
       scheduledDate: audit.scheduled_date,
-      certifications: (audit.certifications || []) as string[],
+      certifications: [],
       notes: audit.notes || undefined,
     });
 
@@ -363,8 +363,7 @@ const AuditDetail = () => {
   const openFindings = findings.filter(f => f.status !== 'completed').length;
 
   // Get certification name for breadcrumb
-  const certificationName = audit.client_certifications?.certifications?.name ||
-    (audit.certifications && audit.certifications.length > 0 ? audit.certifications[0] : null);
+  const certificationName = audit.client_certifications?.certifications?.name || null;
 
   return (
     <>
@@ -586,8 +585,7 @@ const AuditDetail = () => {
                   </div>
                 </div>
 
-                {/* Show certification from client_certification link (preferred) or legacy array */}
-                {audit.client_certifications?.certifications ? (
+                {audit.client_certifications?.certifications && (
                   <div className="pt-4 border-t">
                     <p className="text-sm font-medium text-muted-foreground mb-2">
                       System
@@ -596,19 +594,6 @@ const AuditDetail = () => {
                       <Badge variant="secondary">
                         {audit.client_certifications.certifications.name}
                       </Badge>
-                    </div>
-                  </div>
-                ) : audit.certifications && audit.certifications.length > 0 && (
-                  <div className="pt-4 border-t">
-                    <p className="text-sm font-medium text-muted-foreground mb-2">
-                      Systeme
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {audit.certifications.map((cert) => (
-                        <Badge key={cert} variant="secondary">
-                          {cert}
-                        </Badge>
-                      ))}
                     </div>
                   </div>
                 )}

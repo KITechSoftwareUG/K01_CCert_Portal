@@ -1,12 +1,25 @@
 import { useMemo } from 'react';
-import { useAllClientCertifications } from './useClientCertifications';
-import { useAudits } from './useAudits';
-import { addMonths, differenceInMonths, isBefore, isAfter, addDays, format } from 'date-fns';
-import { Tables } from '@/integrations/supabase/types';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { addMonths, differenceInMonths, isBefore, addDays, format } from 'date-fns';
 
-interface ClientCertificationWithAll extends Tables<'client_certifications'> {
-  clients: Pick<Tables<'clients'>, 'name'> | null;
-  certifications: Pick<Tables<'certifications'>, 'name'> | null;
+interface PlanningCertification {
+  id: string;
+  client_id: string;
+  certification_id: string;
+  status: string | null;
+  valid_from: string | null;
+  valid_until: string | null;
+  clients: { name: string } | null;
+  certifications: { name: string } | null;
+}
+
+interface PlanningAudit {
+  id: string;
+  client_certification_id: string | null;
+  type: string;
+  status: string;
+  scheduled_date: string;
 }
 
 export interface SuggestedAudit {
@@ -22,16 +35,66 @@ export interface SuggestedAudit {
   validUntil: Date | null;
 }
 
+const usePlanningCertifications = () => {
+  const now = new Date();
+  // Only active certs that haven't been expired for more than 1 month and aren't more than 36 months away
+  const minDate = addMonths(now, -1).toISOString().split('T')[0];
+  const maxDate = addMonths(now, 36).toISOString().split('T')[0];
+
+  return useQuery({
+    queryKey: ['planning_certifications', minDate, maxDate],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('client_certifications')
+        .select(`
+          id,
+          client_id,
+          certification_id,
+          status,
+          valid_from,
+          valid_until,
+          clients (name),
+          certifications (name)
+        `)
+        .eq('status', 'active')
+        .gte('valid_until', minDate)
+        .lte('valid_until', maxDate);
+
+      if (error) throw error;
+      return (data || []) as PlanningCertification[];
+    },
+  });
+};
+
+const usePlanningAudits = () => {
+  const twoYearsAgo = addMonths(new Date(), -24).toISOString().split('T')[0];
+
+  return useQuery({
+    queryKey: ['planning_audits', twoYearsAgo],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('audits')
+        .select('id, client_certification_id, type, status, scheduled_date')
+        .in('status', ['scheduled', 'in-progress', 'completed'])
+        .gte('scheduled_date', twoYearsAgo)
+        .not('client_certification_id', 'is', null);
+
+      if (error) throw error;
+      return (data || []) as PlanningAudit[];
+    },
+  });
+};
+
 export const useAutomaticAuditPlanning = () => {
-  const { data: certifications = [], isLoading: certsLoading } = useAllClientCertifications();
-  const { data: audits = [], isLoading: auditsLoading } = useAudits();
+  const { data: certifications = [], isLoading: certsLoading } = usePlanningCertifications();
+  const { data: audits = [], isLoading: auditsLoading } = usePlanningAudits();
 
   const suggestions = useMemo(() => {
     const result: SuggestedAudit[] = [];
     const now = new Date();
     const threeMonthsAhead = addMonths(now, 3);
 
-    for (const cert of (certifications as ClientCertificationWithAll[])) {
+    for (const cert of certifications) {
       if (!cert.valid_until) continue;
 
       const validUntil = new Date(cert.valid_until);
@@ -40,7 +103,7 @@ export const useAutomaticAuditPlanning = () => {
 
       // Check if there are already scheduled audits for this certification
       const scheduledAudits = audits.filter(
-        a => a.client_certification_id === cert.id && 
+        a => a.client_certification_id === cert.id &&
              (a.status === 'scheduled' || a.status === 'in-progress')
       );
 
@@ -50,11 +113,10 @@ export const useAutomaticAuditPlanning = () => {
       // Recertification needed: if within 4 months of expiry and no recert scheduled
       if (monthsUntilExpiry <= 4 && monthsUntilExpiry > 0) {
         const hasRecertScheduled = scheduledAudits.some(a => a.type === 'recertification');
-        
+
         if (!hasRecertScheduled) {
-          // Suggest recertification 2 months before expiry
           const suggestedDate = addMonths(validUntil, -2);
-          
+
           result.push({
             clientCertificationId: cert.id,
             clientId: cert.client_id,
@@ -71,13 +133,8 @@ export const useAutomaticAuditPlanning = () => {
       }
 
       // Check for surveillance audits (typically yearly)
-      // Find the last completed or scheduled audit
       const completedAudits = audits
         .filter(a => a.client_certification_id === cert.id && a.status === 'completed')
-        .sort((a, b) => new Date(b.scheduled_date).getTime() - new Date(a.scheduled_date).getTime());
-
-      const allRelevantAudits = audits
-        .filter(a => a.client_certification_id === cert.id && (a.status === 'completed' || a.status === 'scheduled' || a.status === 'in-progress'))
         .sort((a, b) => new Date(b.scheduled_date).getTime() - new Date(a.scheduled_date).getTime());
 
       const hasSurveillanceScheduled = scheduledAudits.some(a => a.type === 'surveillance');
@@ -86,10 +143,9 @@ export const useAutomaticAuditPlanning = () => {
         const lastAuditDate = new Date(completedAudits[0].scheduled_date);
         const monthsSinceLastAudit = differenceInMonths(now, lastAuditDate);
 
-        // If more than 10 months since last audit and no surveillance scheduled
         if (monthsSinceLastAudit >= 10 && monthsUntilExpiry > 4 && !hasSurveillanceScheduled) {
           const suggestedDate = addMonths(lastAuditDate, 12);
-          
+
           result.push({
             clientCertificationId: cert.id,
             clientId: cert.client_id,
@@ -104,7 +160,6 @@ export const useAutomaticAuditPlanning = () => {
           });
         }
       } else if (cert.valid_from && !hasSurveillanceScheduled && monthsUntilExpiry > 4) {
-        // No audits at all but certification has valid_from → suggest surveillance 12 months after valid_from
         const validFrom = new Date(cert.valid_from);
         const suggestedDate = addMonths(validFrom, 12);
         const monthsSinceValidFrom = differenceInMonths(now, validFrom);

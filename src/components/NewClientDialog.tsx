@@ -47,7 +47,7 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
   const [isCompanyGroup, setIsCompanyGroup] = useState(false);
   const [name, setName] = useState('');
   const [clientNumber, setClientNumber] = useState('0'); // Pre-filled with country prefix
-  const [consultant, setConsultant] = useState('');
+  const [consultantId, setConsultantId] = useState('');
   const [contactPerson, setContactPerson] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -115,7 +115,7 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
     setIsCompanyGroup(false);
     setName('');
     setClientNumber('0'); // Reset to Deutschland prefix
-    setConsultant('');
+    setConsultantId('');
     setContactPerson('');
     setEmail('');
     setPhone('');
@@ -149,7 +149,7 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
         toast.error('Bitte geben Sie einen Firmennamen ein');
         return;
       }
-      if (!consultant.trim()) {
+      if (!consultantId) {
         toast.error('Bitte geben Sie einen Berater an');
         return;
       }
@@ -171,10 +171,12 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
         ? customCountry.trim()
         : country;
 
+      const selectedConsultant = consultants.find(c => c.id === consultantId);
       const client = await createClient.mutateAsync({
         name,
         client_number: isCompanyGroup ? null : clientNumber, // Only clients get numbers
-        consultant: consultant || null,
+        consultant: selectedConsultant?.name || null,
+        consultant_id: consultantId || null,
         contact_person: contactPerson || '-', // Optional, default placeholder
         email: email || null, // Optional, allow null
         phone: phone || null,
@@ -371,13 +373,13 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
                 {/* Consultant - MANDATORY for clients */}
                 <div className="space-y-2">
                   <Label htmlFor="consultant">Berater <span className="text-destructive">*</span></Label>
-                  <Select value={consultant} onValueChange={setConsultant}>
+                  <Select value={consultantId} onValueChange={setConsultantId}>
                     <SelectTrigger id="consultant">
                       <SelectValue placeholder="Berater auswählen" />
                     </SelectTrigger>
                     <SelectContent className="bg-background border shadow-lg z-50">
                       {consultants.filter(c => c.is_active).map((c) => (
-                        <SelectItem key={c.id} value={c.name}>
+                        <SelectItem key={c.id} value={c.id}>
                           {c.name}
                         </SelectItem>
                       ))}

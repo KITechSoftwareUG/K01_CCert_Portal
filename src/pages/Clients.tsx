@@ -72,6 +72,30 @@ import {
 import { toast } from 'sonner';
 
 
+const AUDIT_MODE_CONFIG = {
+  remote: {
+    label: 'Remote',
+    Icon: Globe,
+    modeBadge: 'bg-blue-50 text-blue-700 border-blue-200',
+    certBadge: 'bg-blue-100 text-blue-800 border-blue-300',
+  },
+  hybrid: {
+    label: 'Hybrid',
+    Icon: Monitor,
+    modeBadge: 'bg-purple-50 text-purple-700 border-purple-200',
+    certBadge: 'bg-purple-100 text-purple-800 border-purple-300',
+  },
+  'on-site': {
+    label: 'Präsenz',
+    Icon: Building2,
+    modeBadge: 'bg-slate-50 text-slate-600 border-slate-200',
+    certBadge: 'bg-slate-100 text-slate-700 border-slate-300',
+  },
+} as const;
+
+const getAuditModeConfig = (mode: string | null) =>
+  AUDIT_MODE_CONFIG[(mode as keyof typeof AUDIT_MODE_CONFIG) ?? 'on-site'] ?? AUDIT_MODE_CONFIG['on-site'];
+
 const Clients = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -425,20 +449,12 @@ const Clients = () => {
               <span className={cn('truncate', indent ? '' : 'font-medium')}>{client.name}</span>
               <ClientNumberBadge clientNumber={client.client_number} />
               {(() => {
-                const mode = client.audit_mode || 'on-site';
-                if (mode === 'remote') {
-                  return <Badge variant="outline" className="text-[10px] sm:text-xs gap-1 bg-blue-50 text-blue-700 border-blue-200">
-                    <Globe className="h-3 w-3" /> Remote
-                  </Badge>;
-                } else if (mode === 'hybrid') {
-                  return <Badge variant="outline" className="text-[10px] sm:text-xs gap-1 bg-purple-50 text-purple-700 border-purple-200">
-                    <Monitor className="h-3 w-3" /> Hybrid
-                  </Badge>;
-                } else {
-                  return <Badge variant="outline" className="text-[10px] sm:text-xs gap-1 bg-slate-50 text-slate-600 border-slate-200">
-                    <Building2 className="h-3 w-3" /> Präsenz
-                  </Badge>;
-                }
+                const cfg = getAuditModeConfig(client.audit_mode);
+                return (
+                  <Badge variant="outline" className={`text-[10px] sm:text-xs gap-1 ${cfg.modeBadge}`}>
+                    <cfg.Icon className="h-3 w-3" /> {cfg.label}
+                  </Badge>
+                );
               })()}
             </div>
             {/* Mobile: show badges below name */}
@@ -447,11 +463,22 @@ const Clients = () => {
                 {!clientIsActive && (
                   <Badge variant="destructive" className="text-xs">Inaktiv</Badge>
                 )}
-                {hasCerts && (
-                  <Badge variant={legacyCerts.length > 0 && certs.length === 0 ? 'outline' : 'secondary'} className={`text-xs ${legacyCerts.length > 0 && certs.length === 0 ? 'border-warning text-warning' : ''}`}>
-                    {certs.length > 0 ? `${certs.length} Zert.` : `${legacyCerts.length} (Migr.)`}
-                  </Badge>
-                )}
+                {hasCerts && (() => {
+                  if (legacyCerts.length > 0 && certs.length === 0) {
+                    return (
+                      <Badge variant="outline" className="text-xs border-warning text-warning">
+                        {legacyCerts.length} (Migr.)
+                      </Badge>
+                    );
+                  }
+                  const cfg = getAuditModeConfig(client.audit_mode);
+                  return (
+                    <Badge variant="outline" className={`text-xs gap-1 ${cfg.certBadge}`}>
+                      <cfg.Icon className="h-3 w-3" />
+                      {certs.length} Zert.
+                    </Badge>
+                  );
+                })()}
               </div>
             )}
           </div>
@@ -462,11 +489,22 @@ const Clients = () => {
                 {!clientIsActive && (
                   <Badge variant="destructive" className="text-xs">Inaktiv</Badge>
                 )}
-                {hasCerts && (
-                  <Badge variant={legacyCerts.length > 0 && certs.length === 0 ? 'outline' : 'secondary'} className={`text-xs ${legacyCerts.length > 0 && certs.length === 0 ? 'border-warning text-warning' : ''}`}>
-                    {certs.length > 0 ? `${certs.length} Zertifikat${certs.length !== 1 ? 'e' : ''}` : `${legacyCerts.length} (Migration)`}
-                  </Badge>
-                )}
+                {hasCerts && (() => {
+                  if (legacyCerts.length > 0 && certs.length === 0) {
+                    return (
+                      <Badge variant="outline" className="text-xs border-warning text-warning">
+                        {legacyCerts.length} (Migration)
+                      </Badge>
+                    );
+                  }
+                  const cfg = getAuditModeConfig(client.audit_mode);
+                  return (
+                    <Badge variant="outline" className={`text-xs gap-1 font-medium ${cfg.certBadge}`}>
+                      <cfg.Icon className="h-3 w-3" />
+                      {certs.length} Zertifikat{certs.length !== 1 ? 'e' : ''}
+                    </Badge>
+                  );
+                })()}
                 <ContactPopover
                   legacyName={client.contact_person}
                   legacyPhone={client.phone}
@@ -858,17 +896,29 @@ const Clients = () => {
                                                 )}
                                                 <span className="font-medium truncate">{client.name}</span>
                                                 <ClientNumberBadge clientNumber={client.client_number} />
+                                                {(() => {
+                                                  const cfg = getAuditModeConfig(client.audit_mode);
+                                                  return (
+                                                    <Badge variant="outline" className={`text-[10px] sm:text-xs gap-1 ${cfg.modeBadge}`}>
+                                                      <cfg.Icon className="h-3 w-3" /> {cfg.label}
+                                                    </Badge>
+                                                  );
+                                                })()}
                                               </div>
                                               {isMobile && (
                                                 <div className="flex items-center gap-2 mt-1 ml-6 flex-wrap">
                                                   {!clientIsActive && (
                                                     <Badge variant="destructive" className="text-xs">Inaktiv</Badge>
                                                   )}
-                                                  {certifications.length > 0 && (
-                                                    <Badge variant="secondary" className="text-xs">
-                                                      {certifications.length} Zert.
-                                                    </Badge>
-                                                  )}
+                                                  {certifications.length > 0 && (() => {
+                                                    const cfg = getAuditModeConfig(client.audit_mode);
+                                                    return (
+                                                      <Badge variant="outline" className={`text-xs gap-1 ${cfg.certBadge}`}>
+                                                        <cfg.Icon className="h-3 w-3" />
+                                                        {certifications.length} Zert.
+                                                      </Badge>
+                                                    );
+                                                  })()}
                                                 </div>
                                               )}
                                             </div>
@@ -878,11 +928,15 @@ const Clients = () => {
                                                   {!clientIsActive && (
                                                     <Badge variant="destructive" className="text-xs">Inaktiv</Badge>
                                                   )}
-                                                  {certifications.length > 0 && (
-                                                    <Badge variant="secondary" className="text-xs">
-                                                      {certifications.length} Zertifikat{certifications.length !== 1 ? 'e' : ''}
-                                                    </Badge>
-                                                  )}
+                                                  {certifications.length > 0 && (() => {
+                                                    const cfg = getAuditModeConfig(client.audit_mode);
+                                                    return (
+                                                      <Badge variant="outline" className={`text-xs gap-1 font-medium ${cfg.certBadge}`}>
+                                                        <cfg.Icon className="h-3 w-3" />
+                                                        {certifications.length} Zertifikat{certifications.length !== 1 ? 'e' : ''}
+                                                      </Badge>
+                                                    );
+                                                  })()}
                                                   <ContactPopover
                                                     legacyName={client.contact_person}
                                                     legacyPhone={client.phone}

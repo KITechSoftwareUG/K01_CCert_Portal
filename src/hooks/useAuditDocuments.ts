@@ -1,16 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { Tables } from '@/integrations/supabase/types';
 
-export interface AuditDocument {
-  id: string;
-  audit_id: string;
-  file_name: string;
-  file_path: string;
-  file_size: number | null;
-  mime_type: string | null;
-  uploaded_by: string | null;
-  created_at: string;
-}
+export type AuditDocument = Tables<'audit_documents'>;
 
 export const useAuditDocuments = (auditId: string | undefined) => {
   return useQuery({

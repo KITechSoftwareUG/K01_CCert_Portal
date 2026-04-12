@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables, TablesInsert, Enums } from '@/integrations/supabase/types';
+import { logActivity } from '@/hooks/useActivityLog';
 
 export type DbAuditTask = Tables<'audit_tasks'>;
 export type DbAuditTaskInsert = TablesInsert<'audit_tasks'>;
@@ -107,8 +108,9 @@ export const useCreateAuditTask = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['audit_tasks'] });
+      logActivity({ action: 'created', entity_type: 'audit_task', entity_id: data.id, entity_name: data.title });
     },
   });
 };
@@ -128,8 +130,9 @@ export const useUpdateAuditTask = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['audit_tasks'] });
+      logActivity({ action: 'updated', entity_type: 'audit_task', entity_id: data.id, entity_name: data.title });
     },
   });
 };
@@ -146,8 +149,9 @@ export const useDeleteAuditTask = () => {
 
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: ['audit_tasks'] });
+      logActivity({ action: 'deleted', entity_type: 'audit_task', entity_id: id });
     },
   });
 };

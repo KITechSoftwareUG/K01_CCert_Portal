@@ -25,6 +25,7 @@ import { useCertificationBodies } from '@/hooks/useCertificationBodies';
 import { useAuditors, useCreateAuditor } from '@/hooks/useAuditors';
 import { useCreateClientCertification } from '@/hooks/useClientCertifications';
 import { useCreateAudit } from '@/hooks/useAudits';
+import { useConsultants } from '@/hooks/useConsultants';
 import { ClipboardPaste, Check, AlertCircle, Loader2 } from 'lucide-react';
 
 interface ExcelImportDialogProps {
@@ -101,6 +102,7 @@ export const ExcelImportDialog = ({ open, onOpenChange }: ExcelImportDialogProps
   const { data: certifications = [] } = useCertifications();
   const { data: certBodies = [] } = useCertificationBodies();
   const { data: auditors = [] } = useAuditors();
+  const { data: consultants = [] } = useConsultants();
 
   const parseData = () => {
     if (!pastedData.trim()) {
@@ -278,6 +280,9 @@ export const ExcelImportDialog = ({ open, onOpenChange }: ExcelImportDialogProps
         const c = clientsToCreate[i];
         const parentId = c.groupName ? allGroups.get(c.groupName.toLowerCase()) || null : null;
 
+        const matchedConsultant = c.consultant
+          ? consultants.find(con => con.name.toLowerCase() === c.consultant.toLowerCase())
+          : null;
         const clientData: DbClientInsert = {
           name: c.clientName,
           contact_person: c.consultant || c.clientName,
@@ -285,6 +290,7 @@ export const ExcelImportDialog = ({ open, onOpenChange }: ExcelImportDialogProps
           country: c.country || 'Deutschland',
           client_number: c.clientNumber || null,
           consultant: c.consultant || null,
+          consultant_id: matchedConsultant?.id || null,
           parent_client_id: parentId,
         };
 

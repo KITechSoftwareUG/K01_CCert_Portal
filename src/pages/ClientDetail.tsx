@@ -134,7 +134,7 @@ const ClientDetail = () => {
 
   const [name, setName] = useState('');
   const [clientNumber, setClientNumber] = useState('');
-  const [consultant, setConsultant] = useState('');
+  const [consultantId, setConsultantId] = useState('');
   const [contactPerson, setContactPerson] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -177,7 +177,7 @@ const ClientDetail = () => {
     if (client) {
       setName(client.name);
       setClientNumber(client.client_number || '');
-      setConsultant(client.consultant || '');
+      setConsultantId(client.consultant_id || '');
       setContactPerson(client.contact_person);
       setEmail(client.email);
       setPhone(client.phone || '');
@@ -211,17 +211,19 @@ const ClientDetail = () => {
       return;
     }
 
-    if (!consultant) {
+    if (!consultantId) {
       toast.error('Berater ist ein Pflichtfeld');
       return;
     }
 
     try {
+      const selectedConsultant = consultants.find(c => c.id === consultantId);
       await updateClient.mutateAsync({
         id,
         name,
         client_number: clientNumber || null,
-        consultant: consultant || null,
+        consultant: selectedConsultant?.name || null,
+        consultant_id: consultantId || null,
         contact_person: contactPerson,
         email,
         phone: phone || null,
@@ -240,13 +242,13 @@ const ClientDetail = () => {
       console.error('Error updating client:', error);
       toast.error('Fehler beim Aktualisieren des Kunden');
     }
-  }, [id, name, clientNumber, consultant, contactPerson, email, phone, address, country, parentClientId, isActive, notes, auditMode, updateClient, releaseLock]);
+  }, [id, name, clientNumber, consultantId, consultants, contactPerson, email, phone, address, country, parentClientId, isActive, notes, auditMode, updateClient, releaseLock]);
 
   const handleCancel = useCallback(() => {
     if (client) {
       setName(client.name);
       setClientNumber(client.client_number || '');
-      setConsultant(client.consultant || '');
+      setConsultantId(client.consultant_id || '');
       setContactPerson(client.contact_person);
       setEmail(client.email);
       setPhone(client.phone || '');
@@ -366,12 +368,17 @@ const ClientDetail = () => {
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground mt-1 text-xs sm:text-sm">
                 <Globe className="h-3.5 w-3.5" />
                 <span>{client.country || 'Nicht zugeordnet'}</span>
-                {client.consultant && (
-                  <>
-                    <span className="text-muted-foreground/50">•</span>
-                    <span>Berater: {client.consultant}</span>
-                  </>
-                )}
+                {(() => {
+                  const consultantName = client.consultant_id
+                    ? consultants.find(c => c.id === client.consultant_id)?.name
+                    : client.consultant;
+                  return consultantName ? (
+                    <>
+                      <span className="text-muted-foreground/50">•</span>
+                      <span>Berater: {consultantName}</span>
+                    </>
+                  ) : null;
+                })()}
                 <span className="text-muted-foreground/50">•</span>
                 <span>Angelegt am {format(new Date(client.created_at), 'dd.MM.yyyy', { locale: de })}</span>
               </div>
@@ -514,13 +521,13 @@ const ClientDetail = () => {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="consultant">Berater <span className="text-destructive">*</span></Label>
-                        <Select value={consultant} onValueChange={setConsultant}>
+                        <Select value={consultantId} onValueChange={setConsultantId}>
                           <SelectTrigger id="consultant">
                             <SelectValue placeholder="Berater auswählen" />
                           </SelectTrigger>
                           <SelectContent className="bg-background border shadow-lg z-50">
-                            {consultants.filter(c => c.is_active || c.name === consultant).map((c) => (
-                              <SelectItem key={c.id} value={c.name}>
+                            {consultants.filter(c => c.is_active || c.id === consultantId).map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
                                 {c.name}
                               </SelectItem>
                             ))}
