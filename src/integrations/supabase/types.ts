@@ -448,42 +448,6 @@ export type Database = {
         }
         Relationships: []
       }
-      client_certification_bodies: {
-        Row: {
-          certification_body_id: string
-          client_id: string
-          created_at: string
-          id: string
-        }
-        Insert: {
-          certification_body_id: string
-          client_id: string
-          created_at?: string
-          id?: string
-        }
-        Update: {
-          certification_body_id?: string
-          client_id?: string
-          created_at?: string
-          id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "client_certification_bodies_certification_body_id_fkey"
-            columns: ["certification_body_id"]
-            isOneToOne: false
-            referencedRelation: "certification_bodies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "client_certification_bodies_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       client_certifications: {
         Row: {
           auditor_id: string | null
