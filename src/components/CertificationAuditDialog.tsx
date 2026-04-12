@@ -214,7 +214,6 @@ export const CertificationAuditDialog = ({
           auditor_id: auditorId || null,
           certification_body_id: certificationBodyId || null,
           notes: notes || null,
-          certifications: [],
         });
 
         // Load tasks from template

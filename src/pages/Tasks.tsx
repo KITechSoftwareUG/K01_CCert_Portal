@@ -120,7 +120,7 @@ const TaskRow = memo(({ task, onToggle, onEdit }: TaskRowProps) => {
   const auditType = task.audits
     ? (AUDIT_TYPE_LABELS[task.audits.type as AuditType] ?? task.audits.type)
     : '';
-  const auditDate = task.audits ? format(parseISO(task.audits.date), 'dd.MM.yyyy') : '';
+  const auditDate = task.audits ? format(parseISO(task.audits.scheduled_date), 'dd.MM.yyyy') : '';
 
   const handleRowClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
@@ -486,9 +486,9 @@ export default function Tasks() {
             const typeLabel =
               AUDIT_TYPE_LABELS[task.audits.type as AuditType] ??
               task.audits.type;
-            const dateStr = format(parseISO(task.audits.date), 'dd.MM.yyyy');
+            const dateStr = format(parseISO(task.audits.scheduled_date), 'dd.MM.yyyy');
             key = `${typeLabel} – ${dateStr}`;
-            order = parseISO(task.audits.date).getTime();
+            order = parseISO(task.audits.scheduled_date).getTime();
           } else {
             key = 'Kein Audit';
             order = Number.MAX_SAFE_INTEGER;

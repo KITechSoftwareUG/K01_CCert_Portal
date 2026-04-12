@@ -181,7 +181,6 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
         address: address || null,
         country: effectiveCountry,
         parent_client_id: isCompanyGroup ? null : (parentClientId || null), // Company groups have no parent
-        certifications: [], // Legacy field, no longer used
         notes: notes || null,
         is_active: isActive,
         audit_mode: auditMode,

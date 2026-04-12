@@ -14,7 +14,7 @@ create table if not exists public.audit_documents (
 -- updated_at trigger
 create trigger audit_documents_updated_at
   before update on public.audit_documents
-  for each row execute function public.handle_updated_at();
+  for each row execute function public.update_updated_at_column();
 
 -- RLS
 alter table public.audit_documents enable row level security;

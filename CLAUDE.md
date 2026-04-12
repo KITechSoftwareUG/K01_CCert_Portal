@@ -48,6 +48,26 @@ Always use `Tables<'table_name'>`, `TablesInsert<'table_name'>`, and `Enums<'enu
 - **Certification Bodies** can be linked to clients directly (`client_certification_bodies`) or indirectly via auditors.
 - **Audit Templates** define task checklists per `audit_type` + `certification_id`. When an audit is created, template tasks are copied into `audit_tasks`.
 
+### Bekannte Altlasten — NICHT anfassen ohne Migrationsplan
+
+- `clients.certifications certification_standard[]` — OBSOLET. Daten sind in `client_certifications`. Nie lesen oder beschreiben.
+- `audits.certifications certification_standard[]` — OBSOLET. Nie lesen oder beschreiben.
+- `clients.consultant TEXT` — VERALTET. Die Master-Tabelle `consultants` existiert bereits. Künftig `clients.consultant_id UUID FK → consultants.id` verwenden (Migration steht noch aus).
+- `client_certification_bodies` Tabelle — WIRD ABGELÖST durch `client_certifications.certification_body_id`. Neue Logik nur über direktes Feld.
+
+### Wichtige Namenskonventionen (DB)
+
+- Audit-Datum heißt immer `scheduled_date` — NICHT `date`, `audit_date` oder ähnliches.
+- Trigger-Funktion für `updated_at` immer: `update_updated_at_column()` — nicht `set_updated_at()` oder `handle_updated_at()`.
+
+### audits.client_id — warum nicht redundant
+
+`audits` hat sowohl `client_id` als auch `client_certification_id`. Das ist **kein Fehler**: interne Audits (`type = 'internal'`) und Trainings (`type = 'training'`) haben keine `client_certification_id` und brauchen `client_id` als primäres Link. Bei zertifizierungsbezogenen Audits sind beide gesetzt.
+
+### Datenbankmodell-Stand (April 2026)
+
+17 Tabellen, 5 Postgres-Enums, RLS auf allen Tabellen aktiviert. Das Modell hat mehrere Evolutionsstufen — immer erst fragen "existiert das Feld wirklich?" bevor neue Hooks geschrieben werden. Die Datei `src/integrations/supabase/types.ts` kann veraltet sein — im Zweifelsfall gegen die aktuellen Migrations-Dateien in `supabase/migrations/` abgleichen.
+
 ### Supabase Edge Functions
 
 Located in `supabase/functions/`:

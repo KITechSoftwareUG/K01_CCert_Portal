@@ -7,14 +7,14 @@ export type DbAuditTaskInsert = TablesInsert<'audit_tasks'>;
 export type TaskStatus = Enums<'task_status'>;
 
 export interface DbAuditTaskWithAudit extends DbAuditTask {
-  audits: { id: string; client_id: string; type: string; date: string } | null;
+  audits: { id: string; client_id: string; type: string; scheduled_date: string } | null;
 }
 
 export interface DbAuditTaskFull extends DbAuditTask {
   audits: {
     id: string;
     type: string;
-    date: string;
+    scheduled_date: string;
     client_id: string;
     clients: { id: string; name: string } | null;
   } | null;
@@ -53,7 +53,7 @@ export const useClientAuditTasks = (clientId: string) => {
             id,
             client_id,
             type,
-            date
+            scheduled_date
           )
         `)
         .eq('audits.client_id', clientId)
@@ -77,7 +77,7 @@ export const useAllAuditTasks = () => {
           audits (
             id,
             type,
-            date,
+            scheduled_date,
             client_id,
             clients (
               id,

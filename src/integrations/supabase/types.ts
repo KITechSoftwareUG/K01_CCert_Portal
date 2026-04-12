@@ -227,9 +227,6 @@ export type Database = {
         Row: {
           auditor_id: string | null
           certification_body_id: string | null
-          certifications:
-            | Database["public"]["Enums"]["certification_standard"][]
-            | null
           client_certification_id: string | null
           client_id: string
           created_at: string
@@ -243,9 +240,6 @@ export type Database = {
         Insert: {
           auditor_id?: string | null
           certification_body_id?: string | null
-          certifications?:
-            | Database["public"]["Enums"]["certification_standard"][]
-            | null
           client_certification_id?: string | null
           client_id: string
           created_at?: string
@@ -259,9 +253,6 @@ export type Database = {
         Update: {
           auditor_id?: string | null
           certification_body_id?: string | null
-          certifications?:
-            | Database["public"]["Enums"]["certification_standard"][]
-            | null
           client_certification_id?: string | null
           client_id?: string
           created_at?: string
@@ -562,9 +553,6 @@ export type Database = {
         Row: {
           address: string | null
           audit_mode: string | null
-          certifications:
-            | Database["public"]["Enums"]["certification_standard"][]
-            | null
           client_number: string | null
           consultant: string | null
           contact_person: string
@@ -582,9 +570,6 @@ export type Database = {
         Insert: {
           address?: string | null
           audit_mode?: string | null
-          certifications?:
-            | Database["public"]["Enums"]["certification_standard"][]
-            | null
           client_number?: string | null
           consultant?: string | null
           contact_person: string
@@ -602,9 +587,6 @@ export type Database = {
         Update: {
           address?: string | null
           audit_mode?: string | null
-          certifications?:
-            | Database["public"]["Enums"]["certification_standard"][]
-            | null
           client_number?: string | null
           consultant?: string | null
           contact_person?: string
