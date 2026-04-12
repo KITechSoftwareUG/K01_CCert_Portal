@@ -126,7 +126,7 @@ const Dashboard = () => {
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent italic">Dashboard</h1>
         <p className="text-sm text-muted-foreground transition-opacity duration-500 min-h-[1.5rem]" style={{ opacity: fade ? 1 : 0 }}>
-          {availableGreetings[greetingIndex]} <span className="font-semibold text-foreground">Certconsulting Pane.</span>
+          {availableGreetings[greetingIndex]} <span className="font-semibold text-foreground">certconsulting pane.</span>
         </p>
       </div>
 
