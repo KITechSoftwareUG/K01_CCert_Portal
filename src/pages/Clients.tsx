@@ -767,6 +767,14 @@ const Clients = () => {
                                           {totalCerts} Zertifikat{totalCerts !== 1 ? 'e' : ''}
                                         </Badge>
                                       )}
+                                      {!isMultiClient && (() => {
+                                        const cfg = getAuditModeConfig(headerClient.audit_mode);
+                                        return (
+                                          <Badge variant="outline" className={`text-xs gap-1 font-medium ${cfg.modeBadge}`}>
+                                            <cfg.Icon className="h-3 w-3" /> {cfg.label}
+                                          </Badge>
+                                        );
+                                      })()}
                                     </div>
                                   )}
                                 </div>
@@ -783,6 +791,14 @@ const Clients = () => {
                                         {totalCerts} Zert.
                                       </Badge>
                                     )}
+                                    {!isMultiClient && (() => {
+                                      const cfg = getAuditModeConfig(headerClient.audit_mode);
+                                      return (
+                                        <Badge variant="outline" className={`text-[10px] h-5 gap-1 ${cfg.modeBadge}`}>
+                                          <cfg.Icon className="h-3 w-3" /> {cfg.label}
+                                        </Badge>
+                                      );
+                                    })()}
                                   </div>
                                 )}
                               </div>
