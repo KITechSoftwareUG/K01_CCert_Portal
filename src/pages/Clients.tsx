@@ -448,14 +448,6 @@ const Clients = () => {
               )}
               <span className={cn('truncate', indent ? '' : 'font-medium')}>{client.name}</span>
               <ClientNumberBadge clientNumber={client.client_number} />
-              {(() => {
-                const cfg = getAuditModeConfig(client.audit_mode);
-                return (
-                  <Badge variant="outline" className={`text-[10px] sm:text-xs gap-1 ${cfg.modeBadge}`}>
-                    <cfg.Icon className="h-3 w-3" /> {cfg.label}
-                  </Badge>
-                );
-              })()}
             </div>
             {/* Mobile: show badges below name */}
             {isMobile && (
@@ -463,19 +455,22 @@ const Clients = () => {
                 {!clientIsActive && (
                   <Badge variant="destructive" className="text-xs">Inaktiv</Badge>
                 )}
-                {hasCerts && (() => {
-                  if (legacyCerts.length > 0 && certs.length === 0) {
-                    return (
-                      <Badge variant="outline" className="text-xs border-warning text-warning">
-                        {legacyCerts.length} (Migr.)
-                      </Badge>
-                    );
-                  }
+                {hasCerts && (
+                  legacyCerts.length > 0 && certs.length === 0 ? (
+                    <Badge variant="outline" className="text-xs border-warning text-warning">
+                      {legacyCerts.length} (Migr.)
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="text-xs">
+                      {certs.length} Zert.
+                    </Badge>
+                  )
+                )}
+                {(() => {
                   const cfg = getAuditModeConfig(client.audit_mode);
                   return (
-                    <Badge variant="outline" className={`text-xs gap-1 ${cfg.certBadge}`}>
-                      <cfg.Icon className="h-3 w-3" />
-                      {certs.length} Zert.
+                    <Badge variant="outline" className={`text-xs gap-1 ${cfg.modeBadge}`}>
+                      <cfg.Icon className="h-3 w-3" /> {cfg.label}
                     </Badge>
                   );
                 })()}
@@ -489,19 +484,22 @@ const Clients = () => {
                 {!clientIsActive && (
                   <Badge variant="destructive" className="text-xs">Inaktiv</Badge>
                 )}
-                {hasCerts && (() => {
-                  if (legacyCerts.length > 0 && certs.length === 0) {
-                    return (
-                      <Badge variant="outline" className="text-xs border-warning text-warning">
-                        {legacyCerts.length} (Migration)
-                      </Badge>
-                    );
-                  }
+                {hasCerts && (
+                  legacyCerts.length > 0 && certs.length === 0 ? (
+                    <Badge variant="outline" className="text-xs border-warning text-warning">
+                      {legacyCerts.length} (Migration)
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="text-xs">
+                      {certs.length} Zertifikat{certs.length !== 1 ? 'e' : ''}
+                    </Badge>
+                  )
+                )}
+                {(() => {
                   const cfg = getAuditModeConfig(client.audit_mode);
                   return (
-                    <Badge variant="outline" className={`text-xs gap-1 font-medium ${cfg.certBadge}`}>
-                      <cfg.Icon className="h-3 w-3" />
-                      {certs.length} Zertifikat{certs.length !== 1 ? 'e' : ''}
+                    <Badge variant="outline" className={`text-xs gap-1 font-medium ${cfg.modeBadge}`}>
+                      <cfg.Icon className="h-3 w-3" /> {cfg.label}
                     </Badge>
                   );
                 })()}
@@ -896,26 +894,22 @@ const Clients = () => {
                                                 )}
                                                 <span className="font-medium truncate">{client.name}</span>
                                                 <ClientNumberBadge clientNumber={client.client_number} />
-                                                {(() => {
-                                                  const cfg = getAuditModeConfig(client.audit_mode);
-                                                  return (
-                                                    <Badge variant="outline" className={`text-[10px] sm:text-xs gap-1 ${cfg.modeBadge}`}>
-                                                      <cfg.Icon className="h-3 w-3" /> {cfg.label}
-                                                    </Badge>
-                                                  );
-                                                })()}
                                               </div>
                                               {isMobile && (
                                                 <div className="flex items-center gap-2 mt-1 ml-6 flex-wrap">
                                                   {!clientIsActive && (
                                                     <Badge variant="destructive" className="text-xs">Inaktiv</Badge>
                                                   )}
-                                                  {certifications.length > 0 && (() => {
+                                                  {certifications.length > 0 && (
+                                                    <Badge variant="secondary" className="text-xs">
+                                                      {certifications.length} Zert.
+                                                    </Badge>
+                                                  )}
+                                                  {(() => {
                                                     const cfg = getAuditModeConfig(client.audit_mode);
                                                     return (
-                                                      <Badge variant="outline" className={`text-xs gap-1 ${cfg.certBadge}`}>
-                                                        <cfg.Icon className="h-3 w-3" />
-                                                        {certifications.length} Zert.
+                                                      <Badge variant="outline" className={`text-xs gap-1 ${cfg.modeBadge}`}>
+                                                        <cfg.Icon className="h-3 w-3" /> {cfg.label}
                                                       </Badge>
                                                     );
                                                   })()}
@@ -928,12 +922,16 @@ const Clients = () => {
                                                   {!clientIsActive && (
                                                     <Badge variant="destructive" className="text-xs">Inaktiv</Badge>
                                                   )}
-                                                  {certifications.length > 0 && (() => {
+                                                  {certifications.length > 0 && (
+                                                    <Badge variant="secondary" className="text-xs">
+                                                      {certifications.length} Zertifikat{certifications.length !== 1 ? 'e' : ''}
+                                                    </Badge>
+                                                  )}
+                                                  {(() => {
                                                     const cfg = getAuditModeConfig(client.audit_mode);
                                                     return (
-                                                      <Badge variant="outline" className={`text-xs gap-1 font-medium ${cfg.certBadge}`}>
-                                                        <cfg.Icon className="h-3 w-3" />
-                                                        {certifications.length} Zertifikat{certifications.length !== 1 ? 'e' : ''}
+                                                      <Badge variant="outline" className={`text-xs gap-1 font-medium ${cfg.modeBadge}`}>
+                                                        <cfg.Icon className="h-3 w-3" /> {cfg.label}
                                                       </Badge>
                                                     );
                                                   })()}

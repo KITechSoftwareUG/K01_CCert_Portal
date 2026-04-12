@@ -35,7 +35,7 @@ import { toast } from 'sonner';
 import { useClients, CertificationStandard } from '@/hooks/useClients';
 import { useCreateAudit, AuditType } from '@/hooks/useAudits';
 import { useCreateBulkAuditTasks, useAllAuditTasks, DbAuditTask, DbAuditTaskInsert } from '@/hooks/useAuditTasks';
-import { Tables, Enums } from '@/integrations/supabase/types';
+import { Tables } from '@/integrations/supabase/types';
 
 interface AuditTaskWithAudit extends DbAuditTask {
   audits: (Tables<'audits'> & { clients: Tables<'clients'> | null }) | null;
@@ -216,7 +216,6 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
       const audit = await createAudit.mutateAsync({
         client_id: selectedClient,
         type: auditType,
-        certifications: selectedCertifications as Enums<'certification_standard'>[],
         scheduled_date: parsedDate.toISOString(),
         notes: notes || null,
         status: 'scheduled',
