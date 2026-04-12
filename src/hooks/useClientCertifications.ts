@@ -43,7 +43,8 @@ export const useClientCertification = (id: string | undefined) => {
         .from('client_certifications')
         .select(`
           *,
-          certifications (*)
+          certifications (*),
+          certification_bodies!certification_body_id (*)
         `)
         .eq('id', id!)
         .maybeSingle();
@@ -114,10 +115,11 @@ export const useUpdateClientCertification = () => {
         .eq('id', id)
         .select(`
           *,
-          certifications (*)
+          certifications (*),
+          certification_bodies!certification_body_id (*)
         `)
         .single();
-      
+
       if (error) throw error;
       return data as ClientCertificationWithDetails;
     },
