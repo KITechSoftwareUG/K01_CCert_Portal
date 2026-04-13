@@ -1,17 +1,12 @@
 import { useMemo } from "react";
 import { useClients } from "@/hooks/useClients";
-import { useAudits } from "@/hooks/useAudits";
-import { useAllAuditTasks } from "@/hooks/useAuditTasks";
-import { transformAuditToLocal } from "@/lib/auditUtils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Building2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ExpiringCertificationsCard } from "@/components/ExpiringCertificationsCard";
 import { DataQualityWarningsCard } from "@/components/DataQualityWarningsCard";
-import { AlertsCard } from "@/components/AlertsCard";
 import { AuditYearStatsCard } from "@/components/AuditYearStatsCard";
 import { CertificationYearStatsCard } from "@/components/CertificationYearStatsCard";
-import { OpenTasksCard } from "@/components/OpenTasksCard";
 import { DashboardAIChat } from "@/components/DashboardAIChat";
 import { useCertificationBodyStats } from "@/hooks/useCertificationBodies";
 import { useState, useEffect } from "react";
@@ -42,8 +37,6 @@ const SECONDARY_GREETINGS = [
 
 const Dashboard = () => {
   const { data: clients = [], isLoading: clientsLoading } = useClients();
-  const { data: dbAudits = [], isLoading: auditsLoading } = useAudits();
-  const { data: dbTasks = [], isLoading: tasksLoading } = useAllAuditTasks();
   const { data: bodyStats = [] } = useCertificationBodyStats();
 
   const [greetingIndex, setGreetingIndex] = useState(0);
@@ -87,10 +80,6 @@ const Dashboard = () => {
     return () => clearInterval(interval);
   }, [availableGreetings]);
 
-  const audits = useMemo(() => {
-    return dbAudits.map((audit) => transformAuditToLocal(audit, dbTasks));
-  }, [dbAudits, dbTasks]);
-
   const clientStats = useMemo(() => {
     // Nur echte Kunden zählen (Gruppen-Header haben client_number === null)
     const realClients = clients.filter((c) => c.client_number !== null);
@@ -109,7 +98,7 @@ const Dashboard = () => {
     };
   }, [clients]);
 
-  if (clientsLoading || auditsLoading || tasksLoading) {
+  if (clientsLoading) {
     return (
       <div className="p-4 sm:p-8 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -184,16 +173,6 @@ const Dashboard = () => {
 
         <AuditYearStatsCard />
         <CertificationYearStatsCard />
-      </div>
-
-      {/* Second Row: Alerts and Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-5">
-          <AlertsCard audits={audits} />
-        </div>
-        <div className="lg:col-span-7">
-          <OpenTasksCard />
-        </div>
       </div>
 
       {/* Rows: Expiring and Quality */}
