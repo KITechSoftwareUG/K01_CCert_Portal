@@ -42,9 +42,9 @@ interface LayoutProps {
 
 const mainNavigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Kunden', href: '/clients', icon: Users },
   { name: 'Audits', href: '/audits', icon: ClipboardCheck },
   { name: 'Aufgaben', href: '/tasks', icon: CheckSquare },
+  { name: 'Kunden', href: '/clients', icon: Users },
   { name: 'Zertifizierer', href: '/certification-bodies', icon: Building2 },
   { name: 'Auditoren', href: '/auditors', icon: UserCheck },
   { name: 'Berater', href: '/consultants', icon: UserCheck },
