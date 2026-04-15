@@ -527,8 +527,8 @@ serve(async (req) => {
 
     // 6. CERT BODIES & CONTACTS
     if (keywords.length > 0) {
-      fetchPromises.push(applyKeywordFilter(supabase.from("certification_bodies").select("id, name, short_name, contact_person, email, phone"), ["name", "short_name"]).then(res => ({ type: "certBodies", data: res.data || [] })));
-      fetchPromises.push(applyKeywordFilter(supabase.from("contacts").select("id, name, role, email, phone, is_primary, clients (id, name, client_number)"), ["name", "role", "email"]).then(res => ({ type: "contacts", data: res.data || [] })));
+      fetchPromises.push(applyKeywordFilter(supabase.from("certification_bodies").select("id, name, short_name, contact_person, email, phone"), ["name", "short_name"]).then((res: any) => ({ type: "certBodies", data: res.data || [] })));
+      fetchPromises.push(applyKeywordFilter(supabase.from("contacts").select("id, name, role, email, phone, is_primary, clients (id, name, client_number)"), ["name", "role", "email"]).then((res: any) => ({ type: "contacts", data: res.data || [] })));
       fetchPromises.push(supabase.from("certifications").select("id, name, description").limit(10).then(res => ({ type: "certTypes", data: res.data || [] })));
     } else {
       fetchPromises.push(Promise.resolve({ type: "certBodies", data: [] }));

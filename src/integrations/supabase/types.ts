@@ -50,6 +50,50 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_documents: {
+        Row: {
+          audit_id: string
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number | null
+          id: string
+          mime_type: string | null
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          audit_id: string
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          audit_id?: string
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_documents_audit_id_fkey"
+            columns: ["audit_id"]
+            isOneToOne: false
+            referencedRelation: "audits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_tasks: {
         Row: {
           assigned_to: string | null
@@ -178,50 +222,6 @@ export type Database = {
             columns: ["certification_id"]
             isOneToOne: false
             referencedRelation: "certifications"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      audit_documents: {
-        Row: {
-          audit_id: string
-          created_at: string
-          file_name: string
-          file_path: string
-          file_size: number | null
-          id: string
-          mime_type: string | null
-          updated_at: string
-          uploaded_by: string | null
-        }
-        Insert: {
-          audit_id: string
-          created_at?: string
-          file_name: string
-          file_path: string
-          file_size?: number | null
-          id?: string
-          mime_type?: string | null
-          updated_at?: string
-          uploaded_by?: string | null
-        }
-        Update: {
-          audit_id?: string
-          created_at?: string
-          file_name?: string
-          file_path?: string
-          file_size?: number | null
-          id?: string
-          mime_type?: string | null
-          updated_at?: string
-          uploaded_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "audit_documents_audit_id_fkey"
-            columns: ["audit_id"]
-            isOneToOne: false
-            referencedRelation: "audits"
             referencedColumns: ["id"]
           },
         ]

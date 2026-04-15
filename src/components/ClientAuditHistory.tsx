@@ -21,7 +21,7 @@ interface ClientAuditHistoryProps {
 const getCertificationName = (audit: AuditWithClient): string | null => {
   const name = audit.client_certifications?.certifications?.name;
   if (name) return name;
-  if (audit.certifications && audit.certifications.length > 0) return audit.certifications.join(', ');
+  return null;
   return null;
 };
 
