@@ -101,7 +101,8 @@ type SupabaseQueryBuilder = ReturnType<ReturnType<typeof createClient>["from"]>;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 // ─── Agent Definitions ───────────────────────────────────────────────
@@ -128,7 +129,9 @@ const AGENTS: Record<string, AgentDefinition> = {
     name: "Audit-Experte",
     icon: "📋",
     description: "Beantwortet Fragen zu Audits, Terminen, Status und Planung.",
-    buildSystemPrompt: (ctx) => `Du bist der Audit-Experte im Zertifizierungs-Management-System von CERT CONSULTING PANE.
+    buildSystemPrompt: (
+      ctx,
+    ) => `Du bist der Audit-Experte im Zertifizierungs-Management-System von CERT CONSULTING PANE.
 Deine Spezialität: Audits, Termine, Auditplanung, Auditoren und Audit-Status.
 
 DEIN KONTEXT:
@@ -150,7 +153,9 @@ STIL:
     name: "Zertifizierungs-Experte",
     icon: "🏅",
     description: "Spezialist für Zertifizierungen, Normen, Gültigkeiten und Zertifizierungsstellen.",
-    buildSystemPrompt: (ctx) => `Du bist der Zertifizierungs-Experte im Zertifizierungs-Management-System von CERT CONSULTING PANE.
+    buildSystemPrompt: (
+      ctx,
+    ) => `Du bist der Zertifizierungs-Experte im Zertifizierungs-Management-System von CERT CONSULTING PANE.
 Deine Spezialität: Zertifizierungen (SURE, FSC, PEFC, ISCC, ISO etc.), Gültigkeiten, Zertifizierungsstellen, Normen und Scopes.
 
 DEIN KONTEXT:
@@ -172,7 +177,9 @@ STIL:
     name: "Aufgaben-Manager",
     icon: "✅",
     description: "Verwaltet und informiert über Aufgaben, Fristen und To-Dos.",
-    buildSystemPrompt: (ctx) => `Du bist der Aufgaben-Manager im Zertifizierungs-Management-System von CERT CONSULTING PANE.
+    buildSystemPrompt: (
+      ctx,
+    ) => `Du bist der Aufgaben-Manager im Zertifizierungs-Management-System von CERT CONSULTING PANE.
 Deine Spezialität: Aufgaben, Fristen, To-Dos, überfällige Tasks und Priorisierung.
 
 DEIN KONTEXT:
@@ -194,7 +201,9 @@ STIL:
     name: "Kunden-Berater",
     icon: "👥",
     description: "Experte für Kundendaten, Kontakte und Kundenbeziehungen.",
-    buildSystemPrompt: (ctx) => `Du bist der Kunden-Berater im Zertifizierungs-Management-System von CERT CONSULTING PANE.
+    buildSystemPrompt: (
+      ctx,
+    ) => `Du bist der Kunden-Berater im Zertifizierungs-Management-System von CERT CONSULTING PANE.
 Deine Spezialität: Kundendaten, Kontakte, Ansprechpartner, Kundenhistorie und Kundenbeziehungen.
 
 DEIN KONTEXT:
@@ -215,7 +224,9 @@ STIL:
     name: "Allgemein-Assistent",
     icon: "💬",
     description: "Allgemeiner Assistent für Begrüßungen und übergreifende Fragen.",
-    buildSystemPrompt: (ctx) => `Du bist ein freundlicher, lockerer KI-Assistent im Zertifizierungs-Management-System von CERT CONSULTING PANE.
+    buildSystemPrompt: (
+      ctx,
+    ) => `Du bist ein freundlicher, lockerer KI-Assistent im Zertifizierungs-Management-System von CERT CONSULTING PANE.
 
 DEIN KONTEXT:
 ${ctx.databaseContext}
@@ -275,18 +286,15 @@ const ROUTER_TOOL = {
 
 async function routeToAgent(messages: Message[], apiKey: string): Promise<{ agentId: string; reasoning: string }> {
   try {
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
-        messages: [
-          { role: "system", content: ROUTER_SYSTEM_PROMPT },
-          ...messages.slice(-3), // only last few messages for routing
-        ],
+        model: "gpt-4o-mini",
+        messages: [{ role: "system", content: ROUTER_SYSTEM_PROMPT }, ...messages.slice(-3)],
         tools: [ROUTER_TOOL],
         tool_choice: { type: "function", function: { name: "route_to_agent" } },
       }),
@@ -336,11 +344,68 @@ const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\
 
 const extractKeywords = (text: string) => {
   const stopWords = new Set([
-    "der", "die", "das", "und", "oder", "ein", "eine", "einer", "einem", "einen", "dem", "den", "des",
-    "ich", "du", "wir", "ihr", "sie", "er", "es", "mit", "von", "für", "bei", "zu", "im", "in", "am",
-    "auf", "an", "ist", "sind", "war", "waren", "bitte", "zeige", "gib", "mir", "alle", "den", "zur",
-    "zum", "nach", "vor", "über", "unter", "welche", "welcher", "welches", "was", "wie", "wann", "wo",
-    "kurz", "sehr", "max", "sätze", "satze", "freundliche", "formellen", "floskeln", "beginne",
+    "der",
+    "die",
+    "das",
+    "und",
+    "oder",
+    "ein",
+    "eine",
+    "einer",
+    "einem",
+    "einen",
+    "dem",
+    "den",
+    "des",
+    "ich",
+    "du",
+    "wir",
+    "ihr",
+    "sie",
+    "er",
+    "es",
+    "mit",
+    "von",
+    "für",
+    "bei",
+    "zu",
+    "im",
+    "in",
+    "am",
+    "auf",
+    "an",
+    "ist",
+    "sind",
+    "war",
+    "waren",
+    "bitte",
+    "zeige",
+    "gib",
+    "mir",
+    "alle",
+    "den",
+    "zur",
+    "zum",
+    "nach",
+    "vor",
+    "über",
+    "unter",
+    "welche",
+    "welcher",
+    "welches",
+    "was",
+    "wie",
+    "wann",
+    "wo",
+    "kurz",
+    "sehr",
+    "max",
+    "sätze",
+    "satze",
+    "freundliche",
+    "formellen",
+    "floskeln",
+    "beginne",
   ]);
 
   return Array.from(
@@ -348,8 +413,8 @@ const extractKeywords = (text: string) => {
       normalize(text)
         .split(/[^a-z0-9äöüß-]+/)
         .map((word) => word.trim())
-        .filter((word) => word.length >= 3 && !stopWords.has(word))
-    )
+        .filter((word) => word.length >= 3 && !stopWords.has(word)),
+    ),
   );
 };
 
@@ -364,7 +429,12 @@ const scoreByKeywords = (haystack: string, keywords: string[]) => {
   }, 0);
 };
 
-const limitAndSort = <T,>(items: T[], limit: number, scoreFn: (item: T) => number, fallbackSort?: (a: T, b: T) => number) => {
+const limitAndSort = <T,>(
+  items: T[],
+  limit: number,
+  scoreFn: (item: T) => number,
+  fallbackSort?: (a: T, b: T) => number,
+) => {
   return [...items]
     .map((item) => ({ item, score: scoreFn(item) }))
     .filter(({ score }) => score > 0)
@@ -383,18 +453,18 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(
-        JSON.stringify({ error: "Nicht autorisiert. Bitte melden Sie sich an." }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Nicht autorisiert. Bitte melden Sie sich an." }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
 
     const authSupabase = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
       global: { headers: { Authorization: authHeader } },
@@ -405,42 +475,46 @@ serve(async (req) => {
 
     if (claimsError || !claimsData?.claims) {
       console.error("Auth validation failed:", claimsError);
-      return new Response(
-        JSON.stringify({ error: "Ungültiger oder abgelaufener Token." }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Ungültiger oder abgelaufener Token." }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const userId = claimsData.claims.sub;
     const { messages } = await req.json();
     const recentMessages = Array.isArray(messages) ? messages.slice(-MAX_CHAT_HISTORY) : [];
-    const latestUserMessage = [...recentMessages].reverse().find((message: Message) => message?.role === "user")?.content ?? "";
+    const latestUserMessage =
+      [...recentMessages].reverse().find((message: Message) => message?.role === "user")?.content ?? "";
     const latestUserText = String(latestUserMessage);
     const normalizedLatestText = normalize(latestUserText);
     const keywords = extractKeywords(latestUserText);
-    const isGreetingRequest = normalizedLatestText.includes("begru") || normalizedLatestText.includes("willkommen zuruck");
+    const isGreetingRequest =
+      normalizedLatestText.includes("begru") || normalizedLatestText.includes("willkommen zuruck");
 
     // ─── Step 1: Route to the right agent ────────────────────────────
-    const routeResult = await routeToAgent(recentMessages, LOVABLE_API_KEY);
+    const routeResult = await routeToAgent(recentMessages, OPENAI_API_KEY);
     const agent = AGENTS[routeResult.agentId] || AGENTS.general_assistant;
 
-    console.log(`[Agent Router] User: ${userId} | Agent: ${agent.id} (${agent.name}) | Reason: ${routeResult.reasoning}`);
+    console.log(
+      `[Agent Router] User: ${userId} | Agent: ${agent.id} (${agent.name}) | Reason: ${routeResult.reasoning}`,
+    );
 
     // ─── Step 2: Fetch database context ──────────────────────────────
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
     const now = new Date();
     const todayStr = now.toLocaleDateString("de-DE");
 
-    const hasAuditWords = keywords.some(k => ["audit", "prüfung", "termin", "besuch"].includes(k));
-    const hasClientWords = keywords.some(k => ["kunde", "firma", "unternehmen", "mandant"].includes(k));
-    const hasTaskWords = keywords.some(k => ["aufgabe", "task", "todo", "erledigen", "fällig"].includes(k));
-    const hasCertWords = keywords.some(k => ["zertifikat", "norm", "iso", "standard", "gültig"].includes(k));
-    const hasAuditorWords = keywords.some(k => ["auditor", "person", "wer"].includes(k));
+    const hasAuditWords = keywords.some((k) => ["audit", "prüfung", "termin", "besuch"].includes(k));
+    const hasClientWords = keywords.some((k) => ["kunde", "firma", "unternehmen", "mandant"].includes(k));
+    const hasTaskWords = keywords.some((k) => ["aufgabe", "task", "todo", "erledigen", "fällig"].includes(k));
+    const hasCertWords = keywords.some((k) => ["zertifikat", "norm", "iso", "standard", "gültig"].includes(k));
+    const hasAuditorWords = keywords.some((k) => ["auditor", "person", "wer"].includes(k));
 
     // Helper for keyword filtering in Supabase
     const applyKeywordFilter = (query: SupabaseQueryBuilder, columns: string[]): SupabaseQueryBuilder => {
       if (keywords.length === 0) return query.limit(20);
-      const filterString = columns.map(col => `${col}.ilike.%${keywords[0]}%`).join(",");
+      const filterString = columns.map((col) => `${col}.ilike.%${keywords[0]}%`).join(",");
       return query.or(filterString).limit(50);
     };
 
@@ -448,10 +522,13 @@ serve(async (req) => {
 
     // 1. CLIENTS
     if (isGreetingRequest || hasClientWords || keywords.length === 0) {
-      let q = supabase.from("clients").select("id, name, client_number, contact_person, email, phone, country, is_active, consultant");
-      if (!isGreetingRequest && keywords.length > 0) q = applyKeywordFilter(q, ["name", "client_number", "contact_person"]);
+      let q = supabase
+        .from("clients")
+        .select("id, name, client_number, contact_person, email, phone, country, is_active, consultant");
+      if (!isGreetingRequest && keywords.length > 0)
+        q = applyKeywordFilter(q, ["name", "client_number", "contact_person"]);
       else q = q.limit(MAX_CLIENTS);
-      fetchPromises.push(q.then(res => ({ type: "clients", data: res.data || [] })));
+      fetchPromises.push(q.then((res) => ({ type: "clients", data: res.data || [] })));
     } else {
       fetchPromises.push(Promise.resolve({ type: "clients", data: [] }));
     }
@@ -472,7 +549,7 @@ serve(async (req) => {
       } else {
         q = q.order("scheduled_date", { ascending: true }).limit(MAX_AUDITS);
       }
-      fetchPromises.push(q.then(res => ({ type: "audits", data: res.data || [] })));
+      fetchPromises.push(q.then((res) => ({ type: "audits", data: res.data || [] })));
     } else {
       fetchPromises.push(Promise.resolve({ type: "audits", data: [] }));
     }
@@ -490,7 +567,7 @@ serve(async (req) => {
       } else {
         q = q.order("due_date", { ascending: true }).limit(MAX_TASKS);
       }
-      fetchPromises.push(q.then(res => ({ type: "tasks", data: res.data || [] })));
+      fetchPromises.push(q.then((res) => ({ type: "tasks", data: res.data || [] })));
     } else {
       fetchPromises.push(Promise.resolve({ type: "tasks", data: [] }));
     }
@@ -510,7 +587,7 @@ serve(async (req) => {
       } else {
         q = q.limit(MAX_CERTIFICATIONS);
       }
-      fetchPromises.push(q.then(res => ({ type: "clientCerts", data: res.data || [] })));
+      fetchPromises.push(q.then((res) => ({ type: "clientCerts", data: res.data || [] })));
     } else {
       fetchPromises.push(Promise.resolve({ type: "clientCerts", data: [] }));
     }
@@ -520,24 +597,48 @@ serve(async (req) => {
       let q = supabase.from("auditors").select("id, name, email, phone, certification_bodies (name, short_name)");
       if (keywords.length > 0) q = applyKeywordFilter(q, ["name", "email"]);
       else q = q.limit(MAX_AUDITORS);
-      fetchPromises.push(q.then(res => ({ type: "auditors", data: res.data || [] })));
+      fetchPromises.push(q.then((res) => ({ type: "auditors", data: res.data || [] })));
     } else {
       fetchPromises.push(Promise.resolve({ type: "auditors", data: [] }));
     }
 
     // 6. CERT BODIES & CONTACTS
     if (keywords.length > 0) {
-      fetchPromises.push(applyKeywordFilter(supabase.from("certification_bodies").select("id, name, short_name, contact_person, email, phone"), ["name", "short_name"]).then((res: any) => ({ type: "certBodies", data: res.data || [] })));
-      fetchPromises.push(applyKeywordFilter(supabase.from("contacts").select("id, name, role, email, phone, is_primary, clients (id, name, client_number)"), ["name", "role", "email"]).then((res: any) => ({ type: "contacts", data: res.data || [] })));
-      fetchPromises.push(supabase.from("certifications").select("id, name, description").limit(10).then(res => ({ type: "certTypes", data: res.data || [] })));
+      fetchPromises.push(
+        applyKeywordFilter(
+          supabase.from("certification_bodies").select("id, name, short_name, contact_person, email, phone"),
+          ["name", "short_name"],
+        ).then((res) => ({ type: "certBodies", data: res.data || [] })),
+      );
+      fetchPromises.push(
+        applyKeywordFilter(
+          supabase
+            .from("contacts")
+            .select("id, name, role, email, phone, is_primary, clients (id, name, client_number)"),
+          ["name", "role", "email"],
+        ).then((res) => ({ type: "contacts", data: res.data || [] })),
+      );
+      fetchPromises.push(
+        supabase
+          .from("certifications")
+          .select("id, name, description")
+          .limit(10)
+          .then((res) => ({ type: "certTypes", data: res.data || [] })),
+      );
     } else {
       fetchPromises.push(Promise.resolve({ type: "certBodies", data: [] }));
       fetchPromises.push(Promise.resolve({ type: "contacts", data: [] }));
-      fetchPromises.push(supabase.from("certifications").select("id, name, description").limit(8).then(res => ({ type: "certTypes", data: res.data || [] })));
+      fetchPromises.push(
+        supabase
+          .from("certifications")
+          .select("id, name, description")
+          .limit(8)
+          .then((res) => ({ type: "certTypes", data: res.data || [] })),
+      );
     }
 
     const results = await Promise.all(fetchPromises);
-    const dataMap = Object.fromEntries(results.map(r => [r.type, r.data]));
+    const dataMap = Object.fromEntries(results.map((r) => [r.type, r.data]));
 
     const clients = dataMap.clients || [];
     const audits = dataMap.audits || [];
@@ -558,11 +659,15 @@ serve(async (req) => {
     const selectedClients = isGreetingRequest
       ? []
       : limitAndSort(
-        clients as ClientRecord[],
-        MAX_CLIENTS,
-        (client) => scoreByKeywords(`${client.name} ${client.client_number ?? ""} ${client.country ?? ""} ${client.consultant ?? ""} ${client.contact_person ?? ""}`, keywords),
-        (a, b) => a.name.localeCompare(b.name)
-      );
+          clients as ClientRecord[],
+          MAX_CLIENTS,
+          (client) =>
+            scoreByKeywords(
+              `${client.name} ${client.client_number ?? ""} ${client.country ?? ""} ${client.consultant ?? ""} ${client.contact_person ?? ""}`,
+              keywords,
+            ),
+          (a, b) => a.name.localeCompare(b.name),
+        );
 
     const selectedAudits = [
       ...limitAndSort(
@@ -574,10 +679,15 @@ serve(async (req) => {
           const clientName = audit.clients?.name ?? "";
           return scoreByKeywords(`${clientName} ${audit.type} ${audit.status} ${certName} ${auditorName}`, keywords);
         },
-        (a, b) => new Date(a.scheduled_date).getTime() - new Date(b.scheduled_date).getTime()
+        (a, b) => new Date(a.scheduled_date).getTime() - new Date(b.scheduled_date).getTime(),
       ),
-      ...(isGreetingRequest ? upcomingAudits.slice(0, 6) : [])
-    ].filter((audit: AuditRecord, index: number, array: AuditRecord[]) => array.findIndex((item) => item.id === audit.id) === index).slice(0, MAX_AUDITS);
+      ...(isGreetingRequest ? upcomingAudits.slice(0, 6) : []),
+    ]
+      .filter(
+        (audit: AuditRecord, index: number, array: AuditRecord[]) =>
+          array.findIndex((item) => item.id === audit.id) === index,
+      )
+      .slice(0, MAX_AUDITS);
 
     const selectedTasks = [
       ...limitAndSort(
@@ -586,12 +696,20 @@ serve(async (req) => {
         (task) => {
           const clientName = task.audits?.clients?.name ?? "";
           const auditType = task.audits?.type ?? "";
-          return scoreByKeywords(`${task.title} ${task.description ?? ""} ${task.status} ${clientName} ${auditType} ${task.assigned_to ?? ""}`, keywords);
+          return scoreByKeywords(
+            `${task.title} ${task.description ?? ""} ${task.status} ${clientName} ${auditType} ${task.assigned_to ?? ""}`,
+            keywords,
+          );
         },
-        (a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+        (a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime(),
       ),
-      ...(isGreetingRequest ? overdueTasks.slice(0, 6) : [])
-    ].filter((task: TaskRecord, index: number, array: TaskRecord[]) => array.findIndex((item) => item.id === task.id) === index).slice(0, MAX_TASKS);
+      ...(isGreetingRequest ? overdueTasks.slice(0, 6) : []),
+    ]
+      .filter(
+        (task: TaskRecord, index: number, array: TaskRecord[]) =>
+          array.findIndex((item) => item.id === task.id) === index,
+      )
+      .slice(0, MAX_TASKS);
 
     const relatedClientIds = new Set([
       ...(selectedClients as ClientRecord[]).map((client) => client.id),
@@ -608,54 +726,78 @@ serve(async (req) => {
           const clientName = cert.clients?.name ?? "";
           const certName = cert.certifications?.name ?? "";
           const auditorName = cert.auditors?.name ?? "";
-          return scoreByKeywords(`${clientName} ${certName} ${cert.status ?? ""} ${cert.scope ?? ""} ${cert.certificate_number ?? ""} ${auditorName}`, keywords);
+          return scoreByKeywords(
+            `${clientName} ${certName} ${cert.status ?? ""} ${cert.scope ?? ""} ${cert.certificate_number ?? ""} ${auditorName}`,
+            keywords,
+          );
         },
         (a, b) => {
           const aTime = a.valid_until ? new Date(a.valid_until).getTime() : Number.MAX_SAFE_INTEGER;
           const bTime = b.valid_until ? new Date(b.valid_until).getTime() : Number.MAX_SAFE_INTEGER;
           return aTime - bTime;
-        }
+        },
       ),
-    ].filter((cert: ClientCertRecord, index: number, array: ClientCertRecord[]) => array.findIndex((item) => item.id === cert.id) === index).slice(0, MAX_CERTIFICATIONS);
+    ]
+      .filter(
+        (cert: ClientCertRecord, index: number, array: ClientCertRecord[]) =>
+          array.findIndex((item) => item.id === cert.id) === index,
+      )
+      .slice(0, MAX_CERTIFICATIONS);
 
     const selectedAuditors = isGreetingRequest
       ? []
       : limitAndSort(
-        auditors as AuditorRecord[],
-        MAX_AUDITORS,
-        (auditor) => scoreByKeywords(`${auditor.name} ${auditor.email ?? ""} ${auditor.certification_bodies?.name ?? ""} ${auditor.certification_bodies?.short_name ?? ""}`, keywords),
-        (a, b) => a.name.localeCompare(b.name)
-      );
+          auditors as AuditorRecord[],
+          MAX_AUDITORS,
+          (auditor) =>
+            scoreByKeywords(
+              `${auditor.name} ${auditor.email ?? ""} ${auditor.certification_bodies?.name ?? ""} ${auditor.certification_bodies?.short_name ?? ""}`,
+              keywords,
+            ),
+          (a, b) => a.name.localeCompare(b.name),
+        );
 
     const selectedContacts = isGreetingRequest
       ? []
       : (contacts as ContactRecord[])
-        .filter((contact) => relatedClientIds.has(contact.clients?.id))
-        .slice(0, MAX_CONTACTS);
+          .filter((contact) => relatedClientIds.has(contact.clients?.id))
+          .slice(0, MAX_CONTACTS);
 
     const selectedCertBodies = isGreetingRequest
       ? []
       : limitAndSort(
-        certBodies as CertBodyRecord[],
-        MAX_CERT_BODIES,
-        (body) => scoreByKeywords(`${body.name} ${body.short_name ?? ""} ${body.contact_person ?? ""} ${body.email ?? ""}`, keywords),
-        (a, b) => a.name.localeCompare(b.name)
-      );
+          certBodies as CertBodyRecord[],
+          MAX_CERT_BODIES,
+          (body) =>
+            scoreByKeywords(
+              `${body.name} ${body.short_name ?? ""} ${body.contact_person ?? ""} ${body.email ?? ""}`,
+              keywords,
+            ),
+          (a, b) => a.name.localeCompare(b.name),
+        );
 
     const selectedCertTypes = isGreetingRequest
       ? (certTypes as CertTypeRecord[]).slice(0, 8)
-      : (certTypes as CertTypeRecord[]).filter((cert) => scoreByKeywords(cert.name, keywords) > 0 || keywords.length === 0).slice(0, 8);
+      : (certTypes as CertTypeRecord[])
+          .filter((cert) => scoreByKeywords(cert.name, keywords) > 0 || keywords.length === 0)
+          .slice(0, 8);
 
     // ─── Build database context ──────────────────────────────────────
     const ctx: string[] = [];
     ctx.push(`AKTUELLES DATUM: ${todayStr}`);
     ctx.push(`KONTEXT-HINWEIS: Sende nur Ausschnitte der Datenbank. Wenn Informationen fehlen, sag das offen.`);
-    ctx.push(`ÜBERSICHT: ${clients.length} Kunden, ${audits.length} Audits, ${tasks.length} Aufgaben, ${clientCerts.length} Kunden-Zertifizierungen.`);
-    ctx.push(`STATUS: ${openTasks.length} offene Aufgaben, ${overdueTasks.length} überfällige Aufgaben, ${upcomingAudits.length} kommende Audits.`);
+    ctx.push(
+      `ÜBERSICHT: ${clients.length} Kunden, ${audits.length} Audits, ${tasks.length} Aufgaben, ${clientCerts.length} Kunden-Zertifizierungen.`,
+    );
+    ctx.push(
+      `STATUS: ${openTasks.length} offene Aufgaben, ${overdueTasks.length} überfällige Aufgaben, ${upcomingAudits.length} kommende Audits.`,
+    );
 
     if (selectedCertTypes.length > 0) {
       ctx.push(`\n=== RELEVANTE ZERTIFIZIERUNGSSTANDARDS (${selectedCertTypes.length}) ===`);
-      selectedCertTypes.forEach((cert: CertTypeRecord) => ctx.push(`- ${cert.name}${cert.description ? ` – ${cert.description}` : ""}`));
+      selectedCertTypes.forEach((cert: CertTypeRecord) =>
+        ctx.push(`- ${cert.name}${cert.description ? ` – ${cert.description}` : ""}`),
+      );
     }
     if (selectedClients.length > 0) {
       ctx.push(`\n=== RELEVANTE KUNDEN (${selectedClients.length}) ===`);
@@ -684,7 +826,8 @@ serve(async (req) => {
       ctx.push(`\n=== RELEVANTE AUDITOREN (${selectedAuditors.length}) ===`);
       selectedAuditors.forEach((auditor: AuditorRecord) => {
         const parts = [auditor.name];
-        if (auditor.certification_bodies?.short_name || auditor.certification_bodies?.name) parts.push(`ZS: ${auditor.certification_bodies?.short_name || auditor.certification_bodies?.name}`);
+        if (auditor.certification_bodies?.short_name || auditor.certification_bodies?.name)
+          parts.push(`ZS: ${auditor.certification_bodies?.short_name || auditor.certification_bodies?.name}`);
         if (auditor.email) parts.push(`E-Mail: ${auditor.email}`);
         if (auditor.phone) parts.push(`Tel: ${auditor.phone}`);
         ctx.push(`- ${parts.join(" | ")}`);
@@ -704,7 +847,10 @@ serve(async (req) => {
     if (selectedClientCerts.length > 0) {
       ctx.push(`\n=== RELEVANTE KUNDEN-ZERTIFIZIERUNGEN (${selectedClientCerts.length}) ===`);
       selectedClientCerts.forEach((cert: ClientCertRecord) => {
-        const parts = [`${cert.clients?.name ?? "Unbekannt"}: ${cert.certifications?.name ?? "N/A"}`, `Zert-ID: ${cert.id}`];
+        const parts = [
+          `${cert.clients?.name ?? "Unbekannt"}: ${cert.certifications?.name ?? "N/A"}`,
+          `Zert-ID: ${cert.id}`,
+        ];
         if (cert.clients?.id) parts.push(`Kunden-ID: ${cert.clients.id}`);
         if (cert.certifications?.id) parts.push(`Standard-ID: ${cert.certifications.id}`);
         if (cert.certificate_number) parts.push(`Zert-Nr: ${cert.certificate_number}`);
@@ -721,12 +867,15 @@ serve(async (req) => {
         const parts = [`${audit.type} bei ${audit.clients?.name ?? "Unbekannt"}`, `Audit-ID: ${audit.id}`];
         if (audit.clients?.id) parts.push(`Kunden-ID: ${audit.clients.id}`);
         if (audit.client_certifications?.id) parts.push(`Zert-ID: ${audit.client_certifications.id}`);
-        if (audit.client_certifications?.certifications?.id) parts.push(`Standard-ID: ${audit.client_certifications.certifications.id}`);
-        if (audit.client_certifications?.certifications?.name) parts.push(`Zertifizierung: ${audit.client_certifications.certifications.name}`);
+        if (audit.client_certifications?.certifications?.id)
+          parts.push(`Standard-ID: ${audit.client_certifications.certifications.id}`);
+        if (audit.client_certifications?.certifications?.name)
+          parts.push(`Zertifizierung: ${audit.client_certifications.certifications.name}`);
         parts.push(`Datum: ${new Date(audit.scheduled_date).toLocaleDateString("de-DE")}`);
         parts.push(`Status: ${audit.status}`);
         if (audit.auditors?.name) parts.push(`Auditor: ${audit.auditors.name}`);
-        if (audit.certification_bodies?.short_name || audit.certification_bodies?.name) parts.push(`ZS: ${audit.certification_bodies?.short_name || audit.certification_bodies?.name}`);
+        if (audit.certification_bodies?.short_name || audit.certification_bodies?.name)
+          parts.push(`ZS: ${audit.certification_bodies?.short_name || audit.certification_bodies?.name}`);
         if (audit.notes) parts.push(`Notizen: ${audit.notes}`);
         ctx.push(`- ${parts.join(" | ")}`);
       });
@@ -754,9 +903,7 @@ serve(async (req) => {
     // Dies verhindert, dass ein bösartiger Client eine fremde URL in den Prompt injiziert.
     const ALLOWED_ORIGIN = (Deno.env.get("ALLOWED_ORIGIN") ?? "").trim();
     const requestOrigin = req.headers.get("origin")?.trim() ?? "";
-    const appBaseUrl = (ALLOWED_ORIGIN && requestOrigin === ALLOWED_ORIGIN)
-      ? ALLOWED_ORIGIN
-      : "";
+    const appBaseUrl = ALLOWED_ORIGIN && requestOrigin === ALLOWED_ORIGIN ? ALLOWED_ORIGIN : "";
 
     // ─── Step 3: Call agent with specialized prompt ───────────────────
     const agentContext: AgentContext = { databaseContext, appBaseUrl, todayStr };
@@ -768,41 +915,38 @@ serve(async (req) => {
       reasoning: routeResult.reasoning,
     });
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...recentMessages,
-        ],
+        model: "gpt-4o",
+        messages: [{ role: "system", content: systemPrompt }, ...recentMessages],
         stream: true,
       }),
     });
 
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Zu viele Anfragen. Bitte warten Sie einen Moment." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ error: "Zu viele Anfragen. Bitte warten Sie einen Moment." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
       if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "KI-Kontingent erschöpft. Bitte später erneut versuchen." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ error: "KI-Kontingent erschöpft. Bitte später erneut versuchen." }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
       const errorText = await response.text();
       console.error("AI gateway error:", response.status, errorText);
-      return new Response(
-        JSON.stringify({ error: "Fehler bei der KI-Verarbeitung" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Fehler bei der KI-Verarbeitung" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Prepend agent metadata as a custom SSE event, then pipe the AI stream
@@ -833,9 +977,9 @@ serve(async (req) => {
     });
   } catch (e) {
     console.error("chat-assistant error:", e instanceof Error ? e.message : "unknown");
-    return new Response(
-      JSON.stringify({ error: "Interner Fehler. Bitte erneut versuchen." }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: "Interner Fehler. Bitte erneut versuchen." }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
