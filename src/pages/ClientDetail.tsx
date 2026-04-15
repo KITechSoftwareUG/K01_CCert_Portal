@@ -822,7 +822,7 @@ const ClientDetail = () => {
                           <div className="min-w-0">
                             <p className="font-medium text-sm truncate">{task.title}</p>
                             <p className="text-xs text-muted-foreground truncate">
-                              Audit: {task.audits?.type} am {task.audits?.date ? format(new Date(task.audits.date), 'dd.MM.yyyy') : '–'}
+                              Audit: {task.audits?.type} am {task.audits?.scheduled_date ? format(new Date(task.audits.scheduled_date), 'dd.MM.yyyy') : '–'}
                             </p>
                           </div>
                         </div>

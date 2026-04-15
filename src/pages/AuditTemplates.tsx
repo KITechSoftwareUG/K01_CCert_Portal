@@ -744,7 +744,7 @@ export default function AuditTemplates() {
               <Label>Audittyp *</Label>
               <Select
                 value={newTemplate.audit_type}
-                onValueChange={(value) => setNewTemplate({ ...newTemplate, audit_type: value as AuditTemplate['audit_type'] | '' })}
+                onValueChange={(value) => setNewTemplate({ ...newTemplate, audit_type: value as any })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Audittyp wählen..." />

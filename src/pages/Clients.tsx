@@ -300,8 +300,8 @@ const Clients = () => {
     const certRows = certificationsByClient[clientId] || [];
 
     // Check for legacy certifications that are not yet migrated
-    const legacyCerts = (client.certifications || []) as string[];
-    const hasLegacyCerts = legacyCerts.length > 0 && certRows.length === 0;
+    const legacyCerts: string[] = [];
+    const hasLegacyCerts = false;
 
     if (certRows.length === 0 && !hasLegacyCerts) {
       return (
@@ -422,8 +422,8 @@ const Clients = () => {
 
   const renderClientWithCerts = (client: DbClient, indent = false) => {
     const certs = certificationsByClient[client.id] || [];
-    const legacyCerts = (client.certifications || []) as string[];
-    const hasCerts = certs.length > 0 || legacyCerts.length > 0;
+    const legacyCerts: string[] = [];
+    const hasCerts = certs.length > 0;
     const isExpanded = expandedClients.has(client.id);
     const contacts = contactsMap[client.id] || [];
     const clientIsActive = client.is_active !== false;
