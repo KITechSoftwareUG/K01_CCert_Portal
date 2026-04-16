@@ -77,6 +77,7 @@ const STATUS_TABS: { value: StatusFilter; label: string }[] = [
 
 function getEffectiveStatus(task: DbAuditTaskFull): TaskStatus {
   if (task.status === 'completed') return 'completed';
+  if (task.status === 'in-progress') return 'in-progress';
   if (isBefore(parseISO(task.due_date), startOfDay(new Date()))) return 'overdue';
   return task.status as TaskStatus;
 }
@@ -428,20 +429,34 @@ export default function Tasks() {
 
   // ── Dynamic options ───────────────────────────────────────────────────────
 
-  const { uniqueAuditors, uniqueClients, uniqueAssigned } = useMemo(() => {
-    if (!tasks) return { uniqueAuditors: [], uniqueClients: [], uniqueAssigned: [] };
+  // ── Ein Loop für alle tasks-Derivate — läuft nur bei neuen Daten ────────
+
+  const { taskMeta, todayMs, uniqueAuditors, uniqueClients, uniqueAssigned } = useMemo(() => {
+    const todayMs  = startOfDay(new Date()).getTime();
+    const taskMeta = new Map<string, { dueMs: number; eff: TaskStatus }>();
     const auditors = new Map<string, string>();
     const clients  = new Map<string, string>();
     const assigned = new Set<string>();
-    tasks.forEach(t => {
-      if (t.audits?.auditors) auditors.set(t.audits.auditors.id, t.audits.auditors.name);
-      if (t.audits?.clients)  clients.set(t.audits.clients.id,   t.audits.clients.name);
-      if (t.assigned_to)      assigned.add(t.assigned_to);
-    });
+
+    for (const task of tasks ?? []) {
+      const dueMs = parseISO(task.due_date).getTime();
+      const eff: TaskStatus =
+        task.status === 'completed'   ? 'completed' :
+        task.status === 'in-progress' ? 'in-progress' :
+        dueMs < todayMs               ? 'overdue' :
+                                        task.status as TaskStatus;
+      taskMeta.set(task.id, { dueMs, eff });
+      if (task.audits?.auditors) auditors.set(task.audits.auditors.id, task.audits.auditors.name);
+      if (task.audits?.clients)  clients.set(task.audits.clients.id,   task.audits.clients.name);
+      if (task.assigned_to)      assigned.add(task.assigned_to);
+    }
+
     return {
-      uniqueAuditors: [...auditors.entries()].sort(([,a],[,b]) => a.localeCompare(b,'de')),
-      uniqueClients:  [...clients.entries()].sort(([,a],[,b])  => a.localeCompare(b,'de')),
-      uniqueAssigned: [...assigned].sort((a,b) => a.localeCompare(b,'de')),
+      taskMeta,
+      todayMs,
+      uniqueAuditors: [...auditors.entries()].sort(([, a], [, b]) => a.localeCompare(b, 'de')),
+      uniqueClients:  [...clients.entries()].sort(([, a], [, b])  => a.localeCompare(b, 'de')),
+      uniqueAssigned: [...assigned].sort((a, b) => a.localeCompare(b, 'de')),
     };
   }, [tasks]);
 
@@ -451,7 +466,7 @@ export default function Tasks() {
     if (!tasks) return [];
     return tasks
       .filter(task => {
-        const eff = getEffectiveStatus(task);
+        const { dueMs, eff } = taskMeta.get(task.id)!;
         if (searchQuery) {
           const q = searchQuery.toLowerCase();
           if (
@@ -465,11 +480,10 @@ export default function Tasks() {
         if (categoryFilter === 'task'    && task.category === 'finding')         return false;
         if (categoryFilter === 'finding' && task.category !== 'finding')         return false;
         if (dueFilter !== 'all') {
-          const due = parseISO(task.due_date);
-          if (dueFilter === 'overdue'    && !isBefore(due, startOfDay(new Date()))) return false;
-          if (dueFilter === 'today'      && !isToday(due))                          return false;
-          if (dueFilter === 'this-week'  && !isThisWeek(due, { weekStartsOn: 1 }))  return false;
-          if (dueFilter === 'this-month' && !isThisMonth(due))                      return false;
+          if (dueFilter === 'overdue'    && (dueMs >= todayMs || task.status === 'completed')) return false;
+          if (dueFilter === 'today'      && !isToday(dueMs))                           return false;
+          if (dueFilter === 'this-week'  && !isThisWeek(dueMs, { weekStartsOn: 1 }))   return false;
+          if (dueFilter === 'this-month' && !isThisMonth(dueMs))                       return false;
         }
         if (auditorFilter   && task.audits?.auditors?.id !== auditorFilter)   return false;
         if (clientFilter    && task.audits?.clients?.id  !== clientFilter)    return false;
@@ -479,10 +493,10 @@ export default function Tasks() {
         return true;
       })
       .sort((a, b) => {
-        const diff = parseISO(a.due_date).getTime() - parseISO(b.due_date).getTime();
+        const diff = taskMeta.get(a.id)!.dueMs - taskMeta.get(b.id)!.dueMs;
         return sortDir === 'asc' ? diff : -diff;
       });
-  }, [tasks, searchQuery, statusFilter, categoryFilter, dueFilter, sortDir,
+  }, [tasks, taskMeta, todayMs, searchQuery, statusFilter, categoryFilter, dueFilter, sortDir,
       auditorFilter, clientFilter, auditTypeFilter, severityFilter, assignedFilter]);
 
   // ── Grouping ──────────────────────────────────────────────────────────────
@@ -493,17 +507,19 @@ export default function Tasks() {
       let key: string; let order: number;
       switch (groupBy) {
         case 'status': {
-          const eff = getEffectiveStatus(task);
+          const eff = taskMeta.get(task.id)!.eff;
           key = TASK_STATUS_CONFIG[eff].label; order = STATUS_GROUP_ORDER.indexOf(eff); break;
         }
-        case 'due-date':
-          key = format(parseISO(task.due_date), 'MMMM yyyy', { locale: de });
-          order = parseISO(task.due_date).getTime(); break;
+        case 'due-date': {
+          const dueMs = taskMeta.get(task.id)!.dueMs;
+          key = format(dueMs, 'MMMM yyyy', { locale: de });
+          order = dueMs; break;
+        }
         case 'audit':
           if (task.audits) {
-            const lbl  = AUDIT_TYPE_LABELS[task.audits.type as AuditType] ?? task.audits.type;
-            const date = format(parseISO(task.audits.scheduled_date), 'dd.MM.yyyy');
-            key = `${lbl} – ${date}`; order = parseISO(task.audits.scheduled_date).getTime();
+            const auditMs = parseISO(task.audits.scheduled_date).getTime();
+            const lbl = AUDIT_TYPE_LABELS[task.audits.type as AuditType] ?? task.audits.type;
+            key = `${lbl} – ${format(auditMs, 'dd.MM.yyyy')}`; order = auditMs;
           } else { key = 'Kein Audit'; order = Number.MAX_SAFE_INTEGER; }
           break;
         case 'client':
@@ -521,7 +537,7 @@ export default function Tasks() {
         (groupBy === 'client' || groupBy === 'auditor') ? ka.localeCompare(kb, 'de') : a.order - b.order
       )
       .map(([label, { tasks: gt }]) => ({ label, tasks: gt }));
-  }, [filteredTasks, groupBy]);
+  }, [filteredTasks, groupBy, taskMeta]);
 
   const advancedFilterCount = [auditorFilter, clientFilter, auditTypeFilter, severityFilter, assignedFilter].filter(Boolean).length;
   const hasActiveFilters = !!searchQuery || statusFilter !== 'all' || categoryFilter !== 'all' || dueFilter !== 'all' || advancedFilterCount > 0;

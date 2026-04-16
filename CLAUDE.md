@@ -11,6 +11,41 @@ This file provides guidance to Claude Code when working with this repository.
 
 ---
 
+## Deployment-Kontext — PFLICHT lesen
+
+Dieses Projekt läuft auf **[Lovable](https://lovable.dev)** mit Lovable-gehosteter Supabase.
+
+- **NIEMALS** Supabase MCP (`mcp__plugin_supabase_supabase__*`) zur Authentifizierung oder Migration verwenden — der MCP-Zugriff funktioniert nicht für Lovable-gehostete Projekte
+- **NIEMALS** `supabase db push`, `supabase migration up` oder ähnliche CLI-Befehle ausführen
+- **Migrations-SQL** immer als kopierbaren Block ausgeben mit dem Hinweis "Im Supabase-Dashboard → SQL Editor ausführen"
+- **Frontend-Änderungen** deployen via `git push` zu GitHub → Lovable baut automatisch. Kein lokaler Dev-Server als "Fix"
+
+---
+
+## Validierungspflicht — nach JEDER Änderung
+
+Nach **jeder Multi-File-Änderung** zwingend ausführen, bevor "fertig" gemeldet wird:
+
+1. `npx tsc --noEmit` — TypeScript-Fehler prüfen
+2. `npm run lint` — ESLint prüfen
+3. Bei Hook-Änderungen: Dashboard öffnen und testen (wegen `useAllAuditTasks()`)
+
+**Vor Cross-Cutting-Edits (Umbenennung, deprecated Column, Validierung):**
+- Zuerst mit Grep/Glob **alle** betroffenen Stellen im Codebase finden und als Checkliste ausgeben
+- Erst nach Bestätigung editieren — nie nur die offensichtliche Stelle patchen
+- Beispiel-Fehler: Phone-Validierung — 4 von 6 Feldern gepatcht, 2 übersehen
+
+---
+
+## Änderungs-Scope-Disziplin
+
+- **Chirurgische Edits** — nichts refactoren oder umstrukturieren, was nicht explizit gefragt wurde
+- Bei Bug-Fixes: erst prüfen ob ein einfacher JOIN/Query-Fix reicht, bevor neue Tabellen/Trigger/Backend-Logik gebaut wird
+- Keine neuen Infrastruktur-Layer (Trigger, Edge Functions, neue Tabellen) ohne explizite Anfrage
+- Keine console.logs, Kommentare oder Imports als "Aufgabe für den Nutzer" hinterlassen — immer vollständig bereinigen
+
+---
+
 ## Commands
 
 ```bash
@@ -232,13 +267,12 @@ Nur 4 feste Items: **Dashboard** `/` · **Kunden** `/clients` · **Audits** `/au
 
 ## Supabase Migrations
 
-**WICHTIG:** Dieses Projekt läuft auf [Lovable](https://lovable.dev). Die Supabase-Datenbank ist dort integriert — es gibt keinen direkten CLI-Zugriff (`supabase db push` funktioniert NICHT).
+> Deployment-Regeln → siehe **Deployment-Kontext** am Anfang dieser Datei.
 
-Migrations-Dateien in `supabase/migrations/` dienen nur zur Dokumentation. Alle Datenbankänderungen müssen als **fertiges SQL** geliefert werden, das der Nutzer manuell im Supabase-Dashboard (SQL Editor) ausführt.
+Migrations-Dateien in `supabase/migrations/` dienen nur zur Dokumentation.
 
 **Workflow bei DB-Änderungen:**
 1. Migration-Datei in `supabase/migrations/` schreiben (zur Dokumentation)
-2. Das vollständige SQL separat ausgeben mit dem Hinweis: "Im Supabase-Dashboard → SQL Editor ausführen"
-3. Niemals `supabase db push`, `supabase migration up` oder ähnliche CLI-Befehle empfehlen
+2. Vollständiges SQL als kopierbaren Block ausgeben: "Im Supabase-Dashboard → SQL Editor ausführen"
 
 **Trigger-Funktion immer:** `update_updated_at_column()` — nicht `set_updated_at()` oder `handle_updated_at()`
