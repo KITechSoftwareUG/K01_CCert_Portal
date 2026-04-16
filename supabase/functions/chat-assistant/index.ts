@@ -99,11 +99,8 @@ interface CertTypeRecord {
 // ── Generic PostgREST query builder type ──────────────────────────────────────
 type SupabaseQueryBuilder = ReturnType<ReturnType<typeof createClient>["from"]>;
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+const CORS_ALLOWED_HEADERS =
+  "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version";
 
 // ─── Agent Definitions ───────────────────────────────────────────────
 // Each agent has a unique ID, name, description, and a system prompt builder.
@@ -446,11 +443,19 @@ const limitAndSort = <T,>(
 // ─── Main Handler ────────────────────────────────────────────────────
 
 serve(async (req) => {
+  let corsHeaders: Record<string, string> = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": CORS_ALLOWED_HEADERS,
+  };
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    const ALLOWED_ORIGIN = (Deno.env.get("ALLOWED_ORIGIN") ?? "").trim();
+    if (ALLOWED_ORIGIN) corsHeaders["Access-Control-Allow-Origin"] = ALLOWED_ORIGIN;
+
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Nicht autorisiert. Bitte melden Sie sich an." }), {
@@ -898,10 +903,6 @@ serve(async (req) => {
     }
 
     const databaseContext = ctx.join("\n");
-    // ALLOWED_ORIGIN ist optional. Wenn gesetzt, wird es als Basis für Deep-Links im LLM-Prompt verwendet.
-    // Wenn nicht gesetzt, werden keine Links generiert (Chat funktioniert weiterhin ohne sie).
-    // Dies verhindert, dass ein bösartiger Client eine fremde URL in den Prompt injiziert.
-    const ALLOWED_ORIGIN = (Deno.env.get("ALLOWED_ORIGIN") ?? "").trim();
     const requestOrigin = req.headers.get("origin")?.trim() ?? "";
     const appBaseUrl = ALLOWED_ORIGIN && requestOrigin === ALLOWED_ORIGIN ? ALLOWED_ORIGIN : "";
 

@@ -17,7 +17,9 @@ export interface DbAuditTaskFull extends DbAuditTask {
     type: string;
     scheduled_date: string;
     client_id: string;
+    auditor_id: string | null;
     clients: { id: string; name: string } | null;
+    auditors: { id: string; name: string } | null;
   } | null;
 }
 
@@ -80,7 +82,12 @@ export const useAllAuditTasks = () => {
             type,
             scheduled_date,
             client_id,
+            auditor_id,
             clients (
+              id,
+              name
+            ),
+            auditors (
               id,
               name
             )

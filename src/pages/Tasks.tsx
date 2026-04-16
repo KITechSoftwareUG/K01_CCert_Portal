@@ -1,78 +1,64 @@
 import { memo, useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  format,
-  parseISO,
-  isBefore,
-  startOfDay,
-  isToday,
-  isThisWeek,
-  isThisMonth,
+  format, parseISO, isBefore, startOfDay,
+  isToday, isThisWeek, isThisMonth,
 } from 'date-fns';
 import { de } from 'date-fns/locale';
 import {
-  CheckSquare,
-  Search,
-  X,
-  ExternalLink,
-  ChevronDown,
-  ChevronRight,
-  User,
-  Calendar,
-  Building2,
-  Tag,
+  CheckSquare, Search, X, ExternalLink, ChevronDown, ChevronRight,
+  User, Calendar, Building2, Tag, SlidersHorizontal, ArrowUpDown,
+  UserCheck, Circle, CheckCircle2, RotateCcw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import {
-  useAllAuditTasks,
-  useUpdateAuditTask,
-  DbAuditTaskFull,
-  TaskStatus,
-} from '@/hooks/useAuditTasks';
+import { useAllAuditTasks, useUpdateAuditTask, DbAuditTaskFull, TaskStatus } from '@/hooks/useAuditTasks';
 import { TASK_STATUS_CONFIG, AUDIT_TYPE_LABELS } from '@/lib/constants';
 import { EditFindingDialog } from '@/components/EditFindingDialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useScrollPersistence } from '@/hooks/useScrollPersistence';
 import { AuditType } from '@/types/audit';
 import { cn } from '@/lib/utils';
 
-// ─── Types ──────────────────────────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────────────
 
-type StatusFilter = 'all' | TaskStatus;
+type StatusFilter  = 'all' | TaskStatus;
 type CategoryFilter = 'all' | 'task' | 'finding';
-type DueFilter = 'all' | 'overdue' | 'today' | 'this-week' | 'this-month';
-type GroupBy = 'status' | 'due-date' | 'audit' | 'client' | 'none';
+type DueFilter     = 'all' | 'overdue' | 'today' | 'this-week' | 'this-month';
+type SortDir       = 'asc' | 'desc';
+type GroupBy       = 'status' | 'due-date' | 'audit' | 'client' | 'auditor' | 'none';
 
-// ─── SessionStorage keys ────────────────────────────────────────────────────
+// ─── SessionStorage keys ──────────────────────────────────────────────────────
 
-const SS_SEARCH = 'tasks-search-query';
-const SS_STATUS = 'tasks-status-filter';
-const SS_CATEGORY = 'tasks-category-filter';
-const SS_DUE = 'tasks-due-filter';
-const SS_GROUP = 'tasks-group-by';
+const SS_SEARCH     = 'tasks-search-query';
+const SS_STATUS     = 'tasks-status-filter';
+const SS_CATEGORY   = 'tasks-category-filter';
+const SS_DUE        = 'tasks-due-filter';
+const SS_GROUP      = 'tasks-group-by';
+const SS_SORT_DIR   = 'tasks-sort-dir';
+const SS_AUDITOR    = 'tasks-auditor-filter';
+const SS_CLIENT     = 'tasks-client-filter';
+const SS_AUDIT_TYPE = 'tasks-audit-type-filter';
+const SS_SEVERITY   = 'tasks-severity-filter';
+const SS_ASSIGNED   = 'tasks-assigned-filter';
 
-// ─── Constants ──────────────────────────────────────────────────────────────
+const ALL_SS_KEYS = [
+  SS_SEARCH, SS_STATUS, SS_CATEGORY, SS_DUE, SS_GROUP,
+  SS_SORT_DIR, SS_AUDITOR, SS_CLIENT, SS_AUDIT_TYPE, SS_SEVERITY, SS_ASSIGNED,
+];
+
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const STATUS_GROUP_ORDER: TaskStatus[] = ['overdue', 'in-progress', 'pending', 'completed'];
 
 const SEVERITY_LABELS: Record<string, string> = {
-  major: 'Haupt-NK',
-  minor: 'Neben-NK',
-  recommendation: 'Empfehlung',
+  major: 'Haupt-NK', minor: 'Neben-NK', recommendation: 'Empfehlung',
 };
-
 const SEVERITY_CLASSES: Record<string, string> = {
   major: 'bg-destructive/10 text-destructive border-destructive/20',
   minor: 'bg-warning/10 text-warning border-warning/20',
@@ -80,167 +66,158 @@ const SEVERITY_CLASSES: Record<string, string> = {
 };
 
 const STATUS_TABS: { value: StatusFilter; label: string }[] = [
-  { value: 'all', label: 'Alle' },
-  { value: 'overdue', label: 'Überfällig' },
+  { value: 'all',         label: 'Alle' },
+  { value: 'overdue',     label: 'Überfällig' },
   { value: 'in-progress', label: 'In Bearbeitung' },
-  { value: 'pending', label: 'Ausstehend' },
-  { value: 'completed', label: 'Abgeschlossen' },
+  { value: 'pending',     label: 'Ausstehend' },
+  { value: 'completed',   label: 'Abgeschlossen' },
 ];
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getEffectiveStatus(task: DbAuditTaskFull): TaskStatus {
   if (task.status === 'completed') return 'completed';
-  const due = parseISO(task.due_date);
-  if (isBefore(due, startOfDay(new Date()))) return 'overdue';
+  if (isBefore(parseISO(task.due_date), startOfDay(new Date()))) return 'overdue';
   return task.status as TaskStatus;
 }
 
-function formatDue(dateStr: string): string {
-  return format(parseISO(dateStr), 'dd.MM.yyyy');
-}
+function ss(key: string) { return sessionStorage.getItem(key) ?? ''; }
 
-// ─── TaskRow ─────────────────────────────────────────────────────────────────
+// ─── CompleteButton ───────────────────────────────────────────────────────────
+
+const CompleteButton = memo(({ task, onComplete }: {
+  task: DbAuditTaskFull;
+  onComplete: (task: DbAuditTaskFull) => void;
+}) => {
+  const [hovered, setHovered] = useState(false);
+  const isCompleted = task.status === 'completed';
+
+  const Icon = isCompleted
+    ? hovered ? RotateCcw : CheckCircle2
+    : hovered ? CheckCircle2 : Circle;
+
+  return (
+    <button
+      data-no-dialog
+      onClick={(e) => { e.stopPropagation(); onComplete(task); }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      title={isCompleted ? 'Als offen markieren' : 'Als erledigt markieren'}
+      className={cn(
+        'shrink-0 transition-colors rounded-full p-0.5',
+        isCompleted
+          ? hovered ? 'text-muted-foreground' : 'text-success'
+          : hovered ? 'text-success' : 'text-muted-foreground/40 hover:text-muted-foreground'
+      )}
+    >
+      <Icon className="h-5 w-5" />
+    </button>
+  );
+});
+CompleteButton.displayName = 'CompleteButton';
+
+// ─── TaskRow ──────────────────────────────────────────────────────────────────
 
 interface TaskRowProps {
   task: DbAuditTaskFull;
-  onToggle: (task: DbAuditTaskFull) => void;
+  isSelected: boolean;
+  onSelect: (id: string) => void;
+  onComplete: (task: DbAuditTaskFull) => void;
   onEdit: (task: DbAuditTaskFull) => void;
 }
 
-const TaskRow = memo(({ task, onToggle, onEdit }: TaskRowProps) => {
+const TaskRow = memo(({ task, isSelected, onSelect, onComplete, onEdit }: TaskRowProps) => {
   const navigate = useNavigate();
   const effectiveStatus = getEffectiveStatus(task);
-  const statusCfg = TASK_STATUS_CONFIG[effectiveStatus];
-  const isOverdue = effectiveStatus === 'overdue';
+  const statusCfg  = TASK_STATUS_CONFIG[effectiveStatus];
+  const isOverdue  = effectiveStatus === 'overdue';
   const isCompleted = task.status === 'completed';
-  const isFinding = task.category === 'finding';
+  const isFinding  = task.category === 'finding';
 
-  const clientName = task.audits?.clients?.name ?? '';
-  const auditType = task.audits
-    ? (AUDIT_TYPE_LABELS[task.audits.type as AuditType] ?? task.audits.type)
-    : '';
-  const auditDate = task.audits ? format(parseISO(task.audits.scheduled_date), 'dd.MM.yyyy') : '';
-
-  const handleRowClick = (e: React.MouseEvent) => {
-    const target = e.target as HTMLElement;
-    if (target.closest('[data-no-dialog]')) return;
-    onEdit(task);
-  };
+  const clientName  = task.audits?.clients?.name ?? '';
+  const auditorName = task.audits?.auditors?.name ?? '';
+  const auditType   = task.audits ? (AUDIT_TYPE_LABELS[task.audits.type as AuditType] ?? task.audits.type) : '';
+  const auditDate   = task.audits ? format(parseISO(task.audits.scheduled_date), 'dd.MM.yyyy') : '';
 
   return (
     <div
       className={cn(
-        'flex items-start gap-3 px-4 py-3 border-b border-border/50 last:border-0',
-        'cursor-pointer hover:bg-muted/30 transition-colors',
-        isOverdue && 'bg-destructive/5',
-        isCompleted && 'opacity-60'
+        'flex items-center gap-3 px-4 py-3 border-b border-border/50 last:border-0',
+        'cursor-pointer hover:bg-muted/30 transition-colors group',
+        isSelected && 'bg-primary/5',
+        isOverdue && !isSelected && 'bg-destructive/5',
+        isCompleted && 'opacity-60',
       )}
-      onClick={handleRowClick}
+      onClick={(e) => {
+        if ((e.target as HTMLElement).closest('[data-no-dialog]')) return;
+        onEdit(task);
+      }}
     >
-      {/* Checkbox — status toggle */}
-      <div
-        data-no-dialog
-        className="pt-0.5 shrink-0"
-        onClick={(e) => e.stopPropagation()}
-      >
+      {/* Auswahl-Checkbox */}
+      <div data-no-dialog className="shrink-0" onClick={(e) => e.stopPropagation()}>
         <Checkbox
-          checked={isCompleted}
-          onCheckedChange={() => onToggle(task)}
-          className="mt-0.5"
+          checked={isSelected}
+          onCheckedChange={() => onSelect(task.id)}
+          className="opacity-0 group-hover:opacity-100 data-[state=checked]:opacity-100 transition-opacity"
         />
       </div>
 
-      {/* Main content */}
+      {/* Erledigt-Button */}
+      <CompleteButton task={task} onComplete={onComplete} />
+
+      {/* Content */}
       <div className="flex-1 min-w-0">
-        {/* Row 1: category badge + title */}
-        <div className="flex flex-wrap items-center gap-2 mb-1">
+        <div className="flex flex-wrap items-center gap-2 mb-0.5">
           <Badge variant="outline" className="text-xs shrink-0 font-normal">
             {isFinding ? 'Befund' : 'Aufgabe'}
           </Badge>
           {isFinding && task.severity && (
-            <Badge
-              variant="outline"
-              className={cn('text-xs shrink-0', SEVERITY_CLASSES[task.severity])}
-            >
+            <Badge variant="outline" className={cn('text-xs shrink-0', SEVERITY_CLASSES[task.severity])}>
               {SEVERITY_LABELS[task.severity] ?? task.severity}
             </Badge>
           )}
-          <span
-            className={cn(
-              'text-sm font-medium truncate',
-              isCompleted && 'line-through text-muted-foreground'
-            )}
-          >
+          <span className={cn('text-sm font-medium truncate', isCompleted && 'line-through text-muted-foreground')}>
             {task.title}
           </span>
         </div>
 
-        {/* Row 2: description */}
         {task.description && (
-          <p className="text-xs text-muted-foreground mb-1.5 line-clamp-1">
-            {task.description}
-          </p>
+          <p className="text-xs text-muted-foreground mb-1 line-clamp-1">{task.description}</p>
         )}
 
-        {/* Row 3: meta */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-          <span
-            className={cn(
-              'flex items-center gap-1',
-              isOverdue && 'text-destructive font-medium'
-            )}
-          >
+          <span className={cn('flex items-center gap-1', isOverdue && 'text-destructive font-medium')}>
             <Calendar className="h-3 w-3 shrink-0" />
-            {formatDue(task.due_date)}
+            {format(parseISO(task.due_date), 'dd.MM.yyyy')}
           </span>
-
           {task.assigned_to && (
-            <span className="flex items-center gap-1">
-              <User className="h-3 w-3 shrink-0" />
-              {task.assigned_to}
-            </span>
+            <span className="flex items-center gap-1"><User className="h-3 w-3 shrink-0" />{task.assigned_to}</span>
           )}
-
+          {auditorName && (
+            <span className="flex items-center gap-1"><UserCheck className="h-3 w-3 shrink-0" />{auditorName}</span>
+          )}
           {clientName && (
-            <span className="flex items-center gap-1">
-              <Building2 className="h-3 w-3 shrink-0" />
-              {clientName}
-            </span>
+            <span className="flex items-center gap-1"><Building2 className="h-3 w-3 shrink-0" />{clientName}</span>
           )}
-
           {auditType && (
             <span className="flex items-center gap-1">
               <Tag className="h-3 w-3 shrink-0" />
-              {auditType}
-              {auditDate && ` – ${auditDate}`}
+              {auditType}{auditDate && ` – ${auditDate}`}
             </span>
           )}
         </div>
       </div>
 
-      {/* Right: status badge + navigate */}
-      <div className="flex items-center gap-2 shrink-0 self-center">
-        <Badge
-          className={cn(
-            'text-xs hidden sm:inline-flex',
-            statusCfg.bg,
-            statusCfg.color
-          )}
-        >
+      {/* Right */}
+      <div className="flex items-center gap-1 shrink-0">
+        <Badge className={cn('text-xs hidden sm:inline-flex', statusCfg.bg, statusCfg.color)}>
           {statusCfg.label}
         </Badge>
         {task.audits && (
           <Button
-            data-no-dialog
-            size="icon"
-            variant="ghost"
-            className="h-7 w-7 shrink-0"
-            title="Zum Audit navigieren"
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(`/audits/${task.audits!.id}`);
-            }}
+            data-no-dialog size="icon" variant="ghost" className="h-7 w-7"
+            title="Zum Audit"
+            onClick={(e) => { e.stopPropagation(); navigate(`/audits/${task.audits!.id}`); }}
           >
             <ExternalLink className="h-4 w-4" />
           </Button>
@@ -251,44 +228,56 @@ const TaskRow = memo(({ task, onToggle, onEdit }: TaskRowProps) => {
 });
 TaskRow.displayName = 'TaskRow';
 
-// ─── TaskGroup ───────────────────────────────────────────────────────────────
+// ─── TaskGroup ────────────────────────────────────────────────────────────────
 
 interface TaskGroupProps {
   label: string;
   tasks: DbAuditTaskFull[];
-  onToggle: (task: DbAuditTaskFull) => void;
+  selectedIds: Set<string>;
+  onSelect: (id: string) => void;
+  onSelectAll: (ids: string[]) => void;
+  onComplete: (task: DbAuditTaskFull) => void;
   onEdit: (task: DbAuditTaskFull) => void;
 }
 
-const TaskGroup = ({ label, tasks, onToggle, onEdit }: TaskGroupProps) => {
+const TaskGroup = ({ label, tasks, selectedIds, onSelect, onSelectAll, onComplete, onEdit }: TaskGroupProps) => {
   const [collapsed, setCollapsed] = useState(false);
+  const allSelected = tasks.length > 0 && tasks.every(t => selectedIds.has(t.id));
+  const someSelected = tasks.some(t => selectedIds.has(t.id));
 
   return (
     <div className="mb-4 rounded-lg border border-border bg-card overflow-hidden">
-      <button
-        className="w-full flex items-center justify-between px-4 py-2.5 bg-muted/40 hover:bg-muted/60 transition-colors"
-        onClick={() => setCollapsed((c) => !c)}
-      >
-        <div className="flex items-center gap-2">
-          {collapsed ? (
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          ) : (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-          )}
+      <div className="flex items-center gap-2 px-4 py-2.5 bg-muted/40">
+        {/* Gruppe alle auswählen */}
+        <div onClick={(e) => e.stopPropagation()}>
+          <Checkbox
+            checked={allSelected}
+            data-state={someSelected && !allSelected ? 'indeterminate' : undefined}
+            onCheckedChange={() => onSelectAll(tasks.map(t => t.id))}
+            className={cn('transition-opacity', !someSelected && 'opacity-0 group-hover:opacity-100')}
+          />
+        </div>
+        <button
+          className="flex items-center gap-2 flex-1 text-left"
+          onClick={() => setCollapsed(c => !c)}
+        >
+          {collapsed ? <ChevronRight className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
           <span className="font-semibold text-sm">{label}</span>
           <span className="text-xs text-muted-foreground bg-background border border-border rounded-full px-2 py-0.5 leading-none">
             {tasks.length}
           </span>
-        </div>
-      </button>
+        </button>
+      </div>
 
       {!collapsed && (
         <div>
-          {tasks.map((task) => (
+          {tasks.map(task => (
             <TaskRow
               key={task.id}
               task={task}
-              onToggle={onToggle}
+              isSelected={selectedIds.has(task.id)}
+              onSelect={onSelect}
+              onComplete={onComplete}
               onEdit={onEdit}
             />
           ))}
@@ -298,18 +287,17 @@ const TaskGroup = ({ label, tasks, onToggle, onEdit }: TaskGroupProps) => {
   );
 };
 
-// ─── Skeleton ────────────────────────────────────────────────────────────────
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 const TasksSkeleton = () => (
   <div className="space-y-4">
-    {Array.from({ length: 3 }).map((_, gi) => (
+    {[3, 2, 4].map((count, gi) => (
       <div key={gi} className="rounded-lg border border-border overflow-hidden">
-        <div className="px-4 py-2.5 bg-muted/40">
-          <Skeleton className="h-4 w-32" />
-        </div>
-        {Array.from({ length: 3 }).map((_, ti) => (
+        <div className="px-4 py-2.5 bg-muted/40"><Skeleton className="h-4 w-32" /></div>
+        {Array.from({ length: count }).map((_, ti) => (
           <div key={ti} className="flex gap-3 px-4 py-3 border-b border-border/50 last:border-0">
-            <Skeleton className="h-4 w-4 mt-0.5 rounded" />
+            <Skeleton className="h-4 w-4 rounded" />
+            <Skeleton className="h-5 w-5 rounded-full" />
             <div className="flex-1 space-y-2">
               <Skeleton className="h-4 w-2/3" />
               <Skeleton className="h-3 w-1/2" />
@@ -321,328 +309,354 @@ const TasksSkeleton = () => (
   </div>
 );
 
-// ─── Main Page ───────────────────────────────────────────────────────────────
+// ─── FilterSelect ─────────────────────────────────────────────────────────────
+
+function FilterSelect({ value, onValueChange, width = 'w-[155px]', children }: {
+  value: string; onValueChange: (v: string) => void; width?: string; children: React.ReactNode;
+}) {
+  return (
+    <Select value={value} onValueChange={onValueChange}>
+      <SelectTrigger className={cn('h-9', width)}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>{children}</SelectContent>
+    </Select>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function Tasks() {
   const scrollRef = useScrollPersistence();
 
-  const [searchQuery, setSearchQuery] = useState(
-    () => sessionStorage.getItem(SS_SEARCH) ?? ''
-  );
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>(
-    () => (sessionStorage.getItem(SS_STATUS) as StatusFilter) ?? 'all'
-  );
-  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>(
-    () => (sessionStorage.getItem(SS_CATEGORY) as CategoryFilter) ?? 'all'
-  );
-  const [dueFilter, setDueFilter] = useState<DueFilter>(
-    () => (sessionStorage.getItem(SS_DUE) as DueFilter) ?? 'all'
-  );
-  const [groupBy, setGroupBy] = useState<GroupBy>(
-    () => (sessionStorage.getItem(SS_GROUP) as GroupBy) ?? 'status'
+  const [searchQuery,    setSearchQuery]    = useState(() => ss(SS_SEARCH));
+  const [statusFilter,   setStatusFilter]   = useState<StatusFilter>(() => (ss(SS_STATUS) as StatusFilter) || 'all');
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>(() => (ss(SS_CATEGORY) as CategoryFilter) || 'all');
+  const [dueFilter,      setDueFilter]      = useState<DueFilter>(() => (ss(SS_DUE) as DueFilter) || 'all');
+  const [groupBy,        setGroupBy]        = useState<GroupBy>(() => (ss(SS_GROUP) as GroupBy) || 'status');
+  const [sortDir,        setSortDir]        = useState<SortDir>(() => (ss(SS_SORT_DIR) as SortDir) || 'asc');
+  const [auditorFilter,  setAuditorFilter]  = useState(() => ss(SS_AUDITOR));
+  const [clientFilter,   setClientFilter]   = useState(() => ss(SS_CLIENT));
+  const [auditTypeFilter,setAuditTypeFilter]= useState(() => ss(SS_AUDIT_TYPE));
+  const [severityFilter, setSeverityFilter] = useState(() => ss(SS_SEVERITY));
+  const [assignedFilter, setAssignedFilter] = useState(() => ss(SS_ASSIGNED));
+  const [advancedOpen,   setAdvancedOpen]   = useState(
+    () => !!(ss(SS_AUDITOR) || ss(SS_CLIENT) || ss(SS_AUDIT_TYPE) || ss(SS_SEVERITY) || ss(SS_ASSIGNED))
   );
 
-  const [editTask, setEditTask] = useState<DbAuditTaskFull | null>(null);
-  const [editOpen, setEditOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [editTask,    setEditTask]    = useState<DbAuditTaskFull | null>(null);
+  const [editOpen,    setEditOpen]    = useState(false);
 
   const { data: tasks, isLoading } = useAllAuditTasks();
   const updateTask = useUpdateAuditTask();
 
-  // Persisted setters
-  const setSearch = useCallback((v: string) => {
-    setSearchQuery(v);
-    sessionStorage.setItem(SS_SEARCH, v);
-  }, []);
+  // ── Persisted setters ────────────────────────────────────────────────────
 
-  const setStatus = useCallback((v: StatusFilter) => {
-    setStatusFilter(v);
-    sessionStorage.setItem(SS_STATUS, v);
-  }, []);
+  const persist = useCallback(<T extends string>(setter: (v: T) => void, key: string) =>
+    (v: T) => { setter(v); sessionStorage.setItem(key, v); }, []);
 
-  const setCategory = useCallback((v: CategoryFilter) => {
-    setCategoryFilter(v);
-    sessionStorage.setItem(SS_CATEGORY, v);
-  }, []);
-
-  const setDue = useCallback((v: DueFilter) => {
-    setDueFilter(v);
-    sessionStorage.setItem(SS_DUE, v);
-  }, []);
-
-  const setGroup = useCallback((v: GroupBy) => {
-    setGroupBy(v);
-    sessionStorage.setItem(SS_GROUP, v);
-  }, []);
+  const setSearch    = useCallback((v: string) => { setSearchQuery(v); sessionStorage.setItem(SS_SEARCH, v); }, []);
+  const setStatus    = useCallback(persist(setStatusFilter,    SS_STATUS),    [persist]);
+  const setCategory  = useCallback(persist(setCategoryFilter,  SS_CATEGORY),  [persist]);
+  const setDue       = useCallback(persist(setDueFilter,       SS_DUE),       [persist]);
+  const setGroup     = useCallback(persist(setGroupBy,         SS_GROUP),     [persist]);
+  const setSort      = useCallback(persist(setSortDir,         SS_SORT_DIR),  [persist]);
+  const setAuditor   = useCallback(persist(setAuditorFilter,   SS_AUDITOR),   [persist]);
+  const setClient    = useCallback(persist(setClientFilter,    SS_CLIENT),    [persist]);
+  const setAuditType = useCallback(persist(setAuditTypeFilter, SS_AUDIT_TYPE),[persist]);
+  const setSeverity  = useCallback(persist(setSeverityFilter,  SS_SEVERITY),  [persist]);
+  const setAssigned  = useCallback(persist(setAssignedFilter,  SS_ASSIGNED),  [persist]);
 
   const handleReset = useCallback(() => {
-    setSearchQuery('');
-    setStatusFilter('all');
-    setCategoryFilter('all');
-    setDueFilter('all');
-    setGroupBy('status');
-    [SS_SEARCH, SS_STATUS, SS_CATEGORY, SS_DUE, SS_GROUP].forEach((k) =>
-      sessionStorage.removeItem(k)
-    );
+    setSearchQuery(''); setStatusFilter('all'); setCategoryFilter('all');
+    setDueFilter('all'); setGroupBy('status'); setSortDir('asc');
+    setAuditorFilter(''); setClientFilter(''); setAuditTypeFilter('');
+    setSeverityFilter(''); setAssignedFilter(''); setSelectedIds(new Set());
+    ALL_SS_KEYS.forEach(k => sessionStorage.removeItem(k));
   }, []);
 
-  const handleToggle = useCallback(
-    async (task: DbAuditTaskFull) => {
-      const newStatus: TaskStatus =
-        task.status === 'completed' ? 'pending' : 'completed';
-      try {
-        await updateTask.mutateAsync({
-          id: task.id,
-          status: newStatus,
-          completed_at:
-            newStatus === 'completed' ? new Date().toISOString() : null,
-        });
-        toast.success(
-          newStatus === 'completed'
-            ? 'Aufgabe abgeschlossen'
-            : 'Aufgabe wieder geöffnet'
-        );
-      } catch {
-        toast.error('Fehler beim Aktualisieren');
-      }
-    },
-    [updateTask]
-  );
+  // ── Select ───────────────────────────────────────────────────────────────
 
-  const handleEdit = useCallback((task: DbAuditTaskFull) => {
-    setEditTask(task);
-    setEditOpen(true);
+  const handleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) { next.delete(id); } else { next.add(id); }
+      return next;
+    });
   }, []);
 
-  // ── Filter ──────────────────────────────────────────────────────────────
+  const handleSelectAll = useCallback((ids: string[]) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      const allIn = ids.every(id => next.has(id));
+      ids.forEach(id => allIn ? next.delete(id) : next.add(id));
+      return next;
+    });
+  }, []);
+
+  // ── Complete ─────────────────────────────────────────────────────────────
+
+  const handleComplete = useCallback(async (task: DbAuditTaskFull) => {
+    const newStatus: TaskStatus = task.status === 'completed' ? 'pending' : 'completed';
+    try {
+      await updateTask.mutateAsync({
+        id: task.id, status: newStatus,
+        completed_at: newStatus === 'completed' ? new Date().toISOString() : null,
+      });
+      toast.success(newStatus === 'completed' ? 'Aufgabe abgeschlossen' : 'Aufgabe wieder geöffnet');
+    } catch {
+      toast.error('Fehler beim Aktualisieren');
+    }
+  }, [updateTask]);
+
+  const handleBulkComplete = useCallback(async () => {
+    const toComplete = (tasks ?? []).filter(t => selectedIds.has(t.id) && t.status !== 'completed');
+    if (!toComplete.length) { setSelectedIds(new Set()); return; }
+    try {
+      await Promise.all(toComplete.map(t =>
+        updateTask.mutateAsync({ id: t.id, status: 'completed', completed_at: new Date().toISOString() })
+      ));
+      toast.success(`${toComplete.length} Aufgabe${toComplete.length !== 1 ? 'n' : ''} abgeschlossen`);
+    } catch {
+      toast.error('Fehler beim Aktualisieren');
+    }
+    setSelectedIds(new Set());
+  }, [tasks, selectedIds, updateTask]);
+
+  const handleEdit = useCallback((task: DbAuditTaskFull) => { setEditTask(task); setEditOpen(true); }, []);
+
+  // ── Dynamic options ───────────────────────────────────────────────────────
+
+  const { uniqueAuditors, uniqueClients, uniqueAssigned } = useMemo(() => {
+    if (!tasks) return { uniqueAuditors: [], uniqueClients: [], uniqueAssigned: [] };
+    const auditors = new Map<string, string>();
+    const clients  = new Map<string, string>();
+    const assigned = new Set<string>();
+    tasks.forEach(t => {
+      if (t.audits?.auditors) auditors.set(t.audits.auditors.id, t.audits.auditors.name);
+      if (t.audits?.clients)  clients.set(t.audits.clients.id,   t.audits.clients.name);
+      if (t.assigned_to)      assigned.add(t.assigned_to);
+    });
+    return {
+      uniqueAuditors: [...auditors.entries()].sort(([,a],[,b]) => a.localeCompare(b,'de')),
+      uniqueClients:  [...clients.entries()].sort(([,a],[,b])  => a.localeCompare(b,'de')),
+      uniqueAssigned: [...assigned].sort((a,b) => a.localeCompare(b,'de')),
+    };
+  }, [tasks]);
+
+  // ── Filter ────────────────────────────────────────────────────────────────
 
   const filteredTasks = useMemo(() => {
     if (!tasks) return [];
-
     return tasks
-      .filter((task) => {
-        const effectiveStatus = getEffectiveStatus(task);
-
+      .filter(task => {
+        const eff = getEffectiveStatus(task);
         if (searchQuery) {
           const q = searchQuery.toLowerCase();
-          const matchesTitle = task.title.toLowerCase().includes(q);
-          const matchesAssigned = (task.assigned_to ?? '')
-            .toLowerCase()
-            .includes(q);
-          const matchesClient = (task.audits?.clients?.name ?? '')
-            .toLowerCase()
-            .includes(q);
-          if (!matchesTitle && !matchesAssigned && !matchesClient) return false;
+          if (
+            !task.title.toLowerCase().includes(q) &&
+            !(task.assigned_to ?? '').toLowerCase().includes(q) &&
+            !(task.audits?.clients?.name ?? '').toLowerCase().includes(q) &&
+            !(task.audits?.auditors?.name ?? '').toLowerCase().includes(q)
+          ) return false;
         }
-
-        if (statusFilter !== 'all' && effectiveStatus !== statusFilter)
-          return false;
-
-        if (categoryFilter === 'task' && task.category === 'finding')
-          return false;
-        if (categoryFilter === 'finding' && task.category !== 'finding')
-          return false;
-
+        if (statusFilter   !== 'all' && eff !== statusFilter)                   return false;
+        if (categoryFilter === 'task'    && task.category === 'finding')         return false;
+        if (categoryFilter === 'finding' && task.category !== 'finding')         return false;
         if (dueFilter !== 'all') {
           const due = parseISO(task.due_date);
-          if (dueFilter === 'overdue' && !isBefore(due, startOfDay(new Date())))
-            return false;
-          if (dueFilter === 'today' && !isToday(due)) return false;
-          if (dueFilter === 'this-week' && !isThisWeek(due, { weekStartsOn: 1 }))
-            return false;
-          if (dueFilter === 'this-month' && !isThisMonth(due)) return false;
+          if (dueFilter === 'overdue'    && !isBefore(due, startOfDay(new Date()))) return false;
+          if (dueFilter === 'today'      && !isToday(due))                          return false;
+          if (dueFilter === 'this-week'  && !isThisWeek(due, { weekStartsOn: 1 }))  return false;
+          if (dueFilter === 'this-month' && !isThisMonth(due))                      return false;
         }
-
+        if (auditorFilter   && task.audits?.auditors?.id !== auditorFilter)   return false;
+        if (clientFilter    && task.audits?.clients?.id  !== clientFilter)    return false;
+        if (auditTypeFilter && task.audits?.type         !== auditTypeFilter) return false;
+        if (severityFilter  && task.severity             !== severityFilter)  return false;
+        if (assignedFilter  && task.assigned_to          !== assignedFilter)  return false;
         return true;
       })
-      .sort(
-        (a, b) =>
-          parseISO(a.due_date).getTime() - parseISO(b.due_date).getTime()
-      );
-  }, [tasks, searchQuery, statusFilter, categoryFilter, dueFilter]);
+      .sort((a, b) => {
+        const diff = parseISO(a.due_date).getTime() - parseISO(b.due_date).getTime();
+        return sortDir === 'asc' ? diff : -diff;
+      });
+  }, [tasks, searchQuery, statusFilter, categoryFilter, dueFilter, sortDir,
+      auditorFilter, clientFilter, auditTypeFilter, severityFilter, assignedFilter]);
 
-  // ── Grouping ────────────────────────────────────────────────────────────
+  // ── Grouping ──────────────────────────────────────────────────────────────
 
   const groups = useMemo(() => {
     const map = new Map<string, { tasks: DbAuditTaskFull[]; order: number }>();
-
-    filteredTasks.forEach((task) => {
-      let key: string;
-      let order: number;
-
+    filteredTasks.forEach(task => {
+      let key: string; let order: number;
       switch (groupBy) {
         case 'status': {
           const eff = getEffectiveStatus(task);
-          key = TASK_STATUS_CONFIG[eff].label;
-          order = STATUS_GROUP_ORDER.indexOf(eff);
-          break;
+          key = TASK_STATUS_CONFIG[eff].label; order = STATUS_GROUP_ORDER.indexOf(eff); break;
         }
-        case 'due-date': {
+        case 'due-date':
           key = format(parseISO(task.due_date), 'MMMM yyyy', { locale: de });
-          order = parseISO(task.due_date).getTime();
-          break;
-        }
-        case 'audit': {
+          order = parseISO(task.due_date).getTime(); break;
+        case 'audit':
           if (task.audits) {
-            const typeLabel =
-              AUDIT_TYPE_LABELS[task.audits.type as AuditType] ??
-              task.audits.type;
-            const dateStr = format(parseISO(task.audits.scheduled_date), 'dd.MM.yyyy');
-            key = `${typeLabel} – ${dateStr}`;
-            order = parseISO(task.audits.scheduled_date).getTime();
-          } else {
-            key = 'Kein Audit';
-            order = Number.MAX_SAFE_INTEGER;
-          }
+            const lbl  = AUDIT_TYPE_LABELS[task.audits.type as AuditType] ?? task.audits.type;
+            const date = format(parseISO(task.audits.scheduled_date), 'dd.MM.yyyy');
+            key = `${lbl} – ${date}`; order = parseISO(task.audits.scheduled_date).getTime();
+          } else { key = 'Kein Audit'; order = Number.MAX_SAFE_INTEGER; }
           break;
-        }
-        case 'client': {
-          key = task.audits?.clients?.name ?? 'Kein Kunde';
-          order = 0;
-          break;
-        }
-        case 'none':
+        case 'client':
+          key = task.audits?.clients?.name ?? 'Kein Kunde'; order = 0; break;
+        case 'auditor':
+          key = task.audits?.auditors?.name ?? 'Kein Auditor'; order = 0; break;
         default:
-          key = 'Alle Aufgaben';
-          order = 0;
-          break;
+          key = 'Alle Aufgaben'; order = 0;
       }
-
       if (!map.has(key)) map.set(key, { tasks: [], order });
       map.get(key)!.tasks.push(task);
     });
-
     return [...map.entries()]
-      .sort(([ka, a], [kb, b]) => {
-        if (groupBy === 'client') return ka.localeCompare(kb, 'de');
-        return a.order - b.order;
-      })
-      .map(([label, { tasks: groupTasks }]) => ({ label, tasks: groupTasks }));
+      .sort(([ka, a], [kb, b]) =>
+        (groupBy === 'client' || groupBy === 'auditor') ? ka.localeCompare(kb, 'de') : a.order - b.order
+      )
+      .map(([label, { tasks: gt }]) => ({ label, tasks: gt }));
   }, [filteredTasks, groupBy]);
 
-  const hasActiveFilters =
-    !!(searchQuery) ||
-    statusFilter !== 'all' ||
-    categoryFilter !== 'all' ||
-    dueFilter !== 'all';
+  const advancedFilterCount = [auditorFilter, clientFilter, auditTypeFilter, severityFilter, assignedFilter].filter(Boolean).length;
+  const hasActiveFilters = !!searchQuery || statusFilter !== 'all' || categoryFilter !== 'all' || dueFilter !== 'all' || advancedFilterCount > 0;
 
-  // ── Render ──────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Sticky header + filters */}
+      {/* Sticky header */}
       <div className="sticky top-0 z-10 bg-background border-b border-border">
         <div className="px-4 md:px-6 pt-4 md:pt-6 pb-0">
-          {/* Title row */}
+
+          {/* Title */}
           <div className="flex items-center gap-3 mb-4">
             <CheckSquare className="h-6 w-6 text-primary shrink-0" />
             <h1 className="text-xl font-bold">Aufgaben</h1>
             {!isLoading && (
               <span className="text-xs text-muted-foreground bg-muted rounded-full px-2.5 py-0.5 font-medium">
-                {filteredTasks.length}{' '}
-                {filteredTasks.length === 1 ? 'Aufgabe' : 'Aufgaben'}
+                {filteredTasks.length} {filteredTasks.length === 1 ? 'Aufgabe' : 'Aufgaben'}
               </span>
             )}
           </div>
 
-          {/* Filter controls */}
-          <div className="flex flex-wrap gap-2 mb-3">
-            {/* Search */}
+          {/* Primary filters */}
+          <div className="flex flex-wrap gap-2 mb-2">
             <div className="relative flex-1 min-w-[200px] max-w-xs">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
               <Input
                 className="pl-9 h-9"
-                placeholder="Titel, Zuständige, Kunde..."
+                placeholder="Titel, Zuständige, Auditor, Kunde..."
                 value={searchQuery}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={e => setSearch(e.target.value)}
               />
               {searchQuery && (
-                <button
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  onClick={() => setSearch('')}
-                  aria-label="Suche löschen"
-                >
+                <button className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setSearch('')}>
                   <X className="h-4 w-4" />
                 </button>
               )}
             </div>
 
-            {/* Category */}
-            <Select
-              value={categoryFilter}
-              onValueChange={(v) => setCategory(v as CategoryFilter)}
-            >
-              <SelectTrigger className="h-9 w-[150px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Alle Typen</SelectItem>
-                <SelectItem value="task">Nur Aufgaben</SelectItem>
-                <SelectItem value="finding">Nur Befunde</SelectItem>
-              </SelectContent>
-            </Select>
+            <FilterSelect value={categoryFilter} onValueChange={v => setCategory(v as CategoryFilter)} width="w-[145px]">
+              <SelectItem value="all">Alle Typen</SelectItem>
+              <SelectItem value="task">Nur Aufgaben</SelectItem>
+              <SelectItem value="finding">Nur Befunde</SelectItem>
+            </FilterSelect>
 
-            {/* Due date */}
-            <Select
-              value={dueFilter}
-              onValueChange={(v) => setDue(v as DueFilter)}
-            >
-              <SelectTrigger className="h-9 w-[160px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Alle Fristen</SelectItem>
-                <SelectItem value="overdue">Überfällig</SelectItem>
-                <SelectItem value="today">Heute fällig</SelectItem>
-                <SelectItem value="this-week">Diese Woche</SelectItem>
-                <SelectItem value="this-month">Dieser Monat</SelectItem>
-              </SelectContent>
-            </Select>
+            <FilterSelect value={dueFilter} onValueChange={v => setDue(v as DueFilter)} width="w-[155px]">
+              <SelectItem value="all">Alle Fristen</SelectItem>
+              <SelectItem value="overdue">Überfällig</SelectItem>
+              <SelectItem value="today">Heute fällig</SelectItem>
+              <SelectItem value="this-week">Diese Woche</SelectItem>
+              <SelectItem value="this-month">Dieser Monat</SelectItem>
+            </FilterSelect>
 
-            {/* Group by */}
-            <Select
-              value={groupBy}
-              onValueChange={(v) => setGroup(v as GroupBy)}
+            <FilterSelect value={groupBy} onValueChange={v => setGroup(v as GroupBy)} width="w-[155px]">
+              <SelectItem value="status">Nach Status</SelectItem>
+              <SelectItem value="due-date">Nach Fälligkeit</SelectItem>
+              <SelectItem value="auditor">Nach Auditor</SelectItem>
+              <SelectItem value="client">Nach Kunde</SelectItem>
+              <SelectItem value="audit">Nach Audit</SelectItem>
+              <SelectItem value="none">Keine Gruppierung</SelectItem>
+            </FilterSelect>
+
+            <Button variant="outline" size="sm" className="h-9 gap-1.5 px-3"
+              onClick={() => setSort(sortDir === 'asc' ? 'desc' : 'asc')}
+              title={sortDir === 'asc' ? 'Fälligkeit aufsteigend' : 'Fälligkeit absteigend'}
             >
-              <SelectTrigger className="h-9 w-[160px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="status">Nach Status</SelectItem>
-                <SelectItem value="due-date">Nach Fälligkeit</SelectItem>
-                <SelectItem value="client">Nach Kunde</SelectItem>
-                <SelectItem value="audit">Nach Audit</SelectItem>
-                <SelectItem value="none">Keine Gruppierung</SelectItem>
-              </SelectContent>
-            </Select>
+              <ArrowUpDown className="h-3.5 w-3.5" />
+              <span className="text-xs">{sortDir === 'asc' ? 'Aufsteigend' : 'Absteigend'}</span>
+            </Button>
+
+            <Button
+              variant={advancedFilterCount > 0 ? 'default' : 'outline'}
+              size="sm" className="h-9 gap-1.5 px-3"
+              onClick={() => setAdvancedOpen(o => !o)}
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              <span className="text-xs">Filter</span>
+              {advancedFilterCount > 0 && (
+                <span className="ml-0.5 text-xs bg-background/20 rounded-full px-1.5 py-0.5 leading-none">
+                  {advancedFilterCount}
+                </span>
+              )}
+            </Button>
 
             {hasActiveFilters && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-9"
-                onClick={handleReset}
-              >
-                <X className="h-4 w-4 mr-1.5" />
-                Zurücksetzen
+              <Button variant="ghost" size="sm" className="h-9" onClick={handleReset}>
+                <X className="h-4 w-4 mr-1.5" />Zurücksetzen
               </Button>
             )}
           </div>
 
+          {/* Advanced filters */}
+          {advancedOpen && (
+            <div className="flex flex-wrap gap-2 mb-2 pb-2 border-b border-border/50">
+              <FilterSelect value={auditorFilter || 'all'} onValueChange={v => setAuditor(v === 'all' ? '' : v)} width="w-[175px]">
+                <SelectItem value="all">Alle Auditoren</SelectItem>
+                {uniqueAuditors.map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
+              </FilterSelect>
+
+              <FilterSelect value={clientFilter || 'all'} onValueChange={v => setClient(v === 'all' ? '' : v)} width="w-[175px]">
+                <SelectItem value="all">Alle Kunden</SelectItem>
+                {uniqueClients.map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
+              </FilterSelect>
+
+              <FilterSelect value={auditTypeFilter || 'all'} onValueChange={v => setAuditType(v === 'all' ? '' : v)} width="w-[170px]">
+                <SelectItem value="all">Alle Audit-Typen</SelectItem>
+                {Object.entries(AUDIT_TYPE_LABELS).map(([val, lbl]) => <SelectItem key={val} value={val}>{lbl}</SelectItem>)}
+              </FilterSelect>
+
+              <FilterSelect value={severityFilter || 'all'} onValueChange={v => setSeverity(v === 'all' ? '' : v)} width="w-[165px]">
+                <SelectItem value="all">Alle Schweregrade</SelectItem>
+                <SelectItem value="major">Haupt-NK</SelectItem>
+                <SelectItem value="minor">Neben-NK</SelectItem>
+                <SelectItem value="recommendation">Empfehlung</SelectItem>
+              </FilterSelect>
+
+              <FilterSelect value={assignedFilter || 'all'} onValueChange={v => setAssigned(v === 'all' ? '' : v)} width="w-[170px]">
+                <SelectItem value="all">Alle Zuständigen</SelectItem>
+                {uniqueAssigned.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+              </FilterSelect>
+            </div>
+          )}
+
           {/* Status tabs */}
           <div className="flex gap-0 -mb-px overflow-x-auto">
-            {STATUS_TABS.map((tab) => (
-              <button
-                key={tab.value}
-                onClick={() => setStatus(tab.value)}
+            {STATUS_TABS.map(tab => (
+              <button key={tab.value} onClick={() => setStatus(tab.value)}
                 className={cn(
                   'px-3 py-2 text-xs font-medium whitespace-nowrap border-b-2 transition-colors',
                   statusFilter === tab.value
                     ? 'border-primary text-primary'
                     : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
                 )}
-              >
-                {tab.label}
-              </button>
+              >{tab.label}</button>
             ))}
           </div>
         </div>
@@ -650,33 +664,25 @@ export default function Tasks() {
 
       {/* Scrollable content */}
       <div ref={scrollRef} className="flex-1 overflow-auto p-4 md:p-6">
-        {isLoading ? (
-          <TasksSkeleton />
-        ) : filteredTasks.length === 0 ? (
+        {isLoading ? <TasksSkeleton /> : filteredTasks.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <CheckSquare className="h-14 w-14 text-muted-foreground/20 mb-4" />
-            <p className="text-muted-foreground font-medium mb-1">
-              Keine Aufgaben gefunden
-            </p>
+            <p className="text-muted-foreground font-medium mb-1">Keine Aufgaben gefunden</p>
             {hasActiveFilters && (
-              <Button
-                variant="link"
-                size="sm"
-                onClick={handleReset}
-                className="text-muted-foreground"
-              >
+              <Button variant="link" size="sm" onClick={handleReset} className="text-muted-foreground">
                 Filter zurücksetzen
               </Button>
             )}
           </div>
         ) : (
           <div>
-            {groups.map(({ label, tasks: groupTasks }) => (
+            {groups.map(({ label, tasks: gt }) => (
               <TaskGroup
-                key={label}
-                label={label}
-                tasks={groupTasks}
-                onToggle={handleToggle}
+                key={label} label={label} tasks={gt}
+                selectedIds={selectedIds}
+                onSelect={handleSelect}
+                onSelectAll={handleSelectAll}
+                onComplete={handleComplete}
                 onEdit={handleEdit}
               />
             ))}
@@ -684,12 +690,33 @@ export default function Tasks() {
         )}
       </div>
 
-      {/* Edit dialog */}
-      <EditFindingDialog
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        task={editTask}
-      />
+      {/* Bulk-Aktionsleiste */}
+      {selectedIds.size > 0 && (
+        <div className="sticky bottom-0 z-20 bg-primary text-primary-foreground px-4 py-3 flex items-center justify-between gap-3 shadow-lg">
+          <span className="text-sm font-medium">
+            {selectedIds.size} {selectedIds.size === 1 ? 'Aufgabe' : 'Aufgaben'} ausgewählt
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm" variant="secondary"
+              className="h-8 gap-1.5"
+              onClick={handleBulkComplete}
+              disabled={updateTask.isPending}
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              Als erledigt markieren
+            </Button>
+            <Button size="sm" variant="ghost"
+              className="h-8 text-primary-foreground hover:text-primary-foreground hover:bg-primary-foreground/10"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              Auswahl aufheben
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <EditFindingDialog open={editOpen} onOpenChange={setEditOpen} task={editTask} />
     </div>
   );
 }
