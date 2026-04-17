@@ -46,6 +46,9 @@ const SS_CLIENT     = 'tasks-client-filter';
 const SS_AUDIT_TYPE = 'tasks-audit-type-filter';
 const SS_SEVERITY   = 'tasks-severity-filter';
 const SS_ASSIGNED   = 'tasks-assigned-filter';
+const SS_YEAR       = 'tasks-year-filter';
+
+const CURRENT_YEAR = String(new Date().getFullYear());
 
 const ALL_SS_KEYS = [
   SS_SEARCH, SS_STATUS, SS_CATEGORY, SS_DUE, SS_GROUP,
@@ -341,6 +344,7 @@ export default function Tasks() {
   const [auditTypeFilter,setAuditTypeFilter]= useState(() => ss(SS_AUDIT_TYPE));
   const [severityFilter, setSeverityFilter] = useState(() => ss(SS_SEVERITY));
   const [assignedFilter, setAssignedFilter] = useState(() => ss(SS_ASSIGNED));
+  const [yearFilter,     setYearFilter]     = useState(() => ss(SS_YEAR) || CURRENT_YEAR);
   const [advancedOpen,   setAdvancedOpen]   = useState(
     () => !!(ss(SS_AUDITOR) || ss(SS_CLIENT) || ss(SS_AUDIT_TYPE) || ss(SS_SEVERITY) || ss(SS_ASSIGNED))
   );
@@ -368,13 +372,16 @@ export default function Tasks() {
   const setAuditType = useCallback(persist(setAuditTypeFilter, SS_AUDIT_TYPE),[persist]);
   const setSeverity  = useCallback(persist(setSeverityFilter,  SS_SEVERITY),  [persist]);
   const setAssigned  = useCallback(persist(setAssignedFilter,  SS_ASSIGNED),  [persist]);
+  const setYear      = useCallback((v: string) => { setYearFilter(v); sessionStorage.setItem(SS_YEAR, v); }, []);
 
   const handleReset = useCallback(() => {
     setSearchQuery(''); setStatusFilter('all'); setCategoryFilter('all');
     setDueFilter('all'); setGroupBy('status'); setSortDir('asc');
     setAuditorFilter(''); setClientFilter(''); setAuditTypeFilter('');
     setSeverityFilter(''); setAssignedFilter(''); setSelectedIds(new Set());
+    setYearFilter(CURRENT_YEAR);
     ALL_SS_KEYS.forEach(k => sessionStorage.removeItem(k));
+    sessionStorage.setItem(SS_YEAR, CURRENT_YEAR);
   }, []);
 
   // ── Select ───────────────────────────────────────────────────────────────
@@ -431,12 +438,13 @@ export default function Tasks() {
 
   // ── Ein Loop für alle tasks-Derivate — läuft nur bei neuen Daten ────────
 
-  const { taskMeta, todayMs, uniqueAuditors, uniqueClients, uniqueAssigned } = useMemo(() => {
+  const { taskMeta, todayMs, uniqueYears, uniqueAuditors, uniqueClients, uniqueAssigned } = useMemo(() => {
     const todayMs  = startOfDay(new Date()).getTime();
     const taskMeta = new Map<string, { dueMs: number; eff: TaskStatus }>();
     const auditors = new Map<string, string>();
     const clients  = new Map<string, string>();
     const assigned = new Set<string>();
+    const years    = new Set<number>();
 
     for (const task of tasks ?? []) {
       const dueMs = parseISO(task.due_date).getTime();
@@ -446,6 +454,7 @@ export default function Tasks() {
         dueMs < todayMs               ? 'overdue' :
                                         task.status as TaskStatus;
       taskMeta.set(task.id, { dueMs, eff });
+      years.add(new Date(dueMs).getFullYear());
       if (task.audits?.auditors) auditors.set(task.audits.auditors.id, task.audits.auditors.name);
       if (task.audits?.clients)  clients.set(task.audits.clients.id,   task.audits.clients.name);
       if (task.assigned_to)      assigned.add(task.assigned_to);
@@ -454,6 +463,7 @@ export default function Tasks() {
     return {
       taskMeta,
       todayMs,
+      uniqueYears:    [...years].sort((a, b) => b - a),
       uniqueAuditors: [...auditors.entries()].sort(([, a], [, b]) => a.localeCompare(b, 'de')),
       uniqueClients:  [...clients.entries()].sort(([, a], [, b])  => a.localeCompare(b, 'de')),
       uniqueAssigned: [...assigned].sort((a, b) => a.localeCompare(b, 'de')),
@@ -467,6 +477,7 @@ export default function Tasks() {
     return tasks
       .filter(task => {
         const { dueMs, eff } = taskMeta.get(task.id)!;
+        if (yearFilter !== 'all' && new Date(dueMs).getFullYear() !== parseInt(yearFilter)) return false;
         if (searchQuery) {
           const q = searchQuery.toLowerCase();
           if (
@@ -496,7 +507,7 @@ export default function Tasks() {
         const diff = taskMeta.get(a.id)!.dueMs - taskMeta.get(b.id)!.dueMs;
         return sortDir === 'asc' ? diff : -diff;
       });
-  }, [tasks, taskMeta, todayMs, searchQuery, statusFilter, categoryFilter, dueFilter, sortDir,
+  }, [tasks, taskMeta, todayMs, yearFilter, searchQuery, statusFilter, categoryFilter, dueFilter, sortDir,
       auditorFilter, clientFilter, auditTypeFilter, severityFilter, assignedFilter]);
 
   // ── Grouping ──────────────────────────────────────────────────────────────
@@ -577,6 +588,13 @@ export default function Tasks() {
                 </button>
               )}
             </div>
+
+            <FilterSelect value={yearFilter} onValueChange={setYear} width="w-[110px]">
+              <SelectItem value="all">Alle Jahre</SelectItem>
+              {uniqueYears.map(y => (
+                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+              ))}
+            </FilterSelect>
 
             <FilterSelect value={categoryFilter} onValueChange={v => setCategory(v as CategoryFilter)} width="w-[145px]">
               <SelectItem value="all">Alle Typen</SelectItem>
