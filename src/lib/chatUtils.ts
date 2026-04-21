@@ -18,7 +18,6 @@ interface StreamChatParams {
 
 export async function streamChat({ messages, onDelta, onDone, onError, onAgentSelected }: StreamChatParams) {
   try {
-    // Get the current user's session token for authenticated requests
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) {
       onError("Nicht angemeldet. Bitte melden Sie sich erneut an.");
@@ -77,41 +76,42 @@ export async function streamChat({ messages, onDelta, onDone, onError, onAgentSe
 
           if (line.endsWith("\r")) line = line.slice(0, -1);
 
-          // Track SSE event types
           if (line.startsWith("event: ")) {
             currentEventType = line.slice(7).trim();
             continue;
           }
 
           if (line.startsWith(":") || line.trim() === "") {
-            if (line.trim() === "") currentEventType = ""; // reset on blank line
+            if (line.trim() === "") currentEventType = "";
             continue;
           }
           if (!line.startsWith("data: ")) continue;
 
           const jsonStr = line.slice(6).trim();
 
-          // Handle custom agent_meta event
+          // Agent metadata event (custom, prepended by our edge function)
           if (currentEventType === "agent_meta") {
             try {
               const meta = JSON.parse(jsonStr);
               if (meta.agent && onAgentSelected) {
                 onAgentSelected(meta.agent, meta.reasoning || "");
               }
-            } catch { /* ignore parse errors for meta */ }
+            } catch { /* ignore */ }
             currentEventType = "";
             continue;
           }
 
-          if (jsonStr === "[DONE]") {
-            streamDone = true;
-            break;
-          }
-
+          // Claude streaming format
           try {
             const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
-            if (content) onDelta(content);
+
+            if (parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta") {
+              const text = parsed.delta.text as string;
+              if (text) onDelta(text);
+            } else if (parsed.type === "message_stop") {
+              streamDone = true;
+              break;
+            }
           } catch {
             textBuffer = line + "\n" + textBuffer;
             break;
@@ -130,16 +130,16 @@ export async function streamChat({ messages, onDelta, onDone, onError, onAgentSe
           if (raw.startsWith("event: ")) continue;
           if (!raw.startsWith("data: ")) continue;
           const jsonStr = raw.slice(6).trim();
-          if (jsonStr === "[DONE]") continue;
           try {
             const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
-            if (content) onDelta(content);
+            if (parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta") {
+              const text = parsed.delta.text as string;
+              if (text) onDelta(text);
+            }
           } catch { /* ignore */ }
         }
       }
     } finally {
-      // Reader-Lock immer freigeben, auch bei Exceptions — verhindert Memory Leak
       reader.cancel();
     }
 

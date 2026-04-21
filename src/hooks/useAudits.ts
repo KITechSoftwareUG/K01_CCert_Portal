@@ -49,6 +49,32 @@ export const useAudits = () => {
   });
 };
 
+export const useAuditsByClient = (clientId: string) => {
+  return useQuery({
+    queryKey: ['audits', 'client', clientId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('audits')
+        .select(`
+          *,
+          clients (*),
+          client_certifications (
+            id,
+            certifications (*)
+          ),
+          auditors (id, name),
+          certification_bodies (id, name)
+        `)
+        .eq('client_id', clientId)
+        .order('scheduled_date', { ascending: true });
+
+      if (error) throw error;
+      return data as AuditWithClient[];
+    },
+    enabled: !!clientId,
+  });
+};
+
 export const useAudit = (id: string) => {
   return useQuery({
     queryKey: ['audits', id],

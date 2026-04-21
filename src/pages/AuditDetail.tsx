@@ -334,6 +334,18 @@ const AuditDetail = () => {
     }
   }, [audit, id, updateAudit]);
 
+  const handleDeleteAudit = useCallback(async () => {
+    if (id) {
+      try {
+        await deleteAudit.mutateAsync(id);
+        toast.success('Audit wurde gelöscht.');
+        navigate(-1);
+      } catch (error) {
+        toast.error('Audit konnte nicht gelöscht werden.');
+      }
+    }
+  }, [id, deleteAudit, navigate]);
+
   if (auditLoading || tasksLoading) {
     return <AuditDetailSkeleton />;
   }
@@ -662,6 +674,31 @@ const AuditDetail = () => {
                       <AlertDialogCancel>Nein, behalten</AlertDialogCancel>
                       <AlertDialogAction onClick={handleCancelAudit} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                         Ja, abbrechen
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Audit löschen
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Audit endgültig löschen?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Das Audit und alle zugehörigen Aufgaben und Befunde werden unwiderruflich gelöscht.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDeleteAudit} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Ja, endgültig löschen
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>

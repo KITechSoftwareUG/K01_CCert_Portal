@@ -7,8 +7,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { useAudits, AuditWithClient } from '@/hooks/useAudits';
-import { useAllAuditTasks, DbAuditTask } from '@/hooks/useAuditTasks';
+import { useAuditsByClient, AuditWithClient } from '@/hooks/useAudits';
+import { useClientAuditTasks, DbAuditTask } from '@/hooks/useAuditTasks';
 import { AUDIT_TYPE_LABELS, AUDIT_STATUS_LABELS, AUDIT_STATUS_COLORS } from '@/lib/constants';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -125,12 +125,8 @@ const AuditRow = ({ audit, nkCount, findings, onClick }: { audit: AuditWithClien
 
 export const ClientAuditHistory = ({ clientId }: ClientAuditHistoryProps) => {
   const navigate = useNavigate();
-  const { data: allAudits = [], isLoading } = useAudits();
-  const { data: allTasks = [] } = useAllAuditTasks();
-
-  const clientAuditIds = useMemo(() => {
-    return new Set(allAudits.filter(a => a.client_id === clientId).map(a => a.id));
-  }, [allAudits, clientId]);
+  const { data: allAudits = [], isLoading } = useAuditsByClient(clientId);
+  const { data: allTasks = [] } = useClientAuditTasks(clientId);
 
   // Open findings grouped by audit
   const openFindingsByAudit = useMemo(() => {
@@ -138,15 +134,14 @@ export const ClientAuditHistory = ({ clientId }: ClientAuditHistoryProps) => {
     for (const task of allTasks) {
       if (
         task.category === 'finding' &&
-        task.status !== 'completed' &&
-        clientAuditIds.has(task.audit_id)
+        task.status !== 'completed'
       ) {
         if (!map[task.audit_id]) map[task.audit_id] = [];
         map[task.audit_id].push(task as DbAuditTask);
       }
     }
     return map;
-  }, [allTasks, clientAuditIds]);
+  }, [allTasks]);
 
   const openFindingsCount = useMemo(() => {
     const map: Record<string, number> = {};
@@ -175,19 +170,18 @@ export const ClientAuditHistory = ({ clientId }: ClientAuditHistoryProps) => {
   }, [allOpenFindings]);
 
   const { activeAudits, completedAudits } = useMemo(() => {
-    const audits = allAudits.filter(audit => audit.client_id === clientId);
     const activeStatuses = ['scheduled', 'in-progress'];
 
-    const active = audits
+    const active = allAudits
       .filter(a => activeStatuses.includes(a.status))
       .sort((a, b) => new Date(a.scheduled_date).getTime() - new Date(b.scheduled_date).getTime());
 
-    const completed = audits
+    const completed = allAudits
       .filter(a => !activeStatuses.includes(a.status))
       .sort((a, b) => new Date(b.scheduled_date).getTime() - new Date(a.scheduled_date).getTime());
 
     return { activeAudits: active, completedAudits: completed };
-  }, [allAudits, clientId]);
+  }, [allAudits]);
 
   const totalAudits = activeAudits.length + completedAudits.length;
 

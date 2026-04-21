@@ -8,7 +8,7 @@ import { de } from 'date-fns/locale';
 import {
   CheckSquare, Search, X, ExternalLink, ChevronDown, ChevronRight,
   User, Calendar, Building2, Tag, SlidersHorizontal, ArrowUpDown,
-  UserCheck, Circle, CheckCircle2, RotateCcw,
+  UserCheck, Circle, CheckCircle2, RotateCcw, Briefcase,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -44,9 +44,10 @@ const SS_SORT_DIR   = 'tasks-sort-dir';
 const SS_AUDITOR    = 'tasks-auditor-filter';
 const SS_CLIENT     = 'tasks-client-filter';
 const SS_AUDIT_TYPE = 'tasks-audit-type-filter';
-const SS_SEVERITY   = 'tasks-severity-filter';
-const SS_ASSIGNED   = 'tasks-assigned-filter';
-const SS_YEAR       = 'tasks-year-filter';
+const SS_SEVERITY    = 'tasks-severity-filter';
+const SS_ASSIGNED    = 'tasks-assigned-filter';
+const SS_YEAR        = 'tasks-year-filter';
+const SS_CONSULTANT  = 'tasks-consultant-filter';
 
 const CURRENT_YEAR = String(new Date().getFullYear());
 
@@ -138,8 +139,9 @@ const TaskRow = memo(({ task, isSelected, onSelect, onComplete, onEdit }: TaskRo
   const isCompleted = task.status === 'completed';
   const isFinding  = task.category === 'finding';
 
-  const clientName  = task.audits?.clients?.name ?? '';
-  const auditorName = task.audits?.auditors?.name ?? '';
+  const clientName     = task.audits?.clients?.name ?? '';
+  const auditorName    = task.audits?.auditors?.name ?? '';
+  const consultantName = task.audits?.clients?.consultants?.name ?? '';
   const auditType   = task.audits ? (AUDIT_TYPE_LABELS[task.audits.type as AuditType] ?? task.audits.type) : '';
   const auditDate   = task.audits ? format(parseISO(task.audits.scheduled_date), 'dd.MM.yyyy') : '';
 
@@ -196,6 +198,9 @@ const TaskRow = memo(({ task, isSelected, onSelect, onComplete, onEdit }: TaskRo
           </span>
           {task.assigned_to && (
             <span className="flex items-center gap-1"><User className="h-3 w-3 shrink-0" />{task.assigned_to}</span>
+          )}
+          {consultantName && (
+            <span className="flex items-center gap-1"><Briefcase className="h-3 w-3 shrink-0" />{consultantName}</span>
           )}
           {auditorName && (
             <span className="flex items-center gap-1"><UserCheck className="h-3 w-3 shrink-0" />{auditorName}</span>
@@ -343,8 +348,9 @@ export default function Tasks() {
   const [clientFilter,   setClientFilter]   = useState(() => ss(SS_CLIENT));
   const [auditTypeFilter,setAuditTypeFilter]= useState(() => ss(SS_AUDIT_TYPE));
   const [severityFilter, setSeverityFilter] = useState(() => ss(SS_SEVERITY));
-  const [assignedFilter, setAssignedFilter] = useState(() => ss(SS_ASSIGNED));
-  const [yearFilter,     setYearFilter]     = useState(() => ss(SS_YEAR) || CURRENT_YEAR);
+  const [assignedFilter,    setAssignedFilter]    = useState(() => ss(SS_ASSIGNED));
+  const [yearFilter,        setYearFilter]        = useState(() => ss(SS_YEAR) || CURRENT_YEAR);
+  const [consultantFilter,  setConsultantFilter]  = useState(() => ss(SS_CONSULTANT));
   const [advancedOpen,   setAdvancedOpen]   = useState(
     () => !!(ss(SS_AUDITOR) || ss(SS_CLIENT) || ss(SS_AUDIT_TYPE) || ss(SS_SEVERITY) || ss(SS_ASSIGNED))
   );
@@ -372,13 +378,14 @@ export default function Tasks() {
   const setAuditType = useCallback(persist(setAuditTypeFilter, SS_AUDIT_TYPE),[persist]);
   const setSeverity  = useCallback(persist(setSeverityFilter,  SS_SEVERITY),  [persist]);
   const setAssigned  = useCallback(persist(setAssignedFilter,  SS_ASSIGNED),  [persist]);
-  const setYear      = useCallback((v: string) => { setYearFilter(v); sessionStorage.setItem(SS_YEAR, v); }, []);
+  const setYear       = useCallback((v: string) => { setYearFilter(v); sessionStorage.setItem(SS_YEAR, v); }, []);
+  const setConsultant = useCallback(persist(setConsultantFilter, SS_CONSULTANT), [persist]);
 
   const handleReset = useCallback(() => {
     setSearchQuery(''); setStatusFilter('all'); setCategoryFilter('all');
     setDueFilter('all'); setGroupBy('status'); setSortDir('asc');
     setAuditorFilter(''); setClientFilter(''); setAuditTypeFilter('');
-    setSeverityFilter(''); setAssignedFilter(''); setSelectedIds(new Set());
+    setSeverityFilter(''); setAssignedFilter(''); setConsultantFilter(''); setSelectedIds(new Set());
     setYearFilter(CURRENT_YEAR);
     ALL_SS_KEYS.forEach(k => sessionStorage.removeItem(k));
     sessionStorage.setItem(SS_YEAR, CURRENT_YEAR);
@@ -438,13 +445,14 @@ export default function Tasks() {
 
   // ── Ein Loop für alle tasks-Derivate — läuft nur bei neuen Daten ────────
 
-  const { taskMeta, todayMs, uniqueYears, uniqueAuditors, uniqueClients, uniqueAssigned } = useMemo(() => {
+  const { taskMeta, todayMs, uniqueYears, uniqueAuditors, uniqueClients, uniqueAssigned, uniqueConsultants } = useMemo(() => {
     const todayMs  = startOfDay(new Date()).getTime();
     const taskMeta = new Map<string, { dueMs: number; eff: TaskStatus }>();
-    const auditors = new Map<string, string>();
-    const clients  = new Map<string, string>();
-    const assigned = new Set<string>();
-    const years    = new Set<number>();
+    const auditors    = new Map<string, string>();
+    const clients     = new Map<string, string>();
+    const assigned    = new Set<string>();
+    const years       = new Set<number>();
+    const consultants = new Map<string, string>();
 
     for (const task of tasks ?? []) {
       const dueMs = parseISO(task.due_date).getTime();
@@ -455,18 +463,21 @@ export default function Tasks() {
                                         task.status as TaskStatus;
       taskMeta.set(task.id, { dueMs, eff });
       years.add(new Date(dueMs).getFullYear());
-      if (task.audits?.auditors) auditors.set(task.audits.auditors.id, task.audits.auditors.name);
-      if (task.audits?.clients)  clients.set(task.audits.clients.id,   task.audits.clients.name);
-      if (task.assigned_to)      assigned.add(task.assigned_to);
+      if (task.audits?.auditors)              auditors.set(task.audits.auditors.id, task.audits.auditors.name);
+      if (task.audits?.clients)               clients.set(task.audits.clients.id,   task.audits.clients.name);
+      if (task.assigned_to)                   assigned.add(task.assigned_to);
+      const c = task.audits?.clients?.consultants;
+      if (c)                                  consultants.set(c.id, c.name);
     }
 
     return {
       taskMeta,
       todayMs,
-      uniqueYears:    [...years].sort((a, b) => b - a),
-      uniqueAuditors: [...auditors.entries()].sort(([, a], [, b]) => a.localeCompare(b, 'de')),
-      uniqueClients:  [...clients.entries()].sort(([, a], [, b])  => a.localeCompare(b, 'de')),
-      uniqueAssigned: [...assigned].sort((a, b) => a.localeCompare(b, 'de')),
+      uniqueYears:       [...years].sort((a, b) => b - a),
+      uniqueAuditors:    [...auditors.entries()].sort(([, a], [, b])    => a.localeCompare(b, 'de')),
+      uniqueClients:     [...clients.entries()].sort(([, a], [, b])     => a.localeCompare(b, 'de')),
+      uniqueAssigned:    [...assigned].sort((a, b)                      => a.localeCompare(b, 'de')),
+      uniqueConsultants: [...consultants.entries()].sort(([, a], [, b]) => a.localeCompare(b, 'de')),
     };
   }, [tasks]);
 
@@ -500,7 +511,8 @@ export default function Tasks() {
         if (clientFilter    && task.audits?.clients?.id  !== clientFilter)    return false;
         if (auditTypeFilter && task.audits?.type         !== auditTypeFilter) return false;
         if (severityFilter  && task.severity             !== severityFilter)  return false;
-        if (assignedFilter  && task.assigned_to          !== assignedFilter)  return false;
+        if (assignedFilter    && task.assigned_to                          !== assignedFilter)    return false;
+        if (consultantFilter  && task.audits?.clients?.consultants?.id    !== consultantFilter)  return false;
         return true;
       })
       .sort((a, b) => {
@@ -508,7 +520,7 @@ export default function Tasks() {
         return sortDir === 'asc' ? diff : -diff;
       });
   }, [tasks, taskMeta, todayMs, yearFilter, searchQuery, statusFilter, categoryFilter, dueFilter, sortDir,
-      auditorFilter, clientFilter, auditTypeFilter, severityFilter, assignedFilter]);
+      auditorFilter, clientFilter, auditTypeFilter, severityFilter, assignedFilter, consultantFilter]);
 
   // ── Grouping ──────────────────────────────────────────────────────────────
 
@@ -550,7 +562,7 @@ export default function Tasks() {
       .map(([label, { tasks: gt }]) => ({ label, tasks: gt }));
   }, [filteredTasks, groupBy, taskMeta]);
 
-  const advancedFilterCount = [auditorFilter, clientFilter, auditTypeFilter, severityFilter, assignedFilter].filter(Boolean).length;
+  const advancedFilterCount = [auditorFilter, clientFilter, auditTypeFilter, severityFilter, assignedFilter, consultantFilter].filter(Boolean).length;
   const hasActiveFilters = !!searchQuery || statusFilter !== 'all' || categoryFilter !== 'all' || dueFilter !== 'all' || advancedFilterCount > 0;
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -651,6 +663,11 @@ export default function Tasks() {
           {/* Advanced filters */}
           {advancedOpen && (
             <div className="flex flex-wrap gap-2 mb-2 pb-2 border-b border-border/50">
+              <FilterSelect value={consultantFilter || 'all'} onValueChange={v => setConsultant(v === 'all' ? '' : v)} width="w-[175px]">
+                <SelectItem value="all">Alle Berater</SelectItem>
+                {uniqueConsultants.map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
+              </FilterSelect>
+
               <FilterSelect value={auditorFilter || 'all'} onValueChange={v => setAuditor(v === 'all' ? '' : v)} width="w-[175px]">
                 <SelectItem value="all">Alle Auditoren</SelectItem>
                 {uniqueAuditors.map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}

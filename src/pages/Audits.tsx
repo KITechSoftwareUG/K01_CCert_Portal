@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { NewAuditDialog } from '@/components/NewAuditDialog';
-import { useAudits } from '@/hooks/useAudits';
+import { useAudits, useDeleteAudit } from '@/hooks/useAudits';
 import { useAuditTasks } from '@/hooks/useAuditTasks';
 import { useClients } from '@/hooks/useClients';
 import { useAuditors } from '@/hooks/useAuditors';
@@ -210,6 +210,7 @@ const Audits = () => {
   const [selectedAuditIds, setSelectedAuditIds] = useState<Set<string>>(new Set());
 
   const { data: dbAudits = [], isLoading: auditsLoading, error: auditsError } = useAudits();
+  const deleteAudit = useDeleteAudit();
   const { data: tasks = [], isLoading: tasksLoading } = useAuditTasks();
   const { data: clients = [] } = useClients();
   const { data: auditors = [] } = useAuditors();
@@ -616,9 +617,23 @@ const Audits = () => {
                 variant="ghost"
                 size="sm"
                 className="text-primary-foreground hover:bg-primary-foreground/10 font-bold uppercase text-[10px] gap-2 h-8"
-                onClick={() => {
-                  if (confirm(`${selectedAuditIds.size} Audits wirklich löschen?`)) {
-                    toast.error('Bulk Delete noch nicht implementiert');
+                disabled={deleteAudit.isPending}
+                onClick={async () => {
+                  if (!confirm(`${selectedAuditIds.size} Audit${selectedAuditIds.size !== 1 ? 's' : ''} wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`)) return;
+                  const ids = Array.from(selectedAuditIds);
+                  let failed = 0;
+                  for (const id of ids) {
+                    try {
+                      await deleteAudit.mutateAsync(id);
+                    } catch {
+                      failed++;
+                    }
+                  }
+                  setSelectedAuditIds(new Set());
+                  if (failed === 0) {
+                    toast.success(`${ids.length} Audit${ids.length !== 1 ? 's' : ''} gelöscht`);
+                  } else {
+                    toast.error(`${failed} von ${ids.length} konnten nicht gelöscht werden`);
                   }
                 }}
               >

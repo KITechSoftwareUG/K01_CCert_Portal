@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -266,7 +266,7 @@ const Clients = () => {
     }
   }, [clients, countryGroups]);
 
-  const toggleCountry = (country: string) => {
+  const toggleCountry = useCallback((country: string) => {
     setExpandedCountries(prev => {
       const next = new Set(prev);
       if (next.has(country)) next.delete(country);
@@ -274,9 +274,9 @@ const Clients = () => {
       sessionStorage.setItem('clients-expanded-countries', JSON.stringify([...next]));
       return next;
     });
-  };
+  }, []);
 
-  const toggleGroup = (id: string) => {
+  const toggleGroup = useCallback((id: string) => {
     setExpandedGroups(prev => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -284,9 +284,9 @@ const Clients = () => {
       sessionStorage.setItem('clients-expanded-groups', JSON.stringify([...next]));
       return next;
     });
-  };
+  }, []);
 
-  const toggleClient = (id: string) => {
+  const toggleClient = useCallback((id: string) => {
     setExpandedClients(prev => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -294,7 +294,7 @@ const Clients = () => {
       sessionStorage.setItem('clients-expanded-clients', JSON.stringify([...next]));
       return next;
     });
-  };
+  }, []);
 
   const renderCertificationRows = (clientId: string, client: DbClient) => {
     const certRows = certificationsByClient[clientId] || [];
@@ -758,23 +758,15 @@ const Clients = () => {
                                           <GroupClientNumbers
                                             clientNumbers={group.children.map(c => c.client.client_number)}
                                           />
+                                          {totalCerts > 0 && (
+                                            <Badge variant="secondary" className="text-xs h-5">
+                                              {totalCerts} Zertifikat{totalCerts !== 1 ? 'e' : ''}
+                                            </Badge>
+                                          )}
                                         </>
                                       ) : (
                                         <ClientNumberBadge clientNumber={headerClient.client_number} />
                                       )}
-                                      {totalCerts > 0 && (
-                                        <Badge variant="secondary" className="text-xs h-5">
-                                          {totalCerts} Zertifikat{totalCerts !== 1 ? 'e' : ''}
-                                        </Badge>
-                                      )}
-                                      {!isMultiClient && (() => {
-                                        const cfg = getAuditModeConfig(headerClient.audit_mode);
-                                        return (
-                                          <Badge variant="outline" className={`text-xs gap-1 font-medium ${cfg.modeBadge}`}>
-                                            <cfg.Icon className="h-3 w-3" /> {cfg.label}
-                                          </Badge>
-                                        );
-                                      })()}
                                     </div>
                                   )}
                                 </div>
@@ -806,13 +798,28 @@ const Clients = () => {
                               {/* Actions on the right */}
                               <div className="flex items-center gap-2 shrink-0">
                                 {!isMultiClient && !isMobile && (
-                                  <ContactPopover
-                                    legacyName={headerClient.contact_person}
-                                    legacyPhone={headerClient.phone}
-                                    legacyEmail={headerClient.email}
-                                    contacts={headerContacts}
-                                    clientId={headerClient.id}
-                                  />
+                                  <>
+                                    {totalCerts > 0 && (
+                                      <Badge variant="secondary" className="text-xs h-5">
+                                        {totalCerts} Zertifikat{totalCerts !== 1 ? 'e' : ''}
+                                      </Badge>
+                                    )}
+                                    {(() => {
+                                      const cfg = getAuditModeConfig(headerClient.audit_mode);
+                                      return (
+                                        <Badge variant="outline" className={`text-xs gap-1 font-medium ${cfg.modeBadge}`}>
+                                          <cfg.Icon className="h-3 w-3" /> {cfg.label}
+                                        </Badge>
+                                      );
+                                    })()}
+                                    <ContactPopover
+                                      legacyName={headerClient.contact_person}
+                                      legacyPhone={headerClient.phone}
+                                      legacyEmail={headerClient.email}
+                                      contacts={headerContacts}
+                                      clientId={headerClient.id}
+                                    />
+                                  </>
                                 )}
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>

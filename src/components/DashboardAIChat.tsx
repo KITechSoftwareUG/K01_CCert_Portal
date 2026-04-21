@@ -10,7 +10,6 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import ReactMarkdown from 'react-markdown';
 import { streamChat, AgentInfo } from '@/lib/chatUtils';
-import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { useNavigate } from 'react-router-dom';
 
 const DAILY_GREETING_HOUR = 5;
@@ -331,9 +330,7 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
           className="sm:max-w-2xl p-0 gap-0 rounded-none sm:rounded-2xl overflow-hidden w-full h-[100dvh] sm:h-[80vh] sm:w-auto fixed inset-0 sm:inset-auto sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] flex flex-col border-none sm:border"
           aria-describedby={undefined}
         >
-          <VisuallyHidden>
-            <DialogTitle>KI-Assistent</DialogTitle>
-          </VisuallyHidden>
+          <DialogTitle className="sr-only">KI-Assistent</DialogTitle>
 
           {/* Header */}
           <div className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b border-border/40 bg-background/80 backdrop-blur-md safe-top">

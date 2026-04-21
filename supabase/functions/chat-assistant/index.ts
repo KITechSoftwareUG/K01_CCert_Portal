@@ -96,28 +96,27 @@ interface CertTypeRecord {
   description: string | null;
 }
 
-// ── Generic PostgREST query builder type ──────────────────────────────────────
 type SupabaseQueryBuilder = ReturnType<ReturnType<typeof createClient>["from"]>;
 
 const CORS_ALLOWED_HEADERS =
   "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version";
 
-// ─── Agent Definitions ───────────────────────────────────────────────
-// Each agent has a unique ID, name, description, and a system prompt builder.
-// Later these can come from the database (Agents page).
+// ─── Anthropic config ──────────────────────────────────────────────────────────
+
+const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
+const ANTHROPIC_VERSION = "2023-06-01";
+const ANTHROPIC_BETA = "prompt-caching-2024-07-31";
+const ROUTER_MODEL = "claude-haiku-4-5-20251001";
+const AGENT_MODEL = "claude-sonnet-4-6";
+
+// ─── Agent Definitions ─────────────────────────────────────────────────────────
 
 interface AgentDefinition {
   id: string;
   name: string;
-  icon: string; // emoji for UI
+  icon: string;
   description: string;
-  buildSystemPrompt: (ctx: AgentContext) => string;
-}
-
-interface AgentContext {
-  databaseContext: string;
-  appBaseUrl: string;
-  todayStr: string;
+  getStaticInstructions: (appBaseUrl: string, todayStr: string) => string;
 }
 
 const AGENTS: Record<string, AgentDefinition> = {
@@ -126,23 +125,21 @@ const AGENTS: Record<string, AgentDefinition> = {
     name: "Audit-Experte",
     icon: "📋",
     description: "Beantwortet Fragen zu Audits, Terminen, Status und Planung.",
-    buildSystemPrompt: (
-      ctx,
-    ) => `Du bist der Audit-Experte im Zertifizierungs-Management-System von CERT CONSULTING PANE.
-Deine Spezialität: Audits, Termine, Auditplanung, Auditoren und Audit-Status.
+    getStaticInstructions: (appBaseUrl, todayStr) => `Du bist Audit-Experte im Zertifizierungs-Management-Portal von CERT CONSULTING PANE.
+Heute: ${todayStr}
 
-DEIN KONTEXT:
-${ctx.databaseContext}
+AUFGABE: Beantworte Fragen zu Audits, Terminen, Auditplanung, Auditoren und Audit-Status.
+Im nächsten Block folgt ein aktueller Datenbankausschnitt. Nutze ausschließlich diese Daten.
 
-LINK-FORMAT:
-- Kunde: [Kundenname](${ctx.appBaseUrl}/clients/{kunden-id})
-- Audit: [Audit anzeigen](${ctx.appBaseUrl}/audits/{audit-id})
-- Zertifizierung: [Zertifizierung anzeigen](${ctx.appBaseUrl}/certifications/{zert-id})
+REGELN:
+- Wenn ein Audit oder Kunde nicht im Kontext erscheint: "Dazu liegen mir gerade keine Daten vor – bitte direkt in der App nachschauen."
+- Überfällige und dringende Termine proaktiv mit ⚠️ kennzeichnen
+- Kurz, präzise, Deutsch, Markdown erlaubt
+- Keine erfundenen Daten
 
-STIL:
-- Antworte immer auf Deutsch. Kurz, direkt, kollegial. Nutze Markdown.
-- Keine erfundenen Infos. Wenn Daten fehlen, sag das offen.
-- Du siehst nur einen relevanten Ausschnitt der Datenbank.`,
+LINKS (nur wenn ID bekannt):
+- Audit: [Audit öffnen](${appBaseUrl}/audits/{audit-id})
+- Kunde: [{name}](${appBaseUrl}/clients/{kunden-id})`,
   },
 
   certification_expert: {
@@ -150,23 +147,21 @@ STIL:
     name: "Zertifizierungs-Experte",
     icon: "🏅",
     description: "Spezialist für Zertifizierungen, Normen, Gültigkeiten und Zertifizierungsstellen.",
-    buildSystemPrompt: (
-      ctx,
-    ) => `Du bist der Zertifizierungs-Experte im Zertifizierungs-Management-System von CERT CONSULTING PANE.
-Deine Spezialität: Zertifizierungen (SURE, FSC, PEFC, ISCC, ISO etc.), Gültigkeiten, Zertifizierungsstellen, Normen und Scopes.
+    getStaticInstructions: (appBaseUrl, todayStr) => `Du bist Zertifizierungs-Experte im Zertifizierungs-Management-Portal von CERT CONSULTING PANE.
+Heute: ${todayStr}
 
-DEIN KONTEXT:
-${ctx.databaseContext}
+AUFGABE: Beantworte Fragen zu Zertifizierungen (SURE, FSC, PEFC, ISCC, ISO 9001, ISO 14001), Gültigkeiten, Zertifizierungsstellen und Normen.
+Im nächsten Block folgt ein aktueller Datenbankausschnitt. Nutze ausschließlich diese Daten.
 
-LINK-FORMAT:
-- Kunde: [Kundenname](${ctx.appBaseUrl}/clients/{kunden-id})
-- Audit: [Audit anzeigen](${ctx.appBaseUrl}/audits/{audit-id})
-- Zertifizierung: [Zertifizierung anzeigen](${ctx.appBaseUrl}/certifications/{zert-id})
+REGELN:
+- Bald ablaufende Zertifizierungen (< 90 Tage) mit ⚠️ hervorheben
+- Wenn eine Zertifizierung nicht im Kontext: "Dazu liegen mir gerade keine Daten vor."
+- Kurz, präzise, Deutsch, Markdown erlaubt
+- Keine erfundenen Daten
 
-STIL:
-- Antworte immer auf Deutsch. Kurz, direkt, kollegial. Nutze Markdown.
-- Keine erfundenen Infos. Wenn Daten fehlen, sag das offen.
-- Du siehst nur einen relevanten Ausschnitt der Datenbank.`,
+LINKS (nur wenn ID bekannt):
+- Kunde: [{name}](${appBaseUrl}/clients/{kunden-id})
+- Audit: [Audit öffnen](${appBaseUrl}/audits/{audit-id})`,
   },
 
   task_manager: {
@@ -174,23 +169,22 @@ STIL:
     name: "Aufgaben-Manager",
     icon: "✅",
     description: "Verwaltet und informiert über Aufgaben, Fristen und To-Dos.",
-    buildSystemPrompt: (
-      ctx,
-    ) => `Du bist der Aufgaben-Manager im Zertifizierungs-Management-System von CERT CONSULTING PANE.
-Deine Spezialität: Aufgaben, Fristen, To-Dos, überfällige Tasks und Priorisierung.
+    getStaticInstructions: (appBaseUrl, todayStr) => `Du bist Aufgaben-Manager im Zertifizierungs-Management-Portal von CERT CONSULTING PANE.
+Heute: ${todayStr}
 
-DEIN KONTEXT:
-${ctx.databaseContext}
+AUFGABE: Beantworte Fragen zu Aufgaben, Fristen, offenen To-Dos und Priorisierung.
+Im nächsten Block folgt ein aktueller Datenbankausschnitt. Nutze ausschließlich diese Daten.
 
-LINK-FORMAT:
-- Kunde: [Kundenname](${ctx.appBaseUrl}/clients/{kunden-id})
-- Audit: [Audit anzeigen](${ctx.appBaseUrl}/audits/{audit-id})
-- Zertifizierung: [Zertifizierung anzeigen](${ctx.appBaseUrl}/certifications/{zert-id})
+REGELN:
+- Überfällige Aufgaben immer als erstes nennen und mit ⚠️ markieren
+- Wenn eine Aufgabe nicht im Kontext: "Dazu liegen mir gerade keine Daten vor."
+- Bei Listen: nach Fälligkeit sortieren
+- Kurz, präzise, Deutsch, Markdown erlaubt
+- Keine erfundenen Daten
 
-STIL:
-- Antworte immer auf Deutsch. Kurz, direkt, kollegial. Nutze Markdown.
-- Keine erfundenen Infos. Wenn Daten fehlen, sag das offen.
-- Priorisiere überfällige Aufgaben visuell (⚠️).`,
+LINKS (nur wenn ID bekannt):
+- Audit (Aufgaben-Kontext): [Audit öffnen](${appBaseUrl}/audits/{audit-id})
+- Kunde: [{name}](${appBaseUrl}/clients/{kunden-id})`,
   },
 
   client_advisor: {
@@ -198,102 +192,98 @@ STIL:
     name: "Kunden-Berater",
     icon: "👥",
     description: "Experte für Kundendaten, Kontakte und Kundenbeziehungen.",
-    buildSystemPrompt: (
-      ctx,
-    ) => `Du bist der Kunden-Berater im Zertifizierungs-Management-System von CERT CONSULTING PANE.
-Deine Spezialität: Kundendaten, Kontakte, Ansprechpartner, Kundenhistorie und Kundenbeziehungen.
+    getStaticInstructions: (appBaseUrl, todayStr) => `Du bist Kunden-Berater im Zertifizierungs-Management-Portal von CERT CONSULTING PANE.
+Heute: ${todayStr}
 
-DEIN KONTEXT:
-${ctx.databaseContext}
+AUFGABE: Beantworte Fragen zu Kundendaten, Kontakten, Ansprechpartnern und Kundenbeziehungen.
+Im nächsten Block folgt ein aktueller Datenbankausschnitt. Nutze ausschließlich diese Daten.
 
-LINK-FORMAT:
-- Kunde: [Kundenname](${ctx.appBaseUrl}/clients/{kunden-id})
-- Audit: [Audit anzeigen](${ctx.appBaseUrl}/audits/{audit-id})
-- Zertifizierung: [Zertifizierung anzeigen](${ctx.appBaseUrl}/certifications/{zert-id})
+REGELN:
+- Wenn ein Kunde nicht im Kontext: "Dazu liegen mir gerade keine Daten vor."
+- Kundennummer immer mit angeben wenn vorhanden
+- Kurz, präzise, Deutsch, Markdown erlaubt
+- Keine erfundenen Daten
 
-STIL:
-- Antworte immer auf Deutsch. Kurz, direkt, kollegial. Nutze Markdown.
-- Keine erfundenen Infos. Wenn Daten fehlen, sag das offen.`,
+LINKS (nur wenn ID bekannt):
+- Kunde: [{name}](${appBaseUrl}/clients/{kunden-id})`,
   },
 
   general_assistant: {
     id: "general_assistant",
-    name: "Allgemein-Assistent",
+    name: "Assistent",
     icon: "💬",
-    description: "Allgemeiner Assistent für Begrüßungen und übergreifende Fragen.",
-    buildSystemPrompt: (
-      ctx,
-    ) => `Du bist ein freundlicher, lockerer KI-Assistent im Zertifizierungs-Management-System von CERT CONSULTING PANE.
+    description: "Allgemeiner Assistent für übergreifende Fragen.",
+    getStaticInstructions: (appBaseUrl, todayStr) => `Du bist KI-Assistent im Zertifizierungs-Management-Portal von CERT CONSULTING PANE.
+Heute: ${todayStr}
 
-DEIN KONTEXT:
-${ctx.databaseContext}
+Im nächsten Block folgt ein aktueller Datenbankausschnitt. Nutze ausschließlich diese Daten für konkrete Fragen.
 
-WICHTIG:
-- Du siehst absichtlich nur einen relevanten Ausschnitt der Datenbank, nicht den gesamten Bestand.
-- Wenn für eine Frage nicht genug Daten im Kontext sind, sag das klar und knapp statt zu raten.
-- Nutze nur echte Daten aus dem Kontext.
+REGELN:
+- Nur echte Daten aus dem Kontext verwenden — nie erfinden
+- Wenn Daten fehlen: klar sagen statt raten
+- Kurz, direkt, kollegial, Deutsch, Markdown erlaubt
 
-LINK-FORMAT:
-- Kunde: [Kundenname](${ctx.appBaseUrl}/clients/{kunden-id})
-- Audit: [Audit anzeigen](${ctx.appBaseUrl}/audits/{audit-id})
-- Zertifizierung: [Zertifizierung anzeigen](${ctx.appBaseUrl}/certifications/{zert-id})
-
-STIL:
-- Antworte immer auf Deutsch. Kurz, direkt, kollegial. Nutze Markdown.
-- Keine erfundenen Infos.`,
+LINKS (nur wenn ID bekannt):
+- Kunde: [{name}](${appBaseUrl}/clients/{kunden-id})
+- Audit: [Audit öffnen](${appBaseUrl}/audits/{audit-id})`,
   },
 };
 
-// ─── Router: classify intent via tool-calling ────────────────────────
+// ─── Router ────────────────────────────────────────────────────────────────────
 
-const ROUTER_SYSTEM_PROMPT = `Du bist ein Router im Zertifizierungs-Management-System. Deine einzige Aufgabe ist es, die Benutzeranfrage dem passenden Agenten zuzuweisen.
+const ROUTER_SYSTEM_PROMPT = `Du bist ein Router in einem Zertifizierungs-Management-System. Weise jede Anfrage dem passenden Agenten zu.
 
-Verfügbare Agenten:
-- audit_expert: Fragen zu Audits, Audit-Terminen, Audit-Planung, Auditoren, Audit-Status
-- certification_expert: Fragen zu Zertifizierungen, Normen, ISO, FSC, PEFC, SURE, ISCC, Gültigkeiten, Zertifizierungsstellen
-- task_manager: Fragen zu Aufgaben, To-Dos, Fristen, überfälligen Tasks
-- client_advisor: Fragen zu Kunden, Kontakten, Firmen, Ansprechpartnern
-- general_assistant: Begrüßungen, allgemeine Fragen, alles was nicht klar in eine Kategorie passt
-
-Analysiere die letzte Nachricht des Benutzers und wähle den passenden Agenten.`;
+Agenten:
+- audit_expert: Audits, Audit-Termine, Auditplanung, Auditoren, Audit-Status
+- certification_expert: Zertifizierungen, ISO, FSC, PEFC, SURE, ISCC, Gültigkeiten, Zertifizierungsstellen
+- task_manager: Aufgaben, To-Dos, Fristen, überfällige Tasks
+- client_advisor: Kunden, Kontakte, Firmen, Ansprechpartner
+- general_assistant: Begrüßungen, allgemeine Fragen, alles andere`;
 
 const ROUTER_TOOL = {
-  type: "function",
-  function: {
-    name: "route_to_agent",
-    description: "Route die Anfrage zum passenden Agenten",
-    parameters: {
-      type: "object",
-      properties: {
-        agent_id: {
-          type: "string",
-          enum: ["audit_expert", "certification_expert", "task_manager", "client_advisor", "general_assistant"],
-          description: "ID des ausgewählten Agenten",
-        },
-        reasoning: {
-          type: "string",
-          description: "Kurze Begründung (1 Satz) warum dieser Agent gewählt wurde",
-        },
+  name: "route_to_agent",
+  description: "Route die Anfrage zum passenden Agenten",
+  input_schema: {
+    type: "object",
+    properties: {
+      agent_id: {
+        type: "string",
+        enum: ["audit_expert", "certification_expert", "task_manager", "client_advisor", "general_assistant"],
+        description: "ID des passenden Agenten",
       },
-      required: ["agent_id", "reasoning"],
-      additionalProperties: false,
+      reasoning: {
+        type: "string",
+        description: "Kurze Begründung (1 Satz)",
+      },
     },
+    required: ["agent_id", "reasoning"],
   },
+};
+
+const toClaudeMessages = (msgs: Message[]) => {
+  const filtered = msgs
+    .filter((m) => m.role === "user" || m.role === "assistant")
+    .map((m) => ({ role: m.role as "user" | "assistant", content: String(m.content) }));
+  const start = filtered.findIndex((m) => m.role === "user");
+  return start >= 0 ? filtered.slice(start) : filtered;
 };
 
 async function routeToAgent(messages: Message[], apiKey: string): Promise<{ agentId: string; reasoning: string }> {
   try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch(ANTHROPIC_API_URL, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${apiKey}`,
+        "x-api-key": apiKey,
+        "anthropic-version": ANTHROPIC_VERSION,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [{ role: "system", content: ROUTER_SYSTEM_PROMPT }, ...messages.slice(-3)],
+        model: ROUTER_MODEL,
+        max_tokens: 256,
+        system: ROUTER_SYSTEM_PROMPT,
         tools: [ROUTER_TOOL],
-        tool_choice: { type: "function", function: { name: "route_to_agent" } },
+        tool_choice: { type: "tool", name: "route_to_agent" },
+        messages: toClaudeMessages(messages.slice(-3)),
       }),
     });
 
@@ -303,16 +293,13 @@ async function routeToAgent(messages: Message[], apiKey: string): Promise<{ agen
     }
 
     const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-
-    if (toolCall?.function?.arguments) {
-      const args = JSON.parse(toolCall.function.arguments);
+    const toolUse = data.content?.find((c: { type: string }) => c.type === "tool_use");
+    if (toolUse?.input) {
       return {
-        agentId: args.agent_id || "general_assistant",
-        reasoning: args.reasoning || "",
+        agentId: toolUse.input.agent_id || "general_assistant",
+        reasoning: toolUse.input.reasoning || "",
       };
     }
-
     return { agentId: "general_assistant", reasoning: "Keine Tool-Antwort" };
   } catch (e) {
     console.error("Router exception:", e);
@@ -320,16 +307,16 @@ async function routeToAgent(messages: Message[], apiKey: string): Promise<{ agen
   }
 }
 
-// ─── Data Fetching (unchanged logic) ─────────────────────────────────
+// ─── Data Fetching ─────────────────────────────────────────────────────────────
 
 const MAX_CHAT_HISTORY = 8;
-const MAX_CLIENTS = 12;
-const MAX_AUDITS = 12;
-const MAX_TASKS = 14;
-const MAX_CERTIFICATIONS = 10;
-const MAX_AUDITORS = 8;
-const MAX_CONTACTS = 8;
-const MAX_CERT_BODIES = 6;
+const MAX_CLIENTS = 20;
+const MAX_AUDITS = 20;
+const MAX_TASKS = 20;
+const MAX_CERTIFICATIONS = 15;
+const MAX_AUDITORS = 12;
+const MAX_CONTACTS = 12;
+const MAX_CERT_BODIES = 10;
 
 const normalize = (value: unknown) =>
   String(value ?? "")
@@ -341,68 +328,15 @@ const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\
 
 const extractKeywords = (text: string) => {
   const stopWords = new Set([
-    "der",
-    "die",
-    "das",
-    "und",
-    "oder",
-    "ein",
-    "eine",
-    "einer",
-    "einem",
-    "einen",
-    "dem",
-    "den",
-    "des",
-    "ich",
-    "du",
-    "wir",
-    "ihr",
-    "sie",
-    "er",
-    "es",
-    "mit",
-    "von",
-    "für",
-    "bei",
-    "zu",
-    "im",
-    "in",
-    "am",
-    "auf",
-    "an",
-    "ist",
-    "sind",
-    "war",
-    "waren",
-    "bitte",
-    "zeige",
-    "gib",
-    "mir",
-    "alle",
-    "den",
-    "zur",
-    "zum",
-    "nach",
-    "vor",
-    "über",
-    "unter",
-    "welche",
-    "welcher",
-    "welches",
-    "was",
-    "wie",
-    "wann",
-    "wo",
-    "kurz",
-    "sehr",
-    "max",
-    "sätze",
-    "satze",
-    "freundliche",
-    "formellen",
-    "floskeln",
-    "beginne",
+    "der", "die", "das", "und", "oder", "ein", "eine", "einer", "einem", "einen",
+    "dem", "den", "des", "ich", "du", "wir", "ihr", "sie", "er", "es", "mit",
+    "von", "für", "bei", "zu", "im", "in", "am", "auf", "an", "ist", "sind",
+    "war", "waren", "bitte", "zeige", "gib", "mir", "alle", "den", "zur", "zum",
+    "nach", "vor", "über", "unter", "welche", "welcher", "welches", "was", "wie",
+    "wann", "wo", "kurz", "sehr", "max", "sätze", "satze", "freundliche",
+    "formellen", "floskeln", "beginne", "gibt", "hat", "haben", "hatte", "hatten",
+    "noch", "auch", "schon", "nicht", "kein", "keine", "keiner", "keinem", "keinen",
+    "dann", "denn", "aber", "wenn", "dass", "damit", "weil", "doch", "mal",
   ]);
 
   return Array.from(
@@ -440,10 +374,10 @@ const limitAndSort = <T,>(
     .map(({ item }) => item);
 };
 
-// ─── Main Handler ────────────────────────────────────────────────────
+// ─── Main Handler ──────────────────────────────────────────────────────────────
 
 serve(async (req) => {
-  let corsHeaders: Record<string, string> = {
+  const corsHeaders: Record<string, string> = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": CORS_ALLOWED_HEADERS,
   };
@@ -466,10 +400,10 @@ serve(async (req) => {
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
+    if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not configured");
 
     const authSupabase = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
       global: { headers: { Authorization: authHeader } },
@@ -489,38 +423,42 @@ serve(async (req) => {
     const userId = claimsData.claims.sub;
     const { messages } = await req.json();
     const recentMessages = Array.isArray(messages) ? messages.slice(-MAX_CHAT_HISTORY) : [];
-    const latestUserMessage =
-      [...recentMessages].reverse().find((message: Message) => message?.role === "user")?.content ?? "";
-    const latestUserText = String(latestUserMessage);
+
+    // Extract keywords from ALL recent messages (not just the last one)
+    // This makes follow-up questions work correctly
+    const allRecentText = recentMessages.map((m: Message) => String(m.content)).join(" ");
+    const keywords = extractKeywords(allRecentText);
+
+    const latestUserText = String(
+      [...recentMessages].reverse().find((m: Message) => m?.role === "user")?.content ?? "",
+    );
     const normalizedLatestText = normalize(latestUserText);
-    const keywords = extractKeywords(latestUserText);
     const isGreetingRequest =
       normalizedLatestText.includes("begru") || normalizedLatestText.includes("willkommen zuruck");
 
-    // ─── Step 1: Route to the right agent ────────────────────────────
-    const routeResult = await routeToAgent(recentMessages, OPENAI_API_KEY);
+    // ─── Step 1: Route ─────────────────────────────────────────────────
+    const routeResult = await routeToAgent(recentMessages, ANTHROPIC_API_KEY);
     const agent = AGENTS[routeResult.agentId] || AGENTS.general_assistant;
 
-    console.log(
-      `[Agent Router] User: ${userId} | Agent: ${agent.id} (${agent.name}) | Reason: ${routeResult.reasoning}`,
-    );
+    console.log(`[Router] User: ${userId} | Agent: ${agent.id} | Reason: ${routeResult.reasoning}`);
 
-    // ─── Step 2: Fetch database context ──────────────────────────────
+    // ─── Step 2: Fetch DB context ───────────────────────────────────────
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
     const now = new Date();
     const todayStr = now.toLocaleDateString("de-DE");
 
-    const hasAuditWords = keywords.some((k) => ["audit", "prüfung", "termin", "besuch"].includes(k));
-    const hasClientWords = keywords.some((k) => ["kunde", "firma", "unternehmen", "mandant"].includes(k));
-    const hasTaskWords = keywords.some((k) => ["aufgabe", "task", "todo", "erledigen", "fällig"].includes(k));
-    const hasCertWords = keywords.some((k) => ["zertifikat", "norm", "iso", "standard", "gültig"].includes(k));
-    const hasAuditorWords = keywords.some((k) => ["auditor", "person", "wer"].includes(k));
+    const hasAuditWords = keywords.some((k) => ["audit", "prüfung", "termin", "besuch", "audits"].includes(k));
+    const hasClientWords = keywords.some((k) => ["kunde", "firma", "unternehmen", "mandant", "kunden"].includes(k));
+    const hasTaskWords = keywords.some((k) => ["aufgabe", "task", "todo", "erledigen", "fällig", "aufgaben", "tasks"].includes(k));
+    const hasCertWords = keywords.some((k) => ["zertifikat", "norm", "iso", "standard", "gültig", "zertifizierung", "zertifizierungen", "ablauf", "abläuft", "läuft"].includes(k));
+    const hasAuditorWords = keywords.some((k) => ["auditor", "person", "wer", "auditoren"].includes(k));
 
-    // Helper for keyword filtering in Supabase
+    // Use up to 4 keywords for Supabase filter (OR across all columns × keywords)
     const applyKeywordFilter = (query: SupabaseQueryBuilder, columns: string[]): SupabaseQueryBuilder => {
       if (keywords.length === 0) return query.limit(20);
-      const filterString = columns.map((col) => `${col}.ilike.%${keywords[0]}%`).join(",");
-      return query.or(filterString).limit(50);
+      const topKeywords = keywords.slice(0, 4);
+      const filterParts = topKeywords.flatMap((kw) => columns.map((col) => `${col}.ilike.%${kw}%`));
+      return query.or(filterParts.join(",")).limit(50);
     };
 
     const fetchPromises = [];
@@ -548,7 +486,7 @@ serve(async (req) => {
         client_certifications (id, certifications (id, name))
       `);
       if (isGreetingRequest) {
-        q = q.gte("scheduled_date", now.toISOString()).limit(10);
+        q = q.gte("scheduled_date", now.toISOString()).limit(12);
       } else if (keywords.length > 0) {
         q = applyKeywordFilter(q, ["type", "status", "notes"]);
       } else {
@@ -566,7 +504,7 @@ serve(async (req) => {
         audits (id, type, scheduled_date, status, clients (id, name, client_number))
       `);
       if (isGreetingRequest) {
-        q = q.or(`status.eq.pending,status.eq.in-progress`).limit(15);
+        q = q.or(`status.eq.pending,status.eq.in-progress`).limit(18);
       } else if (keywords.length > 0) {
         q = applyKeywordFilter(q, ["title", "description"]);
       } else {
@@ -586,7 +524,7 @@ serve(async (req) => {
         auditors (id, name)
       `);
       if (isGreetingRequest) {
-        q = q.lte("valid_until", new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000).toISOString()).limit(10);
+        q = q.lte("valid_until", new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000).toISOString()).limit(12);
       } else if (keywords.length > 0) {
         q = applyKeywordFilter(q, ["certificate_number", "scope", "status"]);
       } else {
@@ -617,9 +555,7 @@ serve(async (req) => {
       );
       fetchPromises.push(
         applyKeywordFilter(
-          supabase
-            .from("contacts")
-            .select("id, name, role, email, phone, is_primary, clients (id, name, client_number)"),
+          supabase.from("contacts").select("id, name, role, email, phone, is_primary, clients (id, name, client_number)"),
           ["name", "role", "email"],
         ).then((res) => ({ type: "contacts", data: res.data || [] })),
       );
@@ -657,9 +593,6 @@ serve(async (req) => {
     const openTasks = (tasks as TaskRecord[]).filter((t) => t.status === "pending" || t.status === "in-progress");
     const overdueTasks = openTasks.filter((t) => new Date(t.due_date) < now);
     const upcomingAudits = (audits as AuditRecord[]).filter((a) => new Date(a.scheduled_date) >= now);
-    const expiringCerts = (clientCerts as ClientCertRecord[])
-      .filter((cc) => cc.valid_until)
-      .sort((a, b) => new Date(a.valid_until!).getTime() - new Date(b.valid_until!).getTime());
 
     const selectedClients = isGreetingRequest
       ? []
@@ -686,7 +619,7 @@ serve(async (req) => {
         },
         (a, b) => new Date(a.scheduled_date).getTime() - new Date(b.scheduled_date).getTime(),
       ),
-      ...(isGreetingRequest ? upcomingAudits.slice(0, 6) : []),
+      ...(isGreetingRequest ? upcomingAudits.slice(0, 8) : []),
     ]
       .filter(
         (audit: AuditRecord, index: number, array: AuditRecord[]) =>
@@ -708,7 +641,7 @@ serve(async (req) => {
         },
         (a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime(),
       ),
-      ...(isGreetingRequest ? overdueTasks.slice(0, 6) : []),
+      ...(isGreetingRequest ? overdueTasks.slice(0, 8) : []),
     ]
       .filter(
         (task: TaskRecord, index: number, array: TaskRecord[]) =>
@@ -717,9 +650,9 @@ serve(async (req) => {
       .slice(0, MAX_TASKS);
 
     const relatedClientIds = new Set([
-      ...(selectedClients as ClientRecord[]).map((client) => client.id),
-      ...selectedAudits.map((audit) => audit.clients?.id).filter(Boolean),
-      ...selectedTasks.map((task) => task.audits?.clients?.id).filter(Boolean),
+      ...(selectedClients as ClientRecord[]).map((c) => c.id),
+      ...selectedAudits.map((a) => a.clients?.id).filter(Boolean),
+      ...selectedTasks.map((t) => t.audits?.clients?.id).filter(Boolean),
     ]);
 
     const selectedClientCerts = [
@@ -787,118 +720,109 @@ serve(async (req) => {
           .filter((cert) => scoreByKeywords(cert.name, keywords) > 0 || keywords.length === 0)
           .slice(0, 8);
 
-    // ─── Build database context ──────────────────────────────────────
+    // ─── Build DB context string ───────────────────────────────────────
     const ctx: string[] = [];
-    ctx.push(`AKTUELLES DATUM: ${todayStr}`);
-    ctx.push(`KONTEXT-HINWEIS: Sende nur Ausschnitte der Datenbank. Wenn Informationen fehlen, sag das offen.`);
-    ctx.push(
-      `ÜBERSICHT: ${clients.length} Kunden, ${audits.length} Audits, ${tasks.length} Aufgaben, ${clientCerts.length} Kunden-Zertifizierungen.`,
-    );
-    ctx.push(
-      `STATUS: ${openTasks.length} offene Aufgaben, ${overdueTasks.length} überfällige Aufgaben, ${upcomingAudits.length} kommende Audits.`,
-    );
+    ctx.push(`=== DATENBANKKONTEXT (Stand: ${todayStr}) ===`);
+    ctx.push(`Gesamt: ${clients.length} Kunden · ${audits.length} Audits · ${tasks.length} Aufgaben · ${clientCerts.length} Kunden-Zertifizierungen`);
+    ctx.push(`Offen: ${openTasks.length} Aufgaben · ${overdueTasks.length} überfällig · ${upcomingAudits.length} kommende Audits`);
+    ctx.push(`HINWEIS: Dies ist ein gefilterter Ausschnitt. Wenn etwas nicht erscheint, liegt es außerhalb des aktuellen Kontexts.`);
 
     if (selectedCertTypes.length > 0) {
-      ctx.push(`\n=== RELEVANTE ZERTIFIZIERUNGSSTANDARDS (${selectedCertTypes.length}) ===`);
+      ctx.push(`\n--- ZERTIFIZIERUNGSSTANDARDS (${selectedCertTypes.length}) ---`);
       selectedCertTypes.forEach((cert: CertTypeRecord) =>
-        ctx.push(`- ${cert.name}${cert.description ? ` – ${cert.description}` : ""}`),
+        ctx.push(`· ${cert.name}${cert.description ? ` – ${cert.description}` : ""}`),
       );
     }
     if (selectedClients.length > 0) {
-      ctx.push(`\n=== RELEVANTE KUNDEN (${selectedClients.length}) ===`);
+      ctx.push(`\n--- KUNDEN (${selectedClients.length}) ---`);
       selectedClients.forEach((client: ClientRecord) => {
-        const parts = [client.name, `ID: ${client.id}`];
-        if (client.client_number) parts.push(`KD-Nr: ${client.client_number}`);
-        if (client.country) parts.push(`Land: ${client.country}`);
-        if (client.contact_person) parts.push(`Ansprechpartner: ${client.contact_person}`);
-        if (client.consultant) parts.push(`Berater: ${client.consultant}`);
-        parts.push(`Aktiv: ${client.is_active ? "Ja" : "Nein"}`);
-        ctx.push(`- ${parts.join(" | ")}`);
+        const parts = [client.name, `ID:${client.id}`];
+        if (client.client_number) parts.push(`KD-Nr:${client.client_number}`);
+        if (client.country) parts.push(`Land:${client.country}`);
+        if (client.contact_person) parts.push(`AP:${client.contact_person}`);
+        if (client.consultant) parts.push(`Berater:${client.consultant}`);
+        parts.push(`Aktiv:${client.is_active ? "Ja" : "Nein"}`);
+        ctx.push(`· ${parts.join(" | ")}`);
       });
     }
     if (selectedContacts.length > 0) {
-      ctx.push(`\n=== RELEVANTE KONTAKTE (${selectedContacts.length}) ===`);
+      ctx.push(`\n--- KONTAKTE (${selectedContacts.length}) ---`);
       selectedContacts.forEach((contact: ContactRecord) => {
-        const parts = [`${contact.name} (${contact.clients?.name ?? "Unbekannt"})`];
-        if (contact.role) parts.push(`Rolle: ${contact.role}`);
-        if (contact.email) parts.push(`E-Mail: ${contact.email}`);
-        if (contact.phone) parts.push(`Tel: ${contact.phone}`);
+        const parts = [`${contact.name} (${contact.clients?.name ?? "?"})`];
+        if (contact.role) parts.push(`Rolle:${contact.role}`);
+        if (contact.email) parts.push(`E-Mail:${contact.email}`);
+        if (contact.phone) parts.push(`Tel:${contact.phone}`);
         if (contact.is_primary) parts.push("Hauptkontakt");
-        ctx.push(`- ${parts.join(" | ")}`);
+        ctx.push(`· ${parts.join(" | ")}`);
       });
     }
     if (selectedAuditors.length > 0) {
-      ctx.push(`\n=== RELEVANTE AUDITOREN (${selectedAuditors.length}) ===`);
+      ctx.push(`\n--- AUDITOREN (${selectedAuditors.length}) ---`);
       selectedAuditors.forEach((auditor: AuditorRecord) => {
         const parts = [auditor.name];
         if (auditor.certification_bodies?.short_name || auditor.certification_bodies?.name)
-          parts.push(`ZS: ${auditor.certification_bodies?.short_name || auditor.certification_bodies?.name}`);
-        if (auditor.email) parts.push(`E-Mail: ${auditor.email}`);
-        if (auditor.phone) parts.push(`Tel: ${auditor.phone}`);
-        ctx.push(`- ${parts.join(" | ")}`);
+          parts.push(`ZS:${auditor.certification_bodies?.short_name || auditor.certification_bodies?.name}`);
+        if (auditor.email) parts.push(`E-Mail:${auditor.email}`);
+        if (auditor.phone) parts.push(`Tel:${auditor.phone}`);
+        ctx.push(`· ${parts.join(" | ")}`);
       });
     }
     if (selectedCertBodies.length > 0) {
-      ctx.push(`\n=== RELEVANTE ZERTIFIZIERUNGSSTELLEN (${selectedCertBodies.length}) ===`);
+      ctx.push(`\n--- ZERTIFIZIERUNGSSTELLEN (${selectedCertBodies.length}) ---`);
       selectedCertBodies.forEach((body: CertBodyRecord) => {
         const parts = [body.name];
-        if (body.short_name) parts.push(`Kürzel: ${body.short_name}`);
-        if (body.contact_person) parts.push(`Kontakt: ${body.contact_person}`);
-        if (body.email) parts.push(`E-Mail: ${body.email}`);
-        if (body.phone) parts.push(`Tel: ${body.phone}`);
-        ctx.push(`- ${parts.join(" | ")}`);
+        if (body.short_name) parts.push(`Kürzel:${body.short_name}`);
+        if (body.contact_person) parts.push(`Kontakt:${body.contact_person}`);
+        if (body.email) parts.push(`E-Mail:${body.email}`);
+        if (body.phone) parts.push(`Tel:${body.phone}`);
+        ctx.push(`· ${parts.join(" | ")}`);
       });
     }
     if (selectedClientCerts.length > 0) {
-      ctx.push(`\n=== RELEVANTE KUNDEN-ZERTIFIZIERUNGEN (${selectedClientCerts.length}) ===`);
+      ctx.push(`\n--- KUNDEN-ZERTIFIZIERUNGEN (${selectedClientCerts.length}) ---`);
       selectedClientCerts.forEach((cert: ClientCertRecord) => {
-        const parts = [
-          `${cert.clients?.name ?? "Unbekannt"}: ${cert.certifications?.name ?? "N/A"}`,
-          `Zert-ID: ${cert.id}`,
-        ];
-        if (cert.clients?.id) parts.push(`Kunden-ID: ${cert.clients.id}`);
-        if (cert.certifications?.id) parts.push(`Standard-ID: ${cert.certifications.id}`);
-        if (cert.certificate_number) parts.push(`Zert-Nr: ${cert.certificate_number}`);
-        if (cert.status) parts.push(`Status: ${cert.status}`);
-        if (cert.valid_until) parts.push(`Gültig bis: ${new Date(cert.valid_until).toLocaleDateString("de-DE")}`);
-        if (cert.scope) parts.push(`Scope: ${cert.scope}`);
-        if (cert.auditors?.name) parts.push(`Auditor: ${cert.auditors.name}`);
-        ctx.push(`- ${parts.join(" | ")}`);
+        const parts = [`${cert.clients?.name ?? "?"}: ${cert.certifications?.name ?? "N/A"}`, `ZertID:${cert.id}`];
+        if (cert.clients?.id) parts.push(`KundenID:${cert.clients.id}`);
+        if (cert.certificate_number) parts.push(`Zert-Nr:${cert.certificate_number}`);
+        if (cert.status) parts.push(`Status:${cert.status}`);
+        if (cert.valid_until) {
+          const daysLeft = Math.ceil((new Date(cert.valid_until).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          parts.push(`Gültig bis:${new Date(cert.valid_until).toLocaleDateString("de-DE")}${daysLeft <= 90 ? ` (⚠️ noch ${daysLeft} Tage)` : ""}`);
+        }
+        if (cert.scope) parts.push(`Scope:${cert.scope}`);
+        if (cert.auditors?.name) parts.push(`Auditor:${cert.auditors.name}`);
+        ctx.push(`· ${parts.join(" | ")}`);
       });
     }
     if (selectedAudits.length > 0) {
-      ctx.push(`\n=== RELEVANTE AUDITS (${selectedAudits.length}) ===`);
+      ctx.push(`\n--- AUDITS (${selectedAudits.length}) ---`);
       selectedAudits.forEach((audit: AuditRecord) => {
-        const parts = [`${audit.type} bei ${audit.clients?.name ?? "Unbekannt"}`, `Audit-ID: ${audit.id}`];
-        if (audit.clients?.id) parts.push(`Kunden-ID: ${audit.clients.id}`);
-        if (audit.client_certifications?.id) parts.push(`Zert-ID: ${audit.client_certifications.id}`);
-        if (audit.client_certifications?.certifications?.id)
-          parts.push(`Standard-ID: ${audit.client_certifications.certifications.id}`);
+        const parts = [`${audit.type} @ ${audit.clients?.name ?? "?"}`, `AuditID:${audit.id}`];
+        if (audit.clients?.id) parts.push(`KundenID:${audit.clients.id}`);
         if (audit.client_certifications?.certifications?.name)
-          parts.push(`Zertifizierung: ${audit.client_certifications.certifications.name}`);
-        parts.push(`Datum: ${new Date(audit.scheduled_date).toLocaleDateString("de-DE")}`);
-        parts.push(`Status: ${audit.status}`);
-        if (audit.auditors?.name) parts.push(`Auditor: ${audit.auditors.name}`);
+          parts.push(`Zertifizierung:${audit.client_certifications.certifications.name}`);
+        parts.push(`Datum:${new Date(audit.scheduled_date).toLocaleDateString("de-DE")}`);
+        parts.push(`Status:${audit.status}`);
+        if (audit.auditors?.name) parts.push(`Auditor:${audit.auditors.name}`);
         if (audit.certification_bodies?.short_name || audit.certification_bodies?.name)
-          parts.push(`ZS: ${audit.certification_bodies?.short_name || audit.certification_bodies?.name}`);
-        if (audit.notes) parts.push(`Notizen: ${audit.notes}`);
-        ctx.push(`- ${parts.join(" | ")}`);
+          parts.push(`ZS:${audit.certification_bodies?.short_name || audit.certification_bodies?.name}`);
+        if (audit.notes) parts.push(`Notizen:${audit.notes}`);
+        ctx.push(`· ${parts.join(" | ")}`);
       });
     }
     if (selectedTasks.length > 0) {
-      ctx.push(`\n=== RELEVANTE AUFGABEN (${selectedTasks.length}) ===`);
+      ctx.push(`\n--- AUFGABEN (${selectedTasks.length}) ---`);
       selectedTasks.forEach((task: TaskRecord) => {
         const overdue = task.status !== "completed" && new Date(task.due_date) < now;
-        const parts = [`${task.title}`, `Task-ID: ${task.id}`];
-        if (task.audits?.clients?.name) parts.push(`Kunde: ${task.audits.clients.name}`);
-        if (task.audits?.clients?.id) parts.push(`Kunden-ID: ${task.audits.clients.id}`);
-        if (task.audits?.id) parts.push(`Audit-ID: ${task.audits.id}`);
-        if (task.audits?.type) parts.push(`Audittyp: ${task.audits.type}`);
-        parts.push(`Fällig: ${new Date(task.due_date).toLocaleDateString("de-DE")}`);
-        parts.push(`Status: ${task.status}${overdue ? " – ÜBERFÄLLIG" : ""}`);
-        if (task.assigned_to) parts.push(`Zugewiesen: ${task.assigned_to}`);
-        if (task.description) parts.push(`Beschreibung: ${task.description}`);
-        ctx.push(`- ${parts.join(" | ")}`);
+        const parts = [task.title, `TaskID:${task.id}`];
+        if (task.audits?.clients?.name) parts.push(`Kunde:${task.audits.clients.name}`);
+        if (task.audits?.clients?.id) parts.push(`KundenID:${task.audits.clients.id}`);
+        if (task.audits?.id) parts.push(`AuditID:${task.audits.id}`);
+        parts.push(`Fällig:${new Date(task.due_date).toLocaleDateString("de-DE")}`);
+        parts.push(`Status:${task.status}${overdue ? " ⚠️ÜBERFÄLLIG" : ""}`);
+        if (task.assigned_to) parts.push(`Zugewiesen:${task.assigned_to}`);
+        if (task.description) parts.push(`Beschr.:${task.description}`);
+        ctx.push(`· ${parts.join(" | ")}`);
       });
     }
 
@@ -906,60 +830,62 @@ serve(async (req) => {
     const requestOrigin = req.headers.get("origin")?.trim() ?? "";
     const appBaseUrl = ALLOWED_ORIGIN && requestOrigin === ALLOWED_ORIGIN ? ALLOWED_ORIGIN : "";
 
-    // ─── Step 3: Call agent with specialized prompt ───────────────────
-    const agentContext: AgentContext = { databaseContext, appBaseUrl, todayStr };
-    const systemPrompt = agent.buildSystemPrompt(agentContext);
+    // ─── Step 3: Call agent (Claude Sonnet, streaming, prompt caching) ─
+    const staticInstructions = agent.getStaticInstructions(appBaseUrl, todayStr);
 
-    // Send agent metadata as the first SSE event before streaming the AI response
     const agentMeta = JSON.stringify({
       agent: { id: agent.id, name: agent.name, icon: agent.icon },
       reasoning: routeResult.reasoning,
     });
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const aiResponse = await fetch(ANTHROPIC_API_URL, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": ANTHROPIC_VERSION,
+        "anthropic-beta": ANTHROPIC_BETA,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o",
-        messages: [{ role: "system", content: systemPrompt }, ...recentMessages],
+        model: AGENT_MODEL,
+        max_tokens: 1024,
+        system: [
+          {
+            type: "text",
+            text: staticInstructions,
+            cache_control: { type: "ephemeral" },
+          },
+          {
+            type: "text",
+            text: databaseContext,
+          },
+        ],
+        messages: toClaudeMessages(recentMessages),
         stream: true,
       }),
     });
 
-    if (!response.ok) {
-      if (response.status === 429) {
+    if (!aiResponse.ok) {
+      if (aiResponse.status === 429) {
         return new Response(JSON.stringify({ error: "Zu viele Anfragen. Bitte warten Sie einen Moment." }), {
           status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "KI-Kontingent erschöpft. Bitte später erneut versuchen." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
+      const errorText = await aiResponse.text();
+      console.error("AI gateway error:", aiResponse.status, errorText);
       return new Response(JSON.stringify({ error: "Fehler bei der KI-Verarbeitung" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Prepend agent metadata as a custom SSE event, then pipe the AI stream
-    const aiStream = response.body!;
+    const aiStream = aiResponse.body!;
     const metaEvent = new TextEncoder().encode(`event: agent_meta\ndata: ${agentMeta}\n\n`);
 
     const combinedStream = new ReadableStream({
       async start(controller) {
-        // Send agent metadata first
         controller.enqueue(metaEvent);
-
-        // Then pipe the AI stream
         const reader = aiStream.getReader();
         try {
           while (true) {
