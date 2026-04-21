@@ -101,13 +101,11 @@ type SupabaseQueryBuilder = ReturnType<ReturnType<typeof createClient>["from"]>;
 const CORS_ALLOWED_HEADERS =
   "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version";
 
-// ─── Anthropic config ──────────────────────────────────────────────────────────
+// ─── OpenAI config ─────────────────────────────────────────────────────────────
 
-const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
-const ANTHROPIC_VERSION = "2023-06-01";
-const ANTHROPIC_BETA = "prompt-caching-2024-07-31";
-const ROUTER_MODEL = "claude-haiku-4-5-20251001";
-const AGENT_MODEL = "claude-sonnet-4-6";
+const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+const ROUTER_MODEL = "gpt-4o-mini";
+const AGENT_MODEL = "gpt-4o";
 
 // ─── Agent Definitions ─────────────────────────────────────────────────────────
 
@@ -241,22 +239,26 @@ Agenten:
 - general_assistant: Begrüßungen, allgemeine Fragen, alles andere`;
 
 const ROUTER_TOOL = {
-  name: "route_to_agent",
-  description: "Route die Anfrage zum passenden Agenten",
-  input_schema: {
-    type: "object",
-    properties: {
-      agent_id: {
-        type: "string",
-        enum: ["audit_expert", "certification_expert", "task_manager", "client_advisor", "general_assistant"],
-        description: "ID des passenden Agenten",
+  type: "function",
+  function: {
+    name: "route_to_agent",
+    description: "Route die Anfrage zum passenden Agenten",
+    parameters: {
+      type: "object",
+      properties: {
+        agent_id: {
+          type: "string",
+          enum: ["audit_expert", "certification_expert", "task_manager", "client_advisor", "general_assistant"],
+          description: "ID des passenden Agenten",
+        },
+        reasoning: {
+          type: "string",
+          description: "Kurze Begründung (1 Satz)",
+        },
       },
-      reasoning: {
-        type: "string",
-        description: "Kurze Begründung (1 Satz)",
-      },
+      required: ["agent_id", "reasoning"],
+      additionalProperties: false,
     },
-    required: ["agent_id", "reasoning"],
   },
 };
 
@@ -270,20 +272,17 @@ const toClaudeMessages = (msgs: Message[]) => {
 
 async function routeToAgent(messages: Message[], apiKey: string): Promise<{ agentId: string; reasoning: string }> {
   try {
-    const response = await fetch(ANTHROPIC_API_URL, {
+    const response = await fetch(OPENAI_API_URL, {
       method: "POST",
       headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": ANTHROPIC_VERSION,
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
         model: ROUTER_MODEL,
-        max_tokens: 256,
-        system: ROUTER_SYSTEM_PROMPT,
+        messages: [{ role: "system", content: ROUTER_SYSTEM_PROMPT }, ...toClaudeMessages(messages.slice(-3))],
         tools: [ROUTER_TOOL],
-        tool_choice: { type: "tool", name: "route_to_agent" },
-        messages: toClaudeMessages(messages.slice(-3)),
+        tool_choice: { type: "function", function: { name: "route_to_agent" } },
       }),
     });
 
@@ -293,11 +292,12 @@ async function routeToAgent(messages: Message[], apiKey: string): Promise<{ agen
     }
 
     const data = await response.json();
-    const toolUse = data.content?.find((c: { type: string }) => c.type === "tool_use");
-    if (toolUse?.input) {
+    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    if (toolCall?.function?.arguments) {
+      const args = JSON.parse(toolCall.function.arguments);
       return {
-        agentId: toolUse.input.agent_id || "general_assistant",
-        reasoning: toolUse.input.reasoning || "",
+        agentId: args.agent_id || "general_assistant",
+        reasoning: args.reasoning || "",
       };
     }
     return { agentId: "general_assistant", reasoning: "Keine Tool-Antwort" };
@@ -400,10 +400,10 @@ serve(async (req) => {
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
-    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not configured");
+    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
 
     const authSupabase = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
       global: { headers: { Authorization: authHeader } },
@@ -437,7 +437,7 @@ serve(async (req) => {
       normalizedLatestText.includes("begru") || normalizedLatestText.includes("willkommen zuruck");
 
     // ─── Step 1: Route ─────────────────────────────────────────────────
-    const routeResult = await routeToAgent(recentMessages, ANTHROPIC_API_KEY);
+    const routeResult = await routeToAgent(recentMessages, OPENAI_API_KEY);
     const agent = AGENTS[routeResult.agentId] || AGENTS.general_assistant;
 
     console.log(`[Router] User: ${userId} | Agent: ${agent.id} | Reason: ${routeResult.reasoning}`);
@@ -838,29 +838,17 @@ serve(async (req) => {
       reasoning: routeResult.reasoning,
     });
 
-    const aiResponse = await fetch(ANTHROPIC_API_URL, {
+    const systemPrompt = `${staticInstructions}\n\n${databaseContext}`;
+
+    const aiResponse = await fetch(OPENAI_API_URL, {
       method: "POST",
       headers: {
-        "x-api-key": ANTHROPIC_API_KEY,
-        "anthropic-version": ANTHROPIC_VERSION,
-        "anthropic-beta": ANTHROPIC_BETA,
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
         model: AGENT_MODEL,
-        max_tokens: 1024,
-        system: [
-          {
-            type: "text",
-            text: staticInstructions,
-            cache_control: { type: "ephemeral" },
-          },
-          {
-            type: "text",
-            text: databaseContext,
-          },
-        ],
-        messages: toClaudeMessages(recentMessages),
+        messages: [{ role: "system", content: systemPrompt }, ...toClaudeMessages(recentMessages)],
         stream: true,
       }),
     });

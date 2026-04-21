@@ -101,17 +101,15 @@ export async function streamChat({ messages, onDelta, onDone, onError, onAgentSe
             continue;
           }
 
-          // Claude streaming format
+          if (jsonStr === "[DONE]") {
+            streamDone = true;
+            break;
+          }
+
           try {
             const parsed = JSON.parse(jsonStr);
-
-            if (parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta") {
-              const text = parsed.delta.text as string;
-              if (text) onDelta(text);
-            } else if (parsed.type === "message_stop") {
-              streamDone = true;
-              break;
-            }
+            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (content) onDelta(content);
           } catch {
             textBuffer = line + "\n" + textBuffer;
             break;
@@ -132,10 +130,8 @@ export async function streamChat({ messages, onDelta, onDone, onError, onAgentSe
           const jsonStr = raw.slice(6).trim();
           try {
             const parsed = JSON.parse(jsonStr);
-            if (parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta") {
-              const text = parsed.delta.text as string;
-              if (text) onDelta(text);
-            }
+            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (content) onDelta(content);
           } catch { /* ignore */ }
         }
       }
