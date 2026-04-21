@@ -447,148 +447,70 @@ serve(async (req) => {
     const now = new Date();
     const todayStr = now.toLocaleDateString("de-DE");
 
-    const hasAuditWords = keywords.some((k) => ["audit", "prüfung", "termin", "besuch", "audits"].includes(k));
-    const hasClientWords = keywords.some((k) => ["kunde", "firma", "unternehmen", "mandant", "kunden"].includes(k));
-    const hasTaskWords = keywords.some((k) => ["aufgabe", "task", "todo", "erledigen", "fällig", "aufgaben", "tasks"].includes(k));
-    const hasCertWords = keywords.some((k) => ["zertifikat", "norm", "iso", "standard", "gültig", "zertifizierung", "zertifizierungen", "ablauf", "abläuft", "läuft"].includes(k));
-    const hasAuditorWords = keywords.some((k) => ["auditor", "person", "wer", "auditoren"].includes(k));
-
-    // Use up to 4 keywords for Supabase filter (OR across all columns × keywords)
-    const applyKeywordFilter = (query: SupabaseQueryBuilder, columns: string[]): SupabaseQueryBuilder => {
-      if (keywords.length === 0) return query.limit(20);
-      const topKeywords = keywords.slice(0, 4);
-      const filterParts = topKeywords.flatMap((kw) => columns.map((col) => `${col}.ilike.%${kw}%`));
-      return query.or(filterParts.join(",")).limit(50);
-    };
-
-    const fetchPromises = [];
-
-    // 1. CLIENTS
-    if (isGreetingRequest || hasClientWords || keywords.length === 0) {
-      let q = supabase
+    // Always fetch all entity types — keyword matching must never gate data access
+    const [
+      clientsRes, auditsRes, tasksRes, clientCertsRes,
+      auditorsRes, certBodiesRes, contactsRes, certTypesRes,
+    ] = await Promise.all([
+      supabase
         .from("clients")
-        .select("id, name, client_number, contact_person, email, phone, country, is_active, consultant");
-      if (!isGreetingRequest && keywords.length > 0)
-        q = applyKeywordFilter(q, ["name", "client_number", "contact_person"]);
-      else q = q.limit(MAX_CLIENTS);
-      fetchPromises.push(q.then((res) => ({ type: "clients", data: res.data || [] })));
-    } else {
-      fetchPromises.push(Promise.resolve({ type: "clients", data: [] }));
-    }
+        .select("id, name, client_number, contact_person, email, phone, country, is_active, consultant")
+        .limit(100),
+      supabase
+        .from("audits")
+        .select(`
+          id, type, status, scheduled_date, notes,
+          clients (id, name, client_number),
+          auditors (id, name),
+          certification_bodies (id, name, short_name),
+          client_certifications (id, certifications (id, name))
+        `)
+        .order("scheduled_date", { ascending: true })
+        .limit(100),
+      supabase
+        .from("audit_tasks")
+        .select(`
+          id, title, description, status, due_date, assigned_to,
+          audits (id, type, scheduled_date, status, clients (id, name, client_number))
+        `)
+        .order("due_date", { ascending: true })
+        .limit(100),
+      supabase
+        .from("client_certifications")
+        .select(`
+          id, status, valid_from, valid_until, certificate_number, scope,
+          clients (id, name, client_number),
+          certifications (id, name),
+          auditors (id, name)
+        `)
+        .order("valid_until", { ascending: true })
+        .limit(100),
+      supabase
+        .from("auditors")
+        .select("id, name, email, phone, certification_bodies (name, short_name)")
+        .limit(50),
+      supabase
+        .from("certification_bodies")
+        .select("id, name, short_name, contact_person, email, phone")
+        .limit(30),
+      supabase
+        .from("contacts")
+        .select("id, name, role, email, phone, is_primary, clients (id, name, client_number)")
+        .limit(50),
+      supabase
+        .from("certifications")
+        .select("id, name, description")
+        .limit(20),
+    ]);
 
-    // 2. AUDITS
-    if (isGreetingRequest || hasAuditWords || keywords.length === 0) {
-      let q = supabase.from("audits").select(`
-        id, type, status, scheduled_date, notes,
-        clients (id, name, client_number),
-        auditors (id, name),
-        certification_bodies (id, name, short_name),
-        client_certifications (id, certifications (id, name))
-      `);
-      if (isGreetingRequest) {
-        q = q.gte("scheduled_date", now.toISOString()).limit(12);
-      } else if (keywords.length > 0) {
-        q = applyKeywordFilter(q, ["type", "status", "notes"]);
-      } else {
-        q = q.order("scheduled_date", { ascending: true }).limit(MAX_AUDITS);
-      }
-      fetchPromises.push(q.then((res) => ({ type: "audits", data: res.data || [] })));
-    } else {
-      fetchPromises.push(Promise.resolve({ type: "audits", data: [] }));
-    }
-
-    // 3. TASKS
-    if (isGreetingRequest || hasTaskWords || keywords.length === 0) {
-      let q = supabase.from("audit_tasks").select(`
-        id, title, description, status, due_date, assigned_to,
-        audits (id, type, scheduled_date, status, clients (id, name, client_number))
-      `);
-      if (isGreetingRequest) {
-        q = q.or(`status.eq.pending,status.eq.in-progress`).limit(18);
-      } else if (keywords.length > 0) {
-        q = applyKeywordFilter(q, ["title", "description"]);
-      } else {
-        q = q.order("due_date", { ascending: true }).limit(MAX_TASKS);
-      }
-      fetchPromises.push(q.then((res) => ({ type: "tasks", data: res.data || [] })));
-    } else {
-      fetchPromises.push(Promise.resolve({ type: "tasks", data: [] }));
-    }
-
-    // 4. CERTIFICATIONS
-    if (isGreetingRequest || hasCertWords || keywords.length === 0) {
-      let q = supabase.from("client_certifications").select(`
-        id, status, valid_from, valid_until, certificate_number, scope,
-        clients (id, name, client_number),
-        certifications (id, name),
-        auditors (id, name)
-      `);
-      if (isGreetingRequest) {
-        q = q.lte("valid_until", new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000).toISOString()).limit(12);
-      } else if (keywords.length > 0) {
-        q = applyKeywordFilter(q, ["certificate_number", "scope", "status"]);
-      } else {
-        q = q.limit(MAX_CERTIFICATIONS);
-      }
-      fetchPromises.push(q.then((res) => ({ type: "clientCerts", data: res.data || [] })));
-    } else {
-      fetchPromises.push(Promise.resolve({ type: "clientCerts", data: [] }));
-    }
-
-    // 5. AUDITORS
-    if (hasAuditorWords || (!isGreetingRequest && keywords.length === 0)) {
-      let q = supabase.from("auditors").select("id, name, email, phone, certification_bodies (name, short_name)");
-      if (keywords.length > 0) q = applyKeywordFilter(q, ["name", "email"]);
-      else q = q.limit(MAX_AUDITORS);
-      fetchPromises.push(q.then((res) => ({ type: "auditors", data: res.data || [] })));
-    } else {
-      fetchPromises.push(Promise.resolve({ type: "auditors", data: [] }));
-    }
-
-    // 6. CERT BODIES & CONTACTS
-    if (keywords.length > 0) {
-      fetchPromises.push(
-        applyKeywordFilter(
-          supabase.from("certification_bodies").select("id, name, short_name, contact_person, email, phone"),
-          ["name", "short_name"],
-        ).then((res) => ({ type: "certBodies", data: res.data || [] })),
-      );
-      fetchPromises.push(
-        applyKeywordFilter(
-          supabase.from("contacts").select("id, name, role, email, phone, is_primary, clients (id, name, client_number)"),
-          ["name", "role", "email"],
-        ).then((res) => ({ type: "contacts", data: res.data || [] })),
-      );
-      fetchPromises.push(
-        supabase
-          .from("certifications")
-          .select("id, name, description")
-          .limit(10)
-          .then((res) => ({ type: "certTypes", data: res.data || [] })),
-      );
-    } else {
-      fetchPromises.push(Promise.resolve({ type: "certBodies", data: [] }));
-      fetchPromises.push(Promise.resolve({ type: "contacts", data: [] }));
-      fetchPromises.push(
-        supabase
-          .from("certifications")
-          .select("id, name, description")
-          .limit(8)
-          .then((res) => ({ type: "certTypes", data: res.data || [] })),
-      );
-    }
-
-    const results = await Promise.all(fetchPromises);
-    const dataMap = Object.fromEntries(results.map((r) => [r.type, r.data]));
-
-    const clients = dataMap.clients || [];
-    const audits = dataMap.audits || [];
-    const tasks = dataMap.tasks || [];
-    const clientCerts = dataMap.clientCerts || [];
-    const auditors = dataMap.auditors || [];
-    const certBodies = dataMap.certBodies || [];
-    const contacts = dataMap.contacts || [];
-    const certTypes = dataMap.certTypes || [];
+    const clients = clientsRes.data || [];
+    const audits = auditsRes.data || [];
+    const tasks = tasksRes.data || [];
+    const clientCerts = clientCertsRes.data || [];
+    const auditors = auditorsRes.data || [];
+    const certBodies = certBodiesRes.data || [];
+    const contacts = contactsRes.data || [];
+    const certTypes = certTypesRes.data || [];
 
     const openTasks = (tasks as TaskRecord[]).filter((t) => t.status === "pending" || t.status === "in-progress");
     const overdueTasks = openTasks.filter((t) => new Date(t.due_date) < now);
