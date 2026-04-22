@@ -1,4 +1,4 @@
-import { memo, useState, useMemo, useCallback } from 'react';
+import { memo, useState, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   format, parseISO, isBefore, startOfDay,
@@ -249,7 +249,7 @@ interface TaskGroupProps {
   onEdit: (task: DbAuditTaskFull) => void;
 }
 
-const TaskGroup = ({ label, tasks, selectedIds, onSelect, onSelectAll, onComplete, onEdit }: TaskGroupProps) => {
+const TaskGroup = memo(({ label, tasks, selectedIds, onSelect, onSelectAll, onComplete, onEdit }: TaskGroupProps) => {
   const [collapsed, setCollapsed] = useState(false);
   const allSelected = tasks.length > 0 && tasks.every(t => selectedIds.has(t.id));
   const someSelected = tasks.some(t => selectedIds.has(t.id));
@@ -294,7 +294,8 @@ const TaskGroup = ({ label, tasks, selectedIds, onSelect, onSelectAll, onComplet
       )}
     </div>
   );
-};
+});
+TaskGroup.displayName = 'TaskGroup';
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
@@ -339,6 +340,7 @@ export default function Tasks() {
   const scrollRef = useScrollPersistence();
 
   const [searchQuery,    setSearchQuery]    = useState(() => ss(SS_SEARCH));
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(() => ss(SS_SEARCH));
   const [statusFilter,   setStatusFilter]   = useState<StatusFilter>(() => (ss(SS_STATUS) as StatusFilter) || 'all');
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>(() => (ss(SS_CATEGORY) as CategoryFilter) || 'all');
   const [dueFilter,      setDueFilter]      = useState<DueFilter>(() => (ss(SS_DUE) as DueFilter) || 'all');
@@ -381,8 +383,14 @@ export default function Tasks() {
   const setYear       = useCallback((v: string) => { setYearFilter(v); sessionStorage.setItem(SS_YEAR, v); }, []);
   const setConsultant = useCallback(persist(setConsultantFilter, SS_CONSULTANT), [persist]);
 
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearchQuery(searchQuery), 200);
+    return () => clearTimeout(id);
+  }, [searchQuery]);
+
   const handleReset = useCallback(() => {
-    setSearchQuery(''); setStatusFilter('all'); setCategoryFilter('all');
+    setSearchQuery(''); setDebouncedSearchQuery('');
+    setStatusFilter('all'); setCategoryFilter('all');
     setDueFilter('all'); setGroupBy('status'); setSortDir('asc');
     setAuditorFilter(''); setClientFilter(''); setAuditTypeFilter('');
     setSeverityFilter(''); setAssignedFilter(''); setConsultantFilter(''); setSelectedIds(new Set());
@@ -489,8 +497,8 @@ export default function Tasks() {
       .filter(task => {
         const { dueMs, eff } = taskMeta.get(task.id)!;
         if (yearFilter !== 'all' && new Date(dueMs).getFullYear() !== parseInt(yearFilter)) return false;
-        if (searchQuery) {
-          const q = searchQuery.toLowerCase();
+        if (debouncedSearchQuery) {
+          const q = debouncedSearchQuery.toLowerCase();
           if (
             !task.title.toLowerCase().includes(q) &&
             !(task.assigned_to ?? '').toLowerCase().includes(q) &&
@@ -519,7 +527,7 @@ export default function Tasks() {
         const diff = taskMeta.get(a.id)!.dueMs - taskMeta.get(b.id)!.dueMs;
         return sortDir === 'asc' ? diff : -diff;
       });
-  }, [tasks, taskMeta, todayMs, yearFilter, searchQuery, statusFilter, categoryFilter, dueFilter, sortDir,
+  }, [tasks, taskMeta, todayMs, yearFilter, debouncedSearchQuery, statusFilter, categoryFilter, dueFilter, sortDir,
       auditorFilter, clientFilter, auditTypeFilter, severityFilter, assignedFilter, consultantFilter]);
 
   // ── Grouping ──────────────────────────────────────────────────────────────
