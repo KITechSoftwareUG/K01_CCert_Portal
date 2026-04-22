@@ -371,15 +371,22 @@ async function executeTool(
 
 // ─── Message helpers ───────────────────────────────────────────────────────────
 
+type ContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string; detail?: string } };
+
 interface Message {
   role: string;
-  content: string;
+  content: string | ContentPart[];
 }
 
 const toOpenAIMessages = (msgs: Message[]) =>
   msgs
     .filter((m) => m.role === "user" || m.role === "assistant")
-    .map((m) => ({ role: m.role as "user" | "assistant", content: String(m.content) }));
+    .map((m) => ({
+      role: m.role as "user" | "assistant",
+      content: Array.isArray(m.content) ? m.content : String(m.content),
+    }));
 
 // ─── Main Handler ──────────────────────────────────────────────────────────────
 

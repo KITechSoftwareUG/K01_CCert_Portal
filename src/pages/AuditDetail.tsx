@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, memo, useMemo } from 'react';
+import { useState, useCallback, useEffect, memo, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAudit, useUpdateAudit, useDeleteAudit } from '@/hooks/useAudits';
 import { useAuditTasks, useUpdateAuditTask, useDeleteAuditTask } from '@/hooks/useAuditTasks';
@@ -33,12 +33,16 @@ import {
   FileText,
   CalendarPlus,
   ChevronRight,
+  ChevronDown,
   Pencil,
   XCircle,
   Plus,
   AlertTriangle,
   Trash2,
-  CalendarDays
+  CalendarDays,
+  Paperclip,
+  Upload,
+  Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -54,6 +58,12 @@ import { EditFindingDialog } from '@/components/EditFindingDialog';
 import { FindingsCsvUpload } from '@/components/FindingsCsvUpload';
 import { AuditDocumentsCard } from '@/components/AuditDocumentsCard';
 import { useOutlookSync } from '@/hooks/useOutlookSync';
+import {
+  useAuditTaskDocuments,
+  useUploadAuditTaskDocument,
+  useDeleteAuditTaskDocument,
+  getAuditTaskDocumentUrl,
+} from '@/hooks/useAuditTaskDocuments';
 
 const StatusIcon = {
   scheduled: Clock,
@@ -81,6 +91,122 @@ const SEVERITY_COLORS: Record<string, string> = {
   recommendation: 'bg-blue-100 text-blue-800 border-blue-300',
 };
 
+const ACCEPTED_TASK_DOC_TYPES = [
+  '.pdf', '.txt', '.csv',
+  '.xls', '.xlsx',
+  '.jpg', '.jpeg', '.png', '.tiff', '.tif', '.gif', '.webp',
+  '.doc', '.docx',
+].join(',');
+
+function formatFileSize(bytes: number | null): string {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+const TaskDocumentsSection = ({ taskId }: { taskId: string }) => {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const { data: documents = [], isLoading } = useAuditTaskDocuments(taskId);
+  const upload = useUploadAuditTaskDocument();
+  const remove = useDeleteAuditTaskDocument();
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+    for (const file of files) {
+      try {
+        await upload.mutateAsync({ taskId, file });
+        toast.success(`${file.name} hochgeladen`);
+      } catch {
+        toast.error(`Fehler beim Hochladen von ${file.name}`);
+      }
+    }
+    if (fileRef.current) fileRef.current.value = '';
+  };
+
+  const handleDownload = async (filePath: string, fileName: string) => {
+    const url = await getAuditTaskDocumentUrl(filePath);
+    if (!url) { toast.error('Download-Link konnte nicht erstellt werden'); return; }
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    a.click();
+  };
+
+  const handleDelete = (id: string, filePath: string) => {
+    remove.mutate(
+      { id, filePath, taskId },
+      {
+        onSuccess: () => toast.success('Dokument gelöscht'),
+        onError: () => toast.error('Fehler beim Löschen'),
+      }
+    );
+  };
+
+  return (
+    <div className="mt-3 pt-3 border-t">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-medium text-muted-foreground">Dokumente</span>
+        <div>
+          <input
+            ref={fileRef}
+            type="file"
+            accept={ACCEPTED_TASK_DOC_TYPES}
+            multiple
+            className="hidden"
+            onChange={handleFileChange}
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-6 text-xs px-2 gap-1"
+            onClick={() => fileRef.current?.click()}
+            disabled={upload.isPending}
+          >
+            <Upload className="h-3 w-3" />
+            {upload.isPending ? 'Lädt...' : 'Hochladen'}
+          </Button>
+        </div>
+      </div>
+      {isLoading ? (
+        <p className="text-xs text-muted-foreground py-2">Lädt...</p>
+      ) : documents.length === 0 ? (
+        <p className="text-xs text-muted-foreground py-2 text-center">Noch keine Dokumente</p>
+      ) : (
+        <ul className="space-y-1">
+          {documents.map((doc) => (
+            <li key={doc.id} className="flex items-center gap-2 p-2 rounded border bg-background text-xs">
+              <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <span className="flex-1 truncate">{doc.file_name}</span>
+              <span className="text-muted-foreground shrink-0">{formatFileSize(doc.file_size)}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                onClick={() => handleDownload(doc.file_path, doc.file_name)}
+                title="Herunterladen"
+              >
+                <Download className="h-3 w-3" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                onClick={() => handleDelete(doc.id, doc.file_path)}
+                disabled={remove.isPending}
+                title="Löschen"
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
+
 interface TaskItemProps {
   task: DbAuditTask & { category?: string; severity?: string | null };
   index: number;
@@ -97,9 +223,11 @@ const TaskItem = memo(({ task, index, onToggle, onDelete, onEdit, onSetCompleted
   const taskOverdue = task.status !== 'completed' && isOverdue(dueDate);
   const displayStatus = taskOverdue ? TASK_STATUS_CONFIG.overdue : TASK_STATUS_CONFIG[task.status];
   const isFinding = task.category === 'finding';
+  const [docsOpen, setDocsOpen] = useState(false);
 
   return (
-    <div className="flex items-start gap-4 p-4 border rounded-lg hover:bg-accent/50 transition-colors">
+    <div className="border rounded-lg hover:bg-accent/50 transition-colors">
+    <div className="flex items-start gap-4 p-4">
       <Checkbox
         checked={task.status === 'completed'}
         onCheckedChange={() => onToggle(task.id, task.status)}
@@ -193,8 +321,24 @@ const TaskItem = memo(({ task, index, onToggle, onDelete, onEdit, onSetCompleted
               </PopoverContent>
             </Popover>
           )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 text-xs gap-1 px-2 text-muted-foreground"
+            onClick={() => setDocsOpen((v) => !v)}
+          >
+            <Paperclip className="h-3 w-3" />
+            Dokumente
+            <ChevronDown className={cn('h-3 w-3 transition-transform', docsOpen && 'rotate-180')} />
+          </Button>
         </div>
       </div>
+    </div>
+      {docsOpen && (
+        <div className="px-4 pb-4">
+          <TaskDocumentsSection taskId={task.id} />
+        </div>
+      )}
     </div>
   );
 });

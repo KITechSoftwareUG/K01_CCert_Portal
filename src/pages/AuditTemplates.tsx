@@ -50,6 +50,7 @@ import {
   AuditTemplateTask,
 } from '@/hooks/useAuditTemplates';
 import { toast } from 'sonner';
+import type { Database } from '@/integrations/supabase/types';
 import {
   Plus,
   Trash2,
@@ -744,7 +745,7 @@ export default function AuditTemplates() {
               <Label>Audittyp *</Label>
               <Select
                 value={newTemplate.audit_type}
-                onValueChange={(value) => setNewTemplate({ ...newTemplate, audit_type: value as any })}
+                onValueChange={(value) => setNewTemplate({ ...newTemplate, audit_type: value as Database["public"]["Enums"]["audit_type"] })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Audittyp wählen..." />

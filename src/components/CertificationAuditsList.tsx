@@ -1,10 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,14 +20,13 @@ import {
   useDeleteCertificationAudit,
   CertificationAudit 
 } from '@/hooks/useCertificationAudits';
-import { useAutomaticAuditPlanning } from '@/hooks/useAutomaticAuditPlanning';
 import { CertificationAuditDialog } from './CertificationAuditDialog';
 import { AuditorPopover } from './AuditorPopover';
 import { 
-  Plus, 
-  Calendar, 
-  Clock, 
-  CheckCircle, 
+  Plus,
+  Calendar,
+  Clock,
+  CheckCircle,
   XCircle,
   AlertCircle,
   ClipboardCheck,
@@ -36,9 +34,7 @@ import {
   Trash2,
   ExternalLink,
   User,
-  Building,
-  CalendarPlus,
-  AlertTriangle
+  Building
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -117,12 +113,6 @@ export const CertificationAuditsList = ({
   
   const { data: audits = [], isLoading } = useCertificationAudits(clientCertificationId);
   const deleteAudit = useDeleteCertificationAudit();
-  const { suggestions } = useAutomaticAuditPlanning();
-
-  const relevantSuggestions = useMemo(() => 
-    suggestions.filter(s => s.clientCertificationId === clientCertificationId),
-    [suggestions, clientCertificationId]
-  );
 
   const handleEdit = (audit: CertificationAudit) => {
     setEditingAudit(audit);
@@ -155,9 +145,6 @@ export const CertificationAuditsList = ({
     }
   };
 
-  const handleCreateSuggestion = (type: string, date: string) => {
-    handleCreate(type, date);
-  };
   return (
     <>
       <Card>
@@ -177,52 +164,12 @@ export const CertificationAuditsList = ({
           </Button>
         </CardHeader>
         <CardContent>
-          {/* Suggestions Banner */}
-          {relevantSuggestions.length > 0 && (
-            <div className="mb-4 space-y-2">
-              {relevantSuggestions.map((suggestion) => (
-                <Alert 
-                  key={`${suggestion.suggestedType}-${suggestion.suggestedDate.toISOString()}`}
-                  variant={suggestion.priority === 'high' ? 'destructive' : 'default'}
-                  className="flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-2 flex-1">
-                    <AlertTriangle className="h-4 w-4 shrink-0" />
-                    <AlertDescription className="flex-1">
-                      <span className="font-medium">
-                        {suggestion.suggestedType === 'surveillance' ? 'Überwachungsaudit' : 'Rezertifizierung'}
-                      </span>
-                      {' fehlt – '}
-                      {suggestion.reason}
-                      {' · Vorschlag: '}
-                      <span className="font-medium">
-                        {format(suggestion.suggestedDate, 'dd.MM.yyyy', { locale: de })}
-                      </span>
-                    </AlertDescription>
-                  </div>
-                  <Button 
-                    size="sm" 
-                    variant={suggestion.priority === 'high' ? 'secondary' : 'default'}
-                    className="ml-3 gap-1 shrink-0"
-                    onClick={() => handleCreateSuggestion(
-                      suggestion.suggestedType, 
-                      format(suggestion.suggestedDate, 'yyyy-MM-dd')
-                    )}
-                  >
-                    <CalendarPlus className="h-3.5 w-3.5" />
-                    Anlegen
-                  </Button>
-                </Alert>
-              ))}
-            </div>
-          )}
-
           {isLoading ? (
             <div className="space-y-3">
               <Skeleton className="h-20 w-full" />
               <Skeleton className="h-20 w-full" />
             </div>
-          ) : audits.length === 0 && relevantSuggestions.length === 0 ? (
+          ) : audits.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <ClipboardCheck className="h-12 w-12 mx-auto mb-2 opacity-50" />
               <p>Keine Audits vorhanden</p>
