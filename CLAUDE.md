@@ -215,6 +215,8 @@ Falsche Namen → Runtime-Fehler oder leeres Ergebnis (Supabase gibt kein Error 
 |-----|---------|-----------|
 | Dashboard blank (alle Seiten) | `task.audits.date` statt `.scheduled_date` → Vite Error Overlay | `npx tsc --noEmit` nach jeder Typänderung |
 | Supabase liefert `null`/leer | Spaltenname in `.select()` falsch | Immer aus `types.ts` kopieren, nie raten |
+| Chat-Assistent: "keine Audits" trotz vorhandener Daten | KI filtert fälschlicherweise `status IN ('scheduled','in-progress')` bei allgemeiner Monat-Anfrage | System-Prompt: Status-Filter NUR bei explizit "offene/geplante" Anfrage |
+| Chat-Assistent: Monatsfilter schlägt fehl | `EXTRACT(MONTH FROM scheduled_date)` auf `timestamptz` bei UTC-Grenzwerten | Immer `>= '2026-05-01' AND < '2026-06-01'` Pattern verwenden |
 
 ---
 

@@ -8,7 +8,7 @@ import { de } from 'date-fns/locale';
 import {
   CheckSquare, Search, X, ExternalLink, ChevronDown, ChevronRight,
   User, Calendar, Building2, Tag, SlidersHorizontal, ArrowUpDown,
-  UserCheck, Circle, CheckCircle2, RotateCcw, Briefcase,
+  UserCheck, Circle, CheckCircle2, RotateCcw, Briefcase, ChevronsUpDown, Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -21,6 +21,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { useScrollPersistence } from '@/hooks/useScrollPersistence';
 import { AuditType } from '@/types/audit';
 import { cn } from '@/lib/utils';
@@ -49,7 +51,6 @@ const SS_ASSIGNED    = 'tasks-assigned-filter';
 const SS_YEAR        = 'tasks-year-filter';
 const SS_CONSULTANT  = 'tasks-consultant-filter';
 
-const CURRENT_YEAR = String(new Date().getFullYear());
 
 const ALL_SS_KEYS = [
   SS_SEARCH, SS_STATUS, SS_CATEGORY, SS_DUE, SS_GROUP,
@@ -334,6 +335,53 @@ function FilterSelect({ value, onValueChange, width = 'w-[155px]', children }: {
   );
 }
 
+// ─── ClientFilterCombobox ─────────────────────────────────────────────────────
+
+function ClientFilterCombobox({ value, onValueChange, clients }: {
+  value: string;
+  onValueChange: (v: string) => void;
+  clients: [string, string][];
+}) {
+  const [open, setOpen] = useState(false);
+  const selectedName = value ? clients.find(([id]) => id === value)?.[1] : null;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="h-9 w-[175px] justify-between font-normal text-sm"
+        >
+          <span className="truncate">{selectedName ?? 'Alle Kunden'}</span>
+          <ChevronsUpDown className="ml-1 h-3.5 w-3.5 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[220px] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Kunde suchen…" className="h-9" />
+          <CommandList>
+            <CommandEmpty>Kein Kunde gefunden.</CommandEmpty>
+            <CommandGroup>
+              <CommandItem value="all" onSelect={() => { onValueChange(''); setOpen(false); }}>
+                <Check className={cn('mr-2 h-4 w-4', !value ? 'opacity-100' : 'opacity-0')} />
+                Alle Kunden
+              </CommandItem>
+              {clients.map(([id, name]) => (
+                <CommandItem key={id} value={name} onSelect={() => { onValueChange(id); setOpen(false); }}>
+                  <Check className={cn('mr-2 h-4 w-4', value === id ? 'opacity-100' : 'opacity-0')} />
+                  {name}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function Tasks() {
@@ -351,7 +399,7 @@ export default function Tasks() {
   const [auditTypeFilter,setAuditTypeFilter]= useState(() => ss(SS_AUDIT_TYPE));
   const [severityFilter, setSeverityFilter] = useState(() => ss(SS_SEVERITY));
   const [assignedFilter,    setAssignedFilter]    = useState(() => ss(SS_ASSIGNED));
-  const [yearFilter,        setYearFilter]        = useState(() => ss(SS_YEAR) || CURRENT_YEAR);
+  const [yearFilter,        setYearFilter]        = useState(() => ss(SS_YEAR) || 'all');
   const [consultantFilter,  setConsultantFilter]  = useState(() => ss(SS_CONSULTANT));
   const [advancedOpen,   setAdvancedOpen]   = useState(
     () => !!(ss(SS_AUDITOR) || ss(SS_CLIENT) || ss(SS_AUDIT_TYPE) || ss(SS_SEVERITY) || ss(SS_ASSIGNED))
@@ -392,7 +440,7 @@ export default function Tasks() {
   const handleReset = useCallback(() => {
     setSearchQuery('');
     ALL_SS_KEYS.forEach(k => sessionStorage.removeItem(k));
-    sessionStorage.setItem(SS_YEAR, CURRENT_YEAR);
+    sessionStorage.setItem(SS_YEAR, 'all');
     sessionStorage.setItem(SS_GROUP, 'due-date');
     startTransition(() => {
       setDebouncedSearchQuery('');
@@ -401,7 +449,7 @@ export default function Tasks() {
       setAuditorFilter(''); setClientFilter(''); setAuditTypeFilter('');
       setSeverityFilter(''); setAssignedFilter(''); setConsultantFilter('');
       setSelectedIds(new Set());
-      setYearFilter(CURRENT_YEAR);
+      setYearFilter('all');
     });
   }, [startTransition]);
 
@@ -687,10 +735,7 @@ export default function Tasks() {
                 {uniqueAuditors.map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
               </FilterSelect>
 
-              <FilterSelect value={clientFilter || 'all'} onValueChange={v => setClient(v === 'all' ? '' : v)} width="w-[175px]">
-                <SelectItem value="all">Alle Kunden</SelectItem>
-                {uniqueClients.map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
-              </FilterSelect>
+              <ClientFilterCombobox value={clientFilter} onValueChange={setClient} clients={uniqueClients} />
 
               <FilterSelect value={auditTypeFilter || 'all'} onValueChange={v => setAuditType(v === 'all' ? '' : v)} width="w-[170px]">
                 <SelectItem value="all">Alle Audit-Typen</SelectItem>

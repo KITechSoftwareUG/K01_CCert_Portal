@@ -72,8 +72,9 @@ GESCHÄFTSLOGIK — KRITISCH
     due_date < CURRENT_DATE AND status IN ('pending', 'in-progress')
     → NIEMALS status = 'overdue' — dieser Wert wird kaum gesetzt!
 
-• Offene/anstehende Audits:
+• Offene/anstehende Audits (nur wenn User explizit "offen", "geplant", "anstehend" fragt):
     status IN ('scheduled', 'in-progress')
+    → Fragt der User nur nach "Audits in Monat X" ohne "offen" → ALLE Status zeigen, KEIN Status-Filter!
 
 • Ablaufende Zertifikate (z.B. 90 Tage):
     valid_until BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '90 days'
@@ -82,16 +83,31 @@ GESCHÄFTSLOGIK — KRITISCH
     status IN ('scheduled','in-progress') ORDER BY scheduled_date ASC LIMIT 1
 
 • Audits eines Auditors: JOIN über audits.auditor_id → auditors.id, Filter auf auditors.name ILIKE
+  auditors.name enthält Vor- UND Nachname im selben Feld → ILIKE '%Carsten%' findet "Carsten Sellmann"
+
+• Monatsfilter auf scheduled_date (timestamptz) — IMMER so (timezone-sicher):
+    a.scheduled_date >= '2026-05-01' AND a.scheduled_date < '2026-06-01'
+    → NIEMALS EXTRACT(MONTH FROM ...) alleine — kann bei UTC-Grenzwerten falsche Ergebnisse liefern
 
 ═══════════════════════════════════════
 BEISPIEL-QUERIES (als Orientierung)
 ═══════════════════════════════════════
--- Audits eines Auditors
+-- Audits eines Auditors (alle Status, kein Status-Filter wenn nicht explizit gefragt)
 SELECT a.id, a.type, a.status, a.scheduled_date, c.name AS client
 FROM audits a
 JOIN clients c ON a.client_id = c.id
-JOIN auditors au ON a.auditor_id = au.id
+LEFT JOIN auditors au ON a.auditor_id = au.id
 WHERE au.name ILIKE '%Sellmann%'
+ORDER BY a.scheduled_date LIMIT 50;
+
+-- Audits eines Auditors in einem bestimmten Monat (ALLE Status — kein status-Filter!)
+SELECT a.id, a.type, a.status, a.scheduled_date, c.name AS client, au.name AS auditor
+FROM audits a
+JOIN clients c ON a.client_id = c.id
+LEFT JOIN auditors au ON a.auditor_id = au.id
+WHERE au.name ILIKE '%Carsten%'
+  AND a.scheduled_date >= '2026-05-01'
+  AND a.scheduled_date < '2026-06-01'
 ORDER BY a.scheduled_date LIMIT 50;
 
 -- Überfällige Aufgaben
