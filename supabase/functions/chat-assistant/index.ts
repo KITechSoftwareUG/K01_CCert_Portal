@@ -54,6 +54,7 @@ const DATA_TOOLS = [
           date_from: { type: "string", description: "Nur Audits ab diesem Datum (ISO 8601, z.B. 2026-04-01)" },
           date_to: { type: "string", description: "Nur Audits bis zu diesem Datum (ISO 8601)" },
           client_name: { type: "string", description: "Filter nach Kundenname (Teilstring, Groß/Klein egal)" },
+          auditor_name: { type: "string", description: "Filter nach Auditorname (Teilstring, z.B. 'Carsten Sellmann')" },
           limit: { type: "integer", description: "Max. Anzahl Ergebnisse (Standard: 25)" },
         },
       },
@@ -177,9 +178,13 @@ async function executeTool(
           const needle = String(args.client_name).toLowerCase();
           data = data.filter((a) => a.clients?.name?.toLowerCase().includes(needle));
         }
+        if (args.auditor_name) {
+          const needle = String(args.auditor_name).toLowerCase();
+          data = data.filter((a) => a.auditors?.name?.toLowerCase().includes(needle));
+        }
 
         data = data.slice(0, limit);
-        if (!data.length) return "Keine Audits für diesen Kunden gefunden.";
+        if (!data.length) return "Keine Audits mit diesen Kriterien gefunden.";
 
         return JSON.stringify(
           data.map((a) => ({
@@ -371,22 +376,15 @@ async function executeTool(
 
 // ─── Message helpers ───────────────────────────────────────────────────────────
 
-type ContentPart =
-  | { type: "text"; text: string }
-  | { type: "image_url"; image_url: { url: string; detail?: string } };
-
 interface Message {
   role: string;
-  content: string | ContentPart[];
+  content: string;
 }
 
 const toOpenAIMessages = (msgs: Message[]) =>
   msgs
     .filter((m) => m.role === "user" || m.role === "assistant")
-    .map((m) => ({
-      role: m.role as "user" | "assistant",
-      content: Array.isArray(m.content) ? m.content : String(m.content),
-    }));
+    .map((m) => ({ role: m.role as "user" | "assistant", content: String(m.content) }));
 
 // ─── Main Handler ──────────────────────────────────────────────────────────────
 
