@@ -909,7 +909,7 @@ const Clients = () => {
                                             onClick={() => certifications.length > 0 ? toggleClient(client.id) : navigate(`/clients/${client.id}`)}
                                           >
                                             <div className="flex-1 min-w-0">
-                                              <div className="flex items-center gap-2">
+                                              <div className="flex items-center gap-2 flex-wrap">
                                                 {certifications.length > 0 ? (
                                                   isClientExpanded ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />
                                                 ) : (
@@ -917,6 +917,33 @@ const Clients = () => {
                                                 )}
                                                 <span className="font-medium truncate">{client.name}</span>
                                                 <ClientNumberBadge clientNumber={client.client_number} />
+                                                {!isMobile && (
+                                                  <>
+                                                    {!clientIsActive && (
+                                                      <Badge variant="destructive" className="text-xs">Inaktiv</Badge>
+                                                    )}
+                                                    {certifications.length > 0 && (
+                                                      <Badge variant="secondary" className="text-xs">
+                                                        {certifications.length} Zertifikat{certifications.length !== 1 ? 'e' : ''}
+                                                      </Badge>
+                                                    )}
+                                                    {(() => {
+                                                      const cfg = getAuditModeConfig(client.audit_mode);
+                                                      return (
+                                                        <Badge variant="outline" className={`text-xs gap-1 font-medium ${cfg.modeBadge}`}>
+                                                          <cfg.Icon className="h-3 w-3" /> {cfg.label}
+                                                        </Badge>
+                                                      );
+                                                    })()}
+                                                    <ContactPopover
+                                                      legacyName={client.contact_person}
+                                                      legacyPhone={client.phone}
+                                                      legacyEmail={client.email}
+                                                      contacts={contacts}
+                                                      clientId={client.id}
+                                                    />
+                                                  </>
+                                                )}
                                               </div>
                                               {isMobile && (
                                                 <div className="flex items-center gap-2 mt-1 ml-6 flex-wrap">
@@ -940,33 +967,6 @@ const Clients = () => {
                                               )}
                                             </div>
                                             <div className="flex items-center gap-2 shrink-0">
-                                              {!isMobile && (
-                                                <>
-                                                  {!clientIsActive && (
-                                                    <Badge variant="destructive" className="text-xs">Inaktiv</Badge>
-                                                  )}
-                                                  {certifications.length > 0 && (
-                                                    <Badge variant="secondary" className="text-xs">
-                                                      {certifications.length} Zertifikat{certifications.length !== 1 ? 'e' : ''}
-                                                    </Badge>
-                                                  )}
-                                                  {(() => {
-                                                    const cfg = getAuditModeConfig(client.audit_mode);
-                                                    return (
-                                                      <Badge variant="outline" className={`text-xs gap-1 font-medium ${cfg.modeBadge}`}>
-                                                        <cfg.Icon className="h-3 w-3" /> {cfg.label}
-                                                      </Badge>
-                                                    );
-                                                  })()}
-                                                  <ContactPopover
-                                                    legacyName={client.contact_person}
-                                                    legacyPhone={client.phone}
-                                                    legacyEmail={client.email}
-                                                    contacts={contacts}
-                                                    clientId={client.id}
-                                                  />
-                                                </>
-                                              )}
                                               <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
                                                   <Button
