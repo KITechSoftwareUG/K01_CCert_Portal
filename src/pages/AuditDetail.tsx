@@ -876,6 +876,7 @@ const AuditDetail = () => {
           open={!!editingTask}
           onOpenChange={(open) => { if (!open) setEditingTask(null); }}
           task={editingTask}
+          defaultAssignedTo={audit?.clients?.consultants?.name || ''}
         />
       </div>
     </>

@@ -27,6 +27,7 @@ interface EditFindingDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   task: DbAuditTask | null;
+  defaultAssignedTo?: string;
 }
 
 const SEVERITY_OPTIONS = [
@@ -43,7 +44,7 @@ const STATUS_OPTIONS = [
 
 const NONE_VALUE = '__none__';
 
-export const EditFindingDialog = ({ open, onOpenChange, task }: EditFindingDialogProps) => {
+export const EditFindingDialog = ({ open, onOpenChange, task, defaultAssignedTo }: EditFindingDialogProps) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
@@ -59,7 +60,7 @@ export const EditFindingDialog = ({ open, onOpenChange, task }: EditFindingDialo
       setTitle(task.title);
       setDescription(task.description || '');
       setDueDate(task.due_date ? format(new Date(task.due_date), 'yyyy-MM-dd') : '');
-      setAssignedTo(task.assigned_to || '');
+      setAssignedTo(task.assigned_to || defaultAssignedTo || '');
       setSeverity(task.severity || 'minor');
       setStatus(task.status);
     }
