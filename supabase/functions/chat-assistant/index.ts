@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const CORS_HEADERS =
@@ -193,7 +192,7 @@ const toOpenAIMessages = (msgs: IncomingMessage[]) =>
 
 // ─── Main Handler ─────────────────────────────────────────────────────────────
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   const corsHeaders: Record<string, string> = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": CORS_HEADERS,
@@ -372,7 +371,7 @@ serve(async (req) => {
   } catch (e) {
     const msg = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
     console.error("chat-assistant FATAL:", msg);
-    return new Response(JSON.stringify({ error: "Interner Fehler. Bitte erneut versuchen." }), {
+    return new Response(JSON.stringify({ error: msg }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
