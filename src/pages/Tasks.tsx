@@ -250,7 +250,7 @@ interface TaskGroupProps {
 }
 
 const TaskGroup = memo(({ label, tasks, selectedIds, onSelect, onSelectAll, onComplete, onEdit }: TaskGroupProps) => {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const allSelected = tasks.length > 0 && tasks.every(t => selectedIds.has(t.id));
   const someSelected = tasks.some(t => selectedIds.has(t.id));
 
