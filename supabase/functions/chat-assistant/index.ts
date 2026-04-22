@@ -216,19 +216,21 @@ serve(async (req) => {
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
 
-    // Auth check
-    const authSupabase = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: { user }, error: authErr } = await authSupabase.auth.getUser();
+    // Auth check — in Deno Edge Functions muss der JWT explizit übergeben werden
+    const jwt = authHeader.replace("Bearer ", "");
+    const authSupabase = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!);
+    const { data: { user }, error: authErr } = await authSupabase.auth.getUser(jwt);
     if (authErr || !user) {
+      console.error("Auth error:", authErr?.message ?? "no user");
       return new Response(JSON.stringify({ error: "Ungültiger Token." }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const userId = user.id;
-    const { messages } = await req.json();
+    let body: { messages?: unknown };
+    try { body = await req.json(); } catch { body = {}; }
+    const { messages } = body;
     const userMessages = (Array.isArray(messages) ? messages : []).slice(-10) as IncomingMessage[];
 
     const supabase = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -368,7 +370,8 @@ serve(async (req) => {
 
     return new Response(combinedStream, { headers: { ...corsHeaders, "Content-Type": "text/event-stream" } });
   } catch (e) {
-    console.error("chat-assistant error:", e instanceof Error ? e.message : e);
+    const msg = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+    console.error("chat-assistant FATAL:", msg);
     return new Response(JSON.stringify({ error: "Interner Fehler. Bitte erneut versuchen." }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
