@@ -74,39 +74,51 @@ export const useClientAuditTasks = (clientId: string) => {
   });
 };
 
+const ALL_TASKS_SELECT = `
+  *,
+  audits (
+    id,
+    type,
+    scheduled_date,
+    client_id,
+    auditor_id,
+    clients (
+      id,
+      name,
+      consultants (
+        id,
+        name
+      )
+    ),
+    auditors (
+      id,
+      name
+    )
+  )
+`;
+
 export const useAllAuditTasks = () => {
   return useQuery({
     queryKey: ['audit_tasks', 'all'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('audit_tasks')
-        .select(`
-          *,
-          audits (
-            id,
-            type,
-            scheduled_date,
-            client_id,
-            auditor_id,
-            clients (
-              id,
-              name,
-              consultants (
-                id,
-                name
-              )
-            ),
-            auditors (
-              id,
-              name
-            )
-          )
-        `)
-        .order('due_date', { ascending: true })
-        .limit(10000);
+      const PAGE_SIZE = 1000;
+      const allData: DbAuditTaskFull[] = [];
+      let from = 0;
 
-      if (error) throw error;
-      return data as DbAuditTaskFull[];
+      while (true) {
+        const { data, error } = await supabase
+          .from('audit_tasks')
+          .select(ALL_TASKS_SELECT)
+          .order('due_date', { ascending: true })
+          .range(from, from + PAGE_SIZE - 1);
+
+        if (error) throw error;
+        allData.push(...(data as DbAuditTaskFull[]));
+        if (data.length < PAGE_SIZE) break;
+        from += PAGE_SIZE;
+      }
+
+      return allData;
     },
   });
 };
