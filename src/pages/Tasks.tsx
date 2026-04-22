@@ -512,12 +512,11 @@ export default function Tasks() {
 
   // ── Ein Loop für alle tasks-Derivate — läuft nur bei neuen Daten ────────
 
-  const { taskMeta, todayMs, uniqueYears, uniqueAuditors, uniqueClients, uniqueAssigned, uniqueConsultants } = useMemo(() => {
+  const { taskMeta, todayMs, uniqueYears, uniqueAuditors, uniqueClients, uniqueConsultants } = useMemo(() => {
     const todayMs  = startOfDay(new Date()).getTime();
     const taskMeta = new Map<string, { dueMs: number; eff: TaskStatus }>();
     const auditors    = new Map<string, string>();
     const clients     = new Map<string, string>();
-    const assigned    = new Set<string>();
     const years       = new Set<number>();
     const consultants = new Map<string, string>();
 
@@ -530,11 +529,10 @@ export default function Tasks() {
                                         task.status as TaskStatus;
       taskMeta.set(task.id, { dueMs, eff });
       years.add(new Date(dueMs).getFullYear());
-      if (task.audits?.auditors)              auditors.set(task.audits.auditors.id, task.audits.auditors.name);
-      if (task.audits?.clients)               clients.set(task.audits.clients.id,   task.audits.clients.name);
-      if (task.assigned_to)                   assigned.add(task.assigned_to);
+      if (task.audits?.auditors) auditors.set(task.audits.auditors.id, task.audits.auditors.name);
+      if (task.audits?.clients)  clients.set(task.audits.clients.id,   task.audits.clients.name);
       const c = task.audits?.clients?.consultants;
-      if (c)                                  consultants.set(c.id, c.name);
+      if (c)                     consultants.set(c.id, c.name);
     }
 
     return {
@@ -543,7 +541,6 @@ export default function Tasks() {
       uniqueYears:       [...years].sort((a, b) => b - a),
       uniqueAuditors:    [...auditors.entries()].sort(([, a], [, b])    => a.localeCompare(b, 'de')),
       uniqueClients:     [...clients.entries()].sort(([, a], [, b])     => a.localeCompare(b, 'de')),
-      uniqueAssigned:    [...assigned].sort((a, b)                      => a.localeCompare(b, 'de')),
       uniqueConsultants: [...consultants.entries()].sort(([, a], [, b]) => a.localeCompare(b, 'de')),
     };
   }, [tasks]);
@@ -756,7 +753,7 @@ export default function Tasks() {
 
               <FilterSelect value={assignedFilter || 'all'} onValueChange={v => setAssigned(v === 'all' ? '' : v)} width="w-[170px]">
                 <SelectItem value="all">Alle Zuständigen</SelectItem>
-                {uniqueAssigned.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+                {activeConsultants.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
               </FilterSelect>
             </div>
           )}
@@ -831,7 +828,12 @@ export default function Tasks() {
         </div>
       )}
 
-      <EditFindingDialog open={editOpen} onOpenChange={setEditOpen} task={editTask} />
+      <EditFindingDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        task={editTask}
+        defaultAssignedTo={editTask?.audits?.clients?.consultants?.name || ''}
+      />
     </div>
   );
 }
