@@ -1,6 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
+  useClientCertificationAuditSequences,
+  useUpsertClientCertificationAuditSequences,
+  useDeleteClientCertificationAuditSequences,
+} from '@/hooks/useClientCertificationAuditSequences';
+import { useCertificationAuditSequences } from '@/hooks/useCertificationAuditSequences';
+import {
   useClientCertification,
   useUpdateClientCertification,
   useDeleteClientCertification
@@ -47,7 +53,12 @@ import {
   Hash,
   Clock,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  ListOrdered,
+  Plus,
+  X as XIcon,
+  RotateCcw,
+  Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -63,6 +74,205 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { AUDIT_TYPE_LABELS } from '@/lib/constants';
+import { Database } from '@/integrations/supabase/types';
+
+type AuditType = Database['public']['Enums']['audit_type'];
+type SequenceRow = { sequence_order: number; audit_type: AuditType; offset_months: number; label: string };
+
+const SEQUENCE_AUDIT_TYPES: AuditType[] = ['initial', 'surveillance', 'recertification', 'six-month'];
+
+function ClientSequenceCard({ clientCertificationId, certificationId }: { clientCertificationId: string; certificationId: string }) {
+  const { data: clientSeqs = [], isLoading: clientLoading } = useClientCertificationAuditSequences(clientCertificationId);
+  const { data: globalSeqs = [] } = useCertificationAuditSequences(certificationId);
+  const upsert = useUpsertClientCertificationAuditSequences(clientCertificationId);
+  const deleteAll = useDeleteClientCertificationAuditSequences(clientCertificationId);
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [rows, setRows] = useState<SequenceRow[]>([]);
+  const [initialized, setInitialized] = useState(false);
+
+  const hasClientSeqs = clientSeqs.length > 0;
+
+  if (dialogOpen && !initialized && !clientLoading) {
+    const source = hasClientSeqs ? clientSeqs : globalSeqs.map(s => ({ ...s, client_certification_id: clientCertificationId }));
+    setRows(source.map(s => ({
+      sequence_order: s.sequence_order,
+      audit_type: s.audit_type,
+      offset_months: s.offset_months,
+      label: s.label ?? '',
+    })));
+    setInitialized(true);
+  }
+  if (!dialogOpen && initialized) setInitialized(false);
+
+  const addRow = () => {
+    const next = rows.length > 0 ? Math.max(...rows.map(r => r.sequence_order)) + 1 : 1;
+    setRows(prev => [...prev, { sequence_order: next, audit_type: 'surveillance', offset_months: 12, label: '' }]);
+  };
+
+  const removeRow = (i: number) => setRows(prev => prev.filter((_, idx) => idx !== i).map((r, idx) => ({ ...r, sequence_order: idx + 1 })));
+
+  const updateRow = (i: number, field: keyof SequenceRow, value: string | number) =>
+    setRows(prev => prev.map((r, idx) => idx === i ? { ...r, [field]: value } : r));
+
+  const handleSave = async () => {
+    try {
+      await upsert.mutateAsync(rows.map((r, i) => ({
+        client_certification_id: clientCertificationId,
+        sequence_order: i + 1,
+        audit_type: r.audit_type,
+        offset_months: r.offset_months,
+        label: r.label || null,
+      })));
+      toast.success('Individuelle Sequenz gespeichert');
+      setDialogOpen(false);
+    } catch { toast.error('Fehler beim Speichern'); }
+  };
+
+  const handleReset = async () => {
+    try {
+      await deleteAll.mutateAsync();
+      toast.success('Individuelle Sequenz entfernt — Vorlage wird verwendet');
+    } catch { toast.error('Fehler beim Zurücksetzen'); }
+  };
+
+  const displaySeqs = hasClientSeqs ? clientSeqs : globalSeqs;
+
+  return (
+    <>
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ListOrdered className="h-4 w-4" />
+              Audit-Sequenz
+              {hasClientSeqs
+                ? <Badge variant="secondary" className="text-xs ml-1">Individuell</Badge>
+                : globalSeqs.length > 0
+                  ? <Badge variant="outline" className="text-xs ml-1">Vorlage</Badge>
+                  : null}
+            </CardTitle>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDialogOpen(true)} title="Bearbeiten">
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {clientLoading ? (
+            <p className="text-xs text-muted-foreground">Lädt…</p>
+          ) : displaySeqs.length === 0 ? (
+            <div className="text-center py-3">
+              <p className="text-xs text-muted-foreground mb-2">Keine Sequenz konfiguriert</p>
+              <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => setDialogOpen(true)}>
+                <Plus className="h-3 w-3" /> Sequenz anlegen
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              {displaySeqs.map(s => (
+                <div key={s.id} className="flex items-center gap-2 text-xs">
+                  <span className="text-muted-foreground w-10 shrink-0">+{s.offset_months}M</span>
+                  <span className="flex-1 truncate">{AUDIT_TYPE_LABELS[s.audit_type] ?? s.audit_type}{s.label ? ` · ${s.label}` : ''}</span>
+                </div>
+              ))}
+              {hasClientSeqs && (
+                <Button variant="ghost" size="sm" className="text-xs text-muted-foreground gap-1 mt-2 h-6 px-1" onClick={handleReset} disabled={deleteAll.isPending}>
+                  <RotateCcw className="h-3 w-3" /> Auf Vorlage zurücksetzen
+                </Button>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ListOrdered className="h-5 w-5" />
+              Individuelle Audit-Sequenz
+            </DialogTitle>
+            <DialogDescription>
+              Überschreibt die globale Vorlage nur für diesen Kunden. Leer lassen = Vorlage wird verwendet.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {rows.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-8">#</TableHead>
+                    <TableHead>Audit-Typ</TableHead>
+                    <TableHead className="w-40">Monate ab Start</TableHead>
+                    <TableHead>Bezeichnung (optional)</TableHead>
+                    <TableHead className="w-10" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((row, i) => (
+                    <TableRow key={i}>
+                      <TableCell className="text-muted-foreground text-sm">{i + 1}</TableCell>
+                      <TableCell>
+                        <Select value={row.audit_type} onValueChange={val => updateRow(i, 'audit_type', val as AuditType)}>
+                          <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {SEQUENCE_AUDIT_TYPES.map(t => (
+                              <SelectItem key={t} value={t}>{AUDIT_TYPE_LABELS[t] ?? t}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        <Input type="number" min={0} value={row.offset_months} onChange={e => updateRow(i, 'offset_months', Number(e.target.value))} className="w-24" />
+                      </TableCell>
+                      <TableCell>
+                        <Input value={row.label} onChange={e => updateRow(i, 'label', e.target.value)} placeholder="z.B. 1. Überwachung" />
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="icon" onClick={() => removeRow(i)} className="text-destructive hover:text-destructive">
+                          <XIcon className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">Noch keine Schritte — Vorlage wird verwendet.</p>
+            )}
+            <Button variant="outline" size="sm" onClick={addRow} className="gap-2">
+              <Plus className="h-4 w-4" /> Schritt hinzufügen
+            </Button>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>Abbrechen</Button>
+            <Button onClick={handleSave} disabled={upsert.isPending}>
+              {upsert.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Speichern
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
 
 const STATUS_OPTIONS = [
   { value: 'active', label: 'Aktiv', color: 'bg-green-500' },
@@ -672,6 +882,14 @@ const CertificationDetail = () => {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Audit-Sequenz Konfiguration */}
+            {id && certification?.certification_id && (
+              <ClientSequenceCard
+                clientCertificationId={id}
+                certificationId={certification.certification_id}
+              />
+            )}
 
             {/* Quick Actions */}
             <Card>

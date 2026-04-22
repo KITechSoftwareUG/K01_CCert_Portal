@@ -471,6 +471,47 @@ export type Database = {
           },
         ]
       }
+      client_certification_audit_sequences: {
+        Row: {
+          audit_type: Database["public"]["Enums"]["audit_type"]
+          client_certification_id: string
+          created_at: string
+          id: string
+          label: string | null
+          offset_months: number
+          sequence_order: number
+          updated_at: string
+        }
+        Insert: {
+          audit_type: Database["public"]["Enums"]["audit_type"]
+          client_certification_id: string
+          created_at?: string
+          id?: string
+          label?: string | null
+          offset_months: number
+          sequence_order: number
+          updated_at?: string
+        }
+        Update: {
+          audit_type?: Database["public"]["Enums"]["audit_type"]
+          client_certification_id?: string
+          created_at?: string
+          id?: string
+          label?: string | null
+          offset_months?: number
+          sequence_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_certification_audit_sequences_client_certification_id_fkey"
+            columns: ["client_certification_id"]
+            isOneToOne: false
+            referencedRelation: "client_certifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       certification_audit_sequences: {
         Row: {
           audit_type: Database["public"]["Enums"]["audit_type"]
