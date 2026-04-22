@@ -13,6 +13,7 @@ import {
 import { toast } from 'sonner';
 
 import { useAllAuditTasks, useUpdateAuditTask, DbAuditTaskFull, TaskStatus } from '@/hooks/useAuditTasks';
+import { useConsultants } from '@/hooks/useConsultants';
 import { TASK_STATUS_CONFIG, AUDIT_TYPE_LABELS } from '@/lib/constants';
 import { EditFindingDialog } from '@/components/EditFindingDialog';
 import { Badge } from '@/components/ui/badge';
@@ -51,6 +52,8 @@ const SS_ASSIGNED    = 'tasks-assigned-filter';
 const SS_YEAR        = 'tasks-year-filter';
 const SS_CONSULTANT  = 'tasks-consultant-filter';
 
+
+const CURRENT_YEAR = String(new Date().getFullYear());
 
 const ALL_SS_KEYS = [
   SS_SEARCH, SS_STATUS, SS_CATEGORY, SS_DUE, SS_GROUP,
@@ -399,7 +402,7 @@ export default function Tasks() {
   const [auditTypeFilter,setAuditTypeFilter]= useState(() => ss(SS_AUDIT_TYPE));
   const [severityFilter, setSeverityFilter] = useState(() => ss(SS_SEVERITY));
   const [assignedFilter,    setAssignedFilter]    = useState(() => ss(SS_ASSIGNED));
-  const [yearFilter,        setYearFilter]        = useState(() => ss(SS_YEAR) || 'all');
+  const [yearFilter,        setYearFilter]        = useState(() => ss(SS_YEAR) || CURRENT_YEAR);
   const [consultantFilter,  setConsultantFilter]  = useState(() => ss(SS_CONSULTANT));
   const [advancedOpen,   setAdvancedOpen]   = useState(
     () => !!(ss(SS_AUDITOR) || ss(SS_CLIENT) || ss(SS_AUDIT_TYPE) || ss(SS_SEVERITY) || ss(SS_ASSIGNED))
@@ -411,6 +414,8 @@ export default function Tasks() {
 
   const { data: tasks, isLoading } = useAllAuditTasks();
   const updateTask = useUpdateAuditTask();
+  const { data: allConsultants = [] } = useConsultants();
+  const activeConsultants = useMemo(() => allConsultants.filter(c => c.is_active), [allConsultants]);
   const [isPending, startTransition] = useTransition();
 
   // ── Persisted setters (Filter-Updates als Transition — UI bleibt sofort responsiv) ──
@@ -440,7 +445,7 @@ export default function Tasks() {
   const handleReset = useCallback(() => {
     setSearchQuery('');
     ALL_SS_KEYS.forEach(k => sessionStorage.removeItem(k));
-    sessionStorage.setItem(SS_YEAR, 'all');
+    sessionStorage.setItem(SS_YEAR, CURRENT_YEAR);
     sessionStorage.setItem(SS_GROUP, 'due-date');
     startTransition(() => {
       setDebouncedSearchQuery('');
@@ -449,7 +454,7 @@ export default function Tasks() {
       setAuditorFilter(''); setClientFilter(''); setAuditTypeFilter('');
       setSeverityFilter(''); setAssignedFilter(''); setConsultantFilter('');
       setSelectedIds(new Set());
-      setYearFilter('all');
+      setYearFilter(CURRENT_YEAR);
     });
   }, [startTransition]);
 

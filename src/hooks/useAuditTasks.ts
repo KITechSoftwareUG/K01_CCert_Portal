@@ -34,7 +34,8 @@ export const useAuditTasks = (auditId?: string) => {
       let query = supabase
         .from('audit_tasks')
         .select('*')
-        .order('due_date', { ascending: true });
+        .order('due_date', { ascending: true })
+        .limit(10000);
 
       if (auditId) {
         query = query.eq('audit_id', auditId);
@@ -101,7 +102,8 @@ export const useAllAuditTasks = () => {
             )
           )
         `)
-        .order('due_date', { ascending: true });
+        .order('due_date', { ascending: true })
+        .limit(10000);
 
       if (error) throw error;
       return data as DbAuditTaskFull[];
