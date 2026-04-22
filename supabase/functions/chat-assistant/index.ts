@@ -368,7 +368,6 @@ const limitAndSort = <T,>(
 ) => {
   return [...items]
     .map((item) => ({ item, score: scoreFn(item) }))
-    .filter(({ score }) => score > 0)
     .sort((a, b) => b.score - a.score || (fallbackSort ? fallbackSort(a.item, b.item) : 0))
     .slice(0, limit)
     .map(({ item }) => item);
