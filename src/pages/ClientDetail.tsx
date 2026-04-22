@@ -130,6 +130,7 @@ const ClientDetail = () => {
   const [showAddCertDialog, setShowAddCertDialog] = useState(false);
   const [selectedCertificationId, setSelectedCertificationId] = useState<string>('');
   const [selectedCertBodyId, setSelectedCertBodyId] = useState<string>('');
+  const [selectedValidFrom, setSelectedValidFrom] = useState<string>('');
   const [isAddingCert, setIsAddingCert] = useState(false);
 
   const [name, setName] = useState('');
@@ -292,11 +293,13 @@ const ClientDetail = () => {
         client_id: id,
         certification_id: selectedCertificationId,
         certification_body_id: selectedCertBodyId,
+        valid_from: selectedValidFrom || null,
       });
       toast.success('Zertifizierung erfolgreich hinzugefügt');
       setShowAddCertDialog(false);
       setSelectedCertificationId('');
       setSelectedCertBodyId('');
+      setSelectedValidFrom('');
     } catch (error) {
       console.error('Error adding certification:', error);
       toast.error('Fehler beim Hinzufügen der Zertifizierung');
@@ -651,7 +654,7 @@ const ClientDetail = () => {
                   <Award className="h-5 w-5" />
                   Zertifizierungen
                 </CardTitle>
-                <Dialog open={showAddCertDialog} onOpenChange={(open) => { setShowAddCertDialog(open); if (!open) { setSelectedCertificationId(''); setSelectedCertBodyId(''); } }}>
+                <Dialog open={showAddCertDialog} onOpenChange={(open) => { setShowAddCertDialog(open); if (!open) { setSelectedCertificationId(''); setSelectedCertBodyId(''); setSelectedValidFrom(''); } }}>
                   <DialogTrigger asChild>
                     <Button
                       size="sm"
@@ -700,6 +703,19 @@ const ClientDetail = () => {
                             ))}
                           </SelectContent>
                         </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="valid-from">
+                          Gültig ab
+                          <span className="ml-2 text-xs text-muted-foreground font-normal">(Audits werden automatisch angelegt)</span>
+                        </Label>
+                        <Input
+                          id="valid-from"
+                          type="date"
+                          value={selectedValidFrom}
+                          onChange={(e) => setSelectedValidFrom(e.target.value)}
+                          className="mt-2"
+                        />
                       </div>
                     </div>
                     <DialogFooter>
