@@ -11,6 +11,8 @@ import {
   useDeleteClientCertification
 } from '@/hooks/useClientCertifications';
 import { useClient } from '@/hooks/useClients';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import {
   useCertificationDocuments,
   useUploadCertificationDocument,
@@ -96,14 +98,26 @@ type SequenceRow = { sequence_order: number; audit_type: AuditType; offset_month
 
 const SEQUENCE_AUDIT_TYPES: AuditType[] = ['initial', 'surveillance', 'recertification', 'six-month'];
 
-function ClientSequenceCard({ clientCertificationId, certificationId }: { clientCertificationId: string; certificationId: string }) {
+function ClientSequenceCard({
+  clientCertificationId,
+  certificationId,
+  clientId,
+  validFrom,
+}: {
+  clientCertificationId: string;
+  certificationId: string;
+  clientId: string;
+  validFrom: string | null;
+}) {
   const { data: clientSeqs = [], isLoading: clientLoading } = useClientCertificationAuditSequences(clientCertificationId);
   const { data: globalSeqs = [] } = useCertificationAuditSequences(certificationId);
   const upsert = useUpsertClientCertificationAuditSequences(clientCertificationId);
+  const queryClient = useQueryClient();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [rows, setRows] = useState<SequenceRow[]>([]);
   const [initialized, setInitialized] = useState(false);
+  const [applying, setApplying] = useState(false);
 
   const hasClientSeqs = clientSeqs.length > 0;
 
@@ -143,6 +157,60 @@ function ClientSequenceCard({ clientCertificationId, certificationId }: { client
     } catch { toast.error('Fehler beim Speichern'); }
   };
 
+  const handleApply = async () => {
+    if (!validFrom) {
+      toast.error('Kein Startdatum (Gültig ab) gesetzt — Audits können nicht berechnet werden');
+      return;
+    }
+    const seqsToApply = hasClientSeqs ? clientSeqs : globalSeqs;
+    if (seqsToApply.length === 0) {
+      toast.error('Keine Sequenz konfiguriert');
+      return;
+    }
+
+    setApplying(true);
+    try {
+      const { data: existingAudits } = await supabase
+        .from('audits')
+        .select('sequence_order')
+        .eq('client_certification_id', clientCertificationId)
+        .not('sequence_order', 'is', null);
+
+      const existingOrders = new Set((existingAudits ?? []).map(a => a.sequence_order));
+      const base = new Date(validFrom);
+      let created = 0;
+
+      for (const seq of seqsToApply) {
+        if (existingOrders.has(seq.sequence_order)) continue;
+        const scheduled = new Date(base);
+        scheduled.setMonth(scheduled.getMonth() + seq.offset_months);
+
+        await supabase.from('audits').insert({
+          client_id: clientId,
+          client_certification_id: clientCertificationId,
+          type: seq.audit_type,
+          status: 'scheduled',
+          scheduled_date: scheduled.toISOString().split('T')[0],
+          sequence_order: seq.sequence_order,
+        });
+        created++;
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['audits'] });
+      queryClient.invalidateQueries({ queryKey: ['certification-audits'] });
+
+      if (created === 0) {
+        toast.info('Alle Audits dieser Sequenz sind bereits vorhanden');
+      } else {
+        toast.success(`${created} Audit${created !== 1 ? 's' : ''} angelegt`);
+      }
+    } catch {
+      toast.error('Fehler beim Anlegen der Audits');
+    } finally {
+      setApplying(false);
+    }
+  };
+
   const displaySeqs = hasClientSeqs ? clientSeqs : globalSeqs;
 
   return (
@@ -180,6 +248,17 @@ function ClientSequenceCard({ clientCertificationId, certificationId }: { client
                   <span className="flex-1 truncate">{AUDIT_TYPE_LABELS[s.audit_type] ?? s.audit_type}{s.label ? ` · ${s.label}` : ''}</span>
                 </div>
               ))}
+              <Button
+                size="sm"
+                className="w-full mt-3 gap-2"
+                onClick={handleApply}
+                disabled={applying}
+              >
+                {applying
+                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  : <Plus className="h-3.5 w-3.5" />}
+                Sequenz anwenden
+              </Button>
             </div>
           )}
         </CardContent>
@@ -867,10 +946,12 @@ const CertificationDetail = () => {
             </Card>
 
             {/* Audit-Sequenz Konfiguration */}
-            {id && certification?.certification_id && (
+            {id && certification?.certification_id && client && (
               <ClientSequenceCard
                 clientCertificationId={id}
                 certificationId={certification.certification_id}
+                clientId={client.id}
+                validFrom={certification.valid_from ?? null}
               />
             )}
 
