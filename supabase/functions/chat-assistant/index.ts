@@ -220,16 +220,14 @@ serve(async (req) => {
     const authSupabase = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: authHeader } },
     });
-    const { data: claims, error: authErr } = await authSupabase.auth.getClaims(
-      authHeader.replace("Bearer ", ""),
-    );
-    if (authErr || !claims?.claims) {
+    const { data: { user }, error: authErr } = await authSupabase.auth.getUser();
+    if (authErr || !user) {
       return new Response(JSON.stringify({ error: "Ungültiger Token." }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const userId = claims.claims.sub;
+    const userId = user.id;
     const { messages } = await req.json();
     const userMessages = (Array.isArray(messages) ? messages : []).slice(-10) as IncomingMessage[];
 
