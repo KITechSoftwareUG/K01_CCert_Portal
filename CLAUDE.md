@@ -240,7 +240,82 @@ Falsche Namen → Runtime-Fehler oder leeres Ergebnis (Supabase gibt kein Error 
 Located in `supabase/functions/`:
 - `outlook-auth` / `outlook-callback` — Microsoft OAuth flow
 - `outlook-sync` — calendar sync
-- `chat-assistant` — AI chat for the in-app assistant
+- `chat-assistant` — KI-Assistent (siehe unten)
+
+> ⚠️ **Edge Functions werden von Lovable NICHT automatisch deployed.** Git push updated nur das Frontend. Edge Functions müssen manuell im Supabase Dashboard → Edge Functions → `<name>` → Edit/Deploy aktualisiert werden.
+
+---
+
+## KI-Assistent (`chat-assistant`)
+
+### Architektur — Agentic SQL-Loop
+
+Der Assistent nutzt **GPT-4o mit Tool-Use in einem Loop** — kein statisches Keyword-Matching, kein Pre-Fetching.
+
+**Flow:**
+1. User-Nachricht → GPT-4o mit System-Prompt + `execute_sql` Tool
+2. KI entscheidet selbst welche SQL-Query sie braucht und führt sie aus
+3. Ergebnis geht zurück an KI → weitere Queries wenn nötig (max. 6 Iterationen)
+4. Finale Antwort wird als SSE gestreamt
+
+**Dateien:**
+- Edge Function: `supabase/functions/chat-assistant/index.ts`
+- Frontend-Client: `src/lib/chatUtils.ts` (SSE-Parser, Datei-Anhang-Support)
+- Frontend-Komponente: `src/components/ChatBot.tsx`
+
+### Erforderliche Postgres-Funktion
+
+Die Edge Function ruft `supabase.rpc('chat_execute_sql', { query })` auf. Diese Funktion muss im Supabase Dashboard → SQL Editor einmalig angelegt werden:
+
+```sql
+CREATE OR REPLACE FUNCTION chat_execute_sql(query text)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  result json;
+BEGIN
+  IF NOT (lower(trim(query)) ~ '^select') THEN
+    RAISE EXCEPTION 'Nur SELECT-Abfragen erlaubt';
+  END IF;
+  EXECUTE format('SELECT json_agg(row_to_json(r)) FROM (%s) r', query) INTO result;
+  RETURN COALESCE(result, '[]'::json);
+END;
+$$;
+```
+
+Migration-Datei: `supabase/migrations/20260422000002_chat_execute_sql.sql`
+
+### Env-Variablen (Supabase Edge Function Secrets)
+
+| Key | Zweck |
+|-----|-------|
+| `OPENAI_API_KEY` | GPT-4o für Router + Antwort |
+| `SUPABASE_URL` | automatisch gesetzt |
+| `SUPABASE_ANON_KEY` | automatisch gesetzt |
+| `SUPABASE_SERVICE_ROLE_KEY` | automatisch gesetzt |
+| `ALLOWED_ORIGIN` | CORS-Origin (optional) |
+
+### System-Prompt — kritische Geschäftslogik
+
+Beim Anpassen des System-Prompts (`buildSystemPrompt` in der Edge Function) folgende Muster korrekt dokumentieren — die KI muss diese kennen um korrekte SQL zu schreiben:
+
+| Frage-Intent | Korrektes SQL-Muster | Falsch |
+|---|---|---|
+| Überfällige Aufgaben | `due_date < CURRENT_DATE AND status IN ('pending', 'in-progress')` | `status = 'overdue'` — Enum-Wert wird kaum gesetzt |
+| Offene Audits | `status IN ('scheduled', 'in-progress')` | `status = 'open'` — existiert nicht |
+| Ablaufende Zertifikate | `valid_until BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '90 days'` | String-Vergleiche |
+| Audits nach Auditor | JOIN auf `auditors.name` | Filter nach `clients.name` |
+
+### Bekannte Fallstricke
+
+| Bug | Ursache | Fix |
+|-----|---------|-----|
+| "Keine überfälligen Tasks" obwohl welche da | KI schreibt `status = 'overdue'` | Geschäftslogik im System-Prompt dokumentieren |
+| Edge Function zeigt alten Stand | Lovable deployed EF nicht automatisch | Manuell im Supabase Dashboard deployen |
+| IDE zeigt Deno-Fehler in `index.ts` | VS Code nutzt Node-Compiler, kennt `deno.land`-Imports nicht | False Positives — `npx tsc --noEmit` ist korrekt und zeigt keine Fehler |
 
 ---
 
