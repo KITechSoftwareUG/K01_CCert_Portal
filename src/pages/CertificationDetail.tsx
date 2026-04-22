@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   useClientCertificationAuditSequences,
   useUpsertClientCertificationAuditSequences,
-  useDeleteClientCertificationAuditSequences,
 } from '@/hooks/useClientCertificationAuditSequences';
 import { useCertificationAuditSequences } from '@/hooks/useCertificationAuditSequences';
 import {
@@ -57,7 +56,6 @@ import {
   ListOrdered,
   Plus,
   X as XIcon,
-  RotateCcw,
   Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -102,7 +100,6 @@ function ClientSequenceCard({ clientCertificationId, certificationId }: { client
   const { data: clientSeqs = [], isLoading: clientLoading } = useClientCertificationAuditSequences(clientCertificationId);
   const { data: globalSeqs = [] } = useCertificationAuditSequences(certificationId);
   const upsert = useUpsertClientCertificationAuditSequences(clientCertificationId);
-  const deleteAll = useDeleteClientCertificationAuditSequences(clientCertificationId);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [rows, setRows] = useState<SequenceRow[]>([]);
@@ -141,16 +138,9 @@ function ClientSequenceCard({ clientCertificationId, certificationId }: { client
         offset_months: r.offset_months,
         label: r.label || null,
       })));
-      toast.success('Individuelle Sequenz gespeichert');
+      toast.success('Sequenz gespeichert');
       setDialogOpen(false);
     } catch { toast.error('Fehler beim Speichern'); }
-  };
-
-  const handleReset = async () => {
-    try {
-      await deleteAll.mutateAsync();
-      toast.success('Individuelle Sequenz entfernt — Vorlage wird verwendet');
-    } catch { toast.error('Fehler beim Zurücksetzen'); }
   };
 
   const displaySeqs = hasClientSeqs ? clientSeqs : globalSeqs;
@@ -163,11 +153,9 @@ function ClientSequenceCard({ clientCertificationId, certificationId }: { client
             <CardTitle className="flex items-center gap-2 text-base">
               <ListOrdered className="h-4 w-4" />
               Audit-Sequenz
-              {hasClientSeqs
-                ? <Badge variant="secondary" className="text-xs ml-1">Individuell</Badge>
-                : globalSeqs.length > 0
-                  ? <Badge variant="outline" className="text-xs ml-1">Vorlage</Badge>
-                  : null}
+              {hasClientSeqs && (
+                <Badge variant="secondary" className="text-xs ml-1">Individuell</Badge>
+              )}
             </CardTitle>
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDialogOpen(true)} title="Bearbeiten">
               <Pencil className="h-3.5 w-3.5" />
@@ -192,11 +180,6 @@ function ClientSequenceCard({ clientCertificationId, certificationId }: { client
                   <span className="flex-1 truncate">{AUDIT_TYPE_LABELS[s.audit_type] ?? s.audit_type}{s.label ? ` · ${s.label}` : ''}</span>
                 </div>
               ))}
-              {hasClientSeqs && (
-                <Button variant="ghost" size="sm" className="text-xs text-muted-foreground gap-1 mt-2 h-6 px-1" onClick={handleReset} disabled={deleteAll.isPending}>
-                  <RotateCcw className="h-3 w-3" /> Auf Vorlage zurücksetzen
-                </Button>
-              )}
             </div>
           )}
         </CardContent>
@@ -207,10 +190,10 @@ function ClientSequenceCard({ clientCertificationId, certificationId }: { client
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ListOrdered className="h-5 w-5" />
-              Individuelle Audit-Sequenz
+              Audit-Sequenz konfigurieren
             </DialogTitle>
             <DialogDescription>
-              Überschreibt die globale Vorlage nur für diesen Kunden. Leer lassen = Vorlage wird verwendet.
+              Legt fest welche Audits für diesen Kunden automatisch angelegt werden.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
