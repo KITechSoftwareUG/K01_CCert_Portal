@@ -1,4 +1,4 @@
-import { memo, useState, useMemo, useCallback, useEffect } from 'react';
+import { memo, useState, useMemo, useCallback, useEffect, useTransition } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   format, parseISO, isBefore, startOfDay,
@@ -344,7 +344,7 @@ export default function Tasks() {
   const [statusFilter,   setStatusFilter]   = useState<StatusFilter>(() => (ss(SS_STATUS) as StatusFilter) || 'all');
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>(() => (ss(SS_CATEGORY) as CategoryFilter) || 'all');
   const [dueFilter,      setDueFilter]      = useState<DueFilter>(() => (ss(SS_DUE) as DueFilter) || 'all');
-  const [groupBy,        setGroupBy]        = useState<GroupBy>(() => (ss(SS_GROUP) as GroupBy) || 'status');
+  const [groupBy,        setGroupBy]        = useState<GroupBy>(() => (ss(SS_GROUP) as GroupBy) || 'due-date');
   const [sortDir,        setSortDir]        = useState<SortDir>(() => (ss(SS_SORT_DIR) as SortDir) || 'asc');
   const [auditorFilter,  setAuditorFilter]  = useState(() => ss(SS_AUDITOR));
   const [clientFilter,   setClientFilter]   = useState(() => ss(SS_CLIENT));
@@ -363,11 +363,12 @@ export default function Tasks() {
 
   const { data: tasks, isLoading } = useAllAuditTasks();
   const updateTask = useUpdateAuditTask();
+  const [isPending, startTransition] = useTransition();
 
-  // ── Persisted setters ────────────────────────────────────────────────────
+  // ── Persisted setters (Filter-Updates als Transition — UI bleibt sofort responsiv) ──
 
   const persist = useCallback(<T extends string>(setter: (v: T) => void, key: string) =>
-    (v: T) => { setter(v); sessionStorage.setItem(key, v); }, []);
+    (v: T) => { sessionStorage.setItem(key, v); startTransition(() => setter(v)); }, [startTransition]);
 
   const setSearch    = useCallback((v: string) => { setSearchQuery(v); sessionStorage.setItem(SS_SEARCH, v); }, []);
   const setStatus    = useCallback(persist(setStatusFilter,    SS_STATUS),    [persist]);
@@ -380,7 +381,7 @@ export default function Tasks() {
   const setAuditType = useCallback(persist(setAuditTypeFilter, SS_AUDIT_TYPE),[persist]);
   const setSeverity  = useCallback(persist(setSeverityFilter,  SS_SEVERITY),  [persist]);
   const setAssigned  = useCallback(persist(setAssignedFilter,  SS_ASSIGNED),  [persist]);
-  const setYear       = useCallback((v: string) => { setYearFilter(v); sessionStorage.setItem(SS_YEAR, v); }, []);
+  const setYear       = useCallback((v: string) => { sessionStorage.setItem(SS_YEAR, v); startTransition(() => setYearFilter(v)); }, [startTransition]);
   const setConsultant = useCallback(persist(setConsultantFilter, SS_CONSULTANT), [persist]);
 
   useEffect(() => {
@@ -389,15 +390,20 @@ export default function Tasks() {
   }, [searchQuery]);
 
   const handleReset = useCallback(() => {
-    setSearchQuery(''); setDebouncedSearchQuery('');
-    setStatusFilter('all'); setCategoryFilter('all');
-    setDueFilter('all'); setGroupBy('status'); setSortDir('asc');
-    setAuditorFilter(''); setClientFilter(''); setAuditTypeFilter('');
-    setSeverityFilter(''); setAssignedFilter(''); setConsultantFilter(''); setSelectedIds(new Set());
-    setYearFilter(CURRENT_YEAR);
+    setSearchQuery('');
     ALL_SS_KEYS.forEach(k => sessionStorage.removeItem(k));
     sessionStorage.setItem(SS_YEAR, CURRENT_YEAR);
-  }, []);
+    sessionStorage.setItem(SS_GROUP, 'due-date');
+    startTransition(() => {
+      setDebouncedSearchQuery('');
+      setStatusFilter('all'); setCategoryFilter('all');
+      setDueFilter('all'); setGroupBy('due-date'); setSortDir('asc');
+      setAuditorFilter(''); setClientFilter(''); setAuditTypeFilter('');
+      setSeverityFilter(''); setAssignedFilter(''); setConsultantFilter('');
+      setSelectedIds(new Set());
+      setYearFilter(CURRENT_YEAR);
+    });
+  }, [startTransition]);
 
   // ── Select ───────────────────────────────────────────────────────────────
 
@@ -722,7 +728,7 @@ export default function Tasks() {
       </div>
 
       {/* Scrollable content */}
-      <div ref={scrollRef} className="flex-1 overflow-auto p-4 md:p-6">
+      <div ref={scrollRef} className={cn('flex-1 overflow-auto p-4 md:p-6 transition-opacity duration-150', isPending && 'opacity-50')}>
         {isLoading ? <TasksSkeleton /> : filteredTasks.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <CheckSquare className="h-14 w-14 text-muted-foreground/20 mb-4" />
