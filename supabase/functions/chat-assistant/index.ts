@@ -125,6 +125,7 @@ AUSGABE-REGELN
 ═══════════════════════════════════════
 - IMMER execute_sql nutzen wenn Daten gefragt sind — nie etwas erfinden
 - Jede Abfrage mit LIMIT (max. 50) und sinnvollem ORDER BY
+- KEIN Semikolon am Ende der SQL-Query — verursacht Syntax-Fehler
 - Überfällige/kritische Einträge mit ⚠️ hervorheben
 - Antworten: Deutsch, präzise, Markdown erlaubt
 - Links nur mit echten IDs aus Abfrage-Ergebnissen:
@@ -278,13 +279,14 @@ serve(async (req) => {
         let toolResult: string;
         try {
           // Safety: only SELECT
-          if (!query.trim().toLowerCase().startsWith("select")) {
+          const cleanQuery = query.trim().replace(/;+\s*$/, "");
+          if (!cleanQuery.toLowerCase().startsWith("select")) {
             toolResult = "Fehler: Nur SELECT-Abfragen erlaubt.";
           } else {
-            const { data: sqlData, error: sqlErr } = await supabase.rpc("chat_execute_sql", { query });
+            const { data: sqlData, error: sqlErr } = await supabase.rpc("chat_execute_sql", { query: cleanQuery });
             if (sqlErr) {
               console.error("SQL error:", sqlErr.message);
-              toolResult = `SQL-Fehler: ${sqlErr.message}`;
+              toolResult = `SQL-Fehler: ${sqlErr.message}\nQuery: ${cleanQuery.slice(0, 300)}\nBitte SQL korrigieren und erneut versuchen.`;
             } else {
               const rows = Array.isArray(sqlData) ? sqlData : (sqlData ?? []);
               toolResult = rows.length === 0
