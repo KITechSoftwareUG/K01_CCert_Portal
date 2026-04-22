@@ -1,5 +1,4 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { ProcessedFile } from "@/lib/fileProcessor";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-assistant`;
 
@@ -9,70 +8,21 @@ export interface AgentInfo {
   icon: string;
 }
 
-type TextContent = { type: 'text'; text: string };
-type ImageContent = { type: 'image_url'; image_url: { url: string; detail: 'auto' } };
-type ContentPart = TextContent | ImageContent;
-
-export interface ChatMessage {
-  role: 'user' | 'assistant';
-  content: string | ContentPart[];
-}
-
 interface StreamChatParams {
-  messages: ChatMessage[];
-  attachedFile?: ProcessedFile | null;
+  messages: { role: string; content: string }[];
   onDelta: (deltaText: string) => void;
   onDone: () => void;
   onError: (error: string) => void;
   onAgentSelected?: (agent: AgentInfo, reasoning: string) => void;
 }
 
-function buildMessagesWithAttachment(
-  messages: ChatMessage[],
-  file: ProcessedFile | null | undefined,
-): ChatMessage[] {
-  if (!file) return messages;
-
-  const lastUserIdx = [...messages].reverse().findIndex((m) => m.role === 'user');
-  if (lastUserIdx === -1) return messages;
-
-  const realIdx = messages.length - 1 - lastUserIdx;
-  const lastUser = messages[realIdx];
-  const userText = typeof lastUser.content === 'string' ? lastUser.content : '';
-
-  let updatedContent: string | ContentPart[];
-
-  if (file.kind === 'image') {
-    updatedContent = [
-      { type: 'text', text: userText || 'Analysiere diese Datei.' },
-      { type: 'image_url', image_url: { url: file.data, detail: 'auto' } },
-    ];
-  } else {
-    const prefix = `[Anhang: ${file.name}]\n${file.data}\n\n`;
-    updatedContent = prefix + (userText || 'Analysiere den Dateiinhalt.');
-  }
-
-  const updated: ChatMessage[] = [...messages];
-  updated[realIdx] = { ...lastUser, content: updatedContent };
-  return updated;
-}
-
-export async function streamChat({
-  messages,
-  attachedFile,
-  onDelta,
-  onDone,
-  onError,
-  onAgentSelected,
-}: StreamChatParams) {
+export async function streamChat({ messages, onDelta, onDone, onError, onAgentSelected }: StreamChatParams) {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) {
       onError("Nicht angemeldet. Bitte melden Sie sich erneut an.");
       return;
     }
-
-    const payload = buildMessagesWithAttachment(messages, attachedFile);
 
     const resp = await fetch(CHAT_URL, {
       method: "POST",
@@ -81,7 +31,7 @@ export async function streamChat({
         Authorization: `Bearer ${session.access_token}`,
         apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
       },
-      body: JSON.stringify({ messages: payload }),
+      body: JSON.stringify({ messages }),
     });
 
     if (!resp.ok) {

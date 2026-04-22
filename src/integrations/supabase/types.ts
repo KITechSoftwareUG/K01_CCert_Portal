@@ -321,6 +321,7 @@ export type Database = {
           id: string
           notes: string | null
           scheduled_date: string
+          sequence_order: number | null
           status: Database["public"]["Enums"]["audit_status"]
           type: Database["public"]["Enums"]["audit_type"]
           updated_at: string
@@ -334,6 +335,7 @@ export type Database = {
           id?: string
           notes?: string | null
           scheduled_date: string
+          sequence_order?: number | null
           status?: Database["public"]["Enums"]["audit_status"]
           type: Database["public"]["Enums"]["audit_type"]
           updated_at?: string
@@ -347,6 +349,7 @@ export type Database = {
           id?: string
           notes?: string | null
           scheduled_date?: string
+          sequence_order?: number | null
           status?: Database["public"]["Enums"]["audit_status"]
           type?: Database["public"]["Enums"]["audit_type"]
           updated_at?: string
@@ -464,6 +467,47 @@ export type Database = {
             columns: ["client_certification_id"]
             isOneToOne: false
             referencedRelation: "client_certifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      certification_audit_sequences: {
+        Row: {
+          audit_type: Database["public"]["Enums"]["audit_type"]
+          certification_id: string
+          created_at: string
+          id: string
+          label: string | null
+          offset_months: number
+          sequence_order: number
+          updated_at: string
+        }
+        Insert: {
+          audit_type: Database["public"]["Enums"]["audit_type"]
+          certification_id: string
+          created_at?: string
+          id?: string
+          label?: string | null
+          offset_months: number
+          sequence_order: number
+          updated_at?: string
+        }
+        Update: {
+          audit_type?: Database["public"]["Enums"]["audit_type"]
+          certification_id?: string
+          created_at?: string
+          id?: string
+          label?: string | null
+          offset_months?: number
+          sequence_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certification_audit_sequences_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "certifications"
             referencedColumns: ["id"]
           },
         ]

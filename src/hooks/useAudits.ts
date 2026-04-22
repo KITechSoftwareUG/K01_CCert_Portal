@@ -10,7 +10,9 @@ export type AuditType = Enums<'audit_type'>;
 export type AuditStatus = Enums<'audit_status'>;
 
 export type AuditWithClient = DbAudit & {
-  clients: Tables<'clients'> | null;
+  clients: (Tables<'clients'> & {
+    consultants?: { id: string; name: string } | null;
+  }) | null;
   client_certifications?: {
     id: string;
     certifications: Tables<'certifications'> | null;
@@ -33,7 +35,7 @@ export const useAudits = () => {
         .from('audits')
         .select(`
           *,
-          clients (*),
+          clients (*, consultants (id, name)),
           client_certifications (
             id,
             certifications (*)
@@ -57,7 +59,7 @@ export const useAuditsByClient = (clientId: string) => {
         .from('audits')
         .select(`
           *,
-          clients (*),
+          clients (*, consultants (id, name)),
           client_certifications (
             id,
             certifications (*)
@@ -83,7 +85,7 @@ export const useAudit = (id: string) => {
         .from('audits')
         .select(`
           *,
-          clients (*),
+          clients (*, consultants (id, name)),
           client_certifications (
             id,
             certifications (*)

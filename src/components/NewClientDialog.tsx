@@ -492,7 +492,7 @@ export const NewClientDialog = ({ open, onOpenChange }: NewClientDialogProps) =>
           {/* Certifications (New System) with Auditor Selection - only for clients */}
           {!isCompanyGroup && (
             <div className="space-y-2">
-              <Label>Systeme</Label>
+              <Label>Zertifizierungen</Label>
               <div className="space-y-3 p-4 border rounded-lg">
                 {certifications.map((cert) => {
                   const isSelected = isCertificationSelected(cert.id);

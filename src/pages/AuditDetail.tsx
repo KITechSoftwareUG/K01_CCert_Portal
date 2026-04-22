@@ -744,7 +744,7 @@ const AuditDetail = () => {
                 {audit.client_certifications?.certifications && (
                   <div className="pt-4 border-t">
                     <p className="text-sm font-medium text-muted-foreground mb-2">
-                      System
+                      Zertifizierung
                     </p>
                     <div className="flex flex-wrap gap-2">
                       <Badge variant="secondary">
@@ -863,12 +863,14 @@ const AuditDetail = () => {
           onOpenChange={setShowNewTaskDialog}
           auditId={id!}
           category="task"
+          defaultAssignedTo={audit?.clients?.consultants?.name || ''}
         />
         <NewFindingDialog
           open={showNewFindingDialog}
           onOpenChange={setShowNewFindingDialog}
           auditId={id!}
           category="finding"
+          defaultAssignedTo={audit?.clients?.consultants?.name || ''}
         />
         <EditFindingDialog
           open={!!editingTask}

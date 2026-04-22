@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { useUpdateAuditTask, DbAuditTask, TaskStatus } from '@/hooks/useAuditTasks';
+import { useConsultants } from '@/hooks/useConsultants';
 import { format } from 'date-fns';
 
 interface EditFindingDialogProps {
@@ -40,6 +41,8 @@ const STATUS_OPTIONS = [
   { value: 'completed', label: 'Erledigt' },
 ];
 
+const NONE_VALUE = '__none__';
+
 export const EditFindingDialog = ({ open, onOpenChange, task }: EditFindingDialogProps) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -49,6 +52,7 @@ export const EditFindingDialog = ({ open, onOpenChange, task }: EditFindingDialo
   const [status, setStatus] = useState<string>('pending');
 
   const updateTask = useUpdateAuditTask();
+  const { data: consultants = [] } = useConsultants();
 
   useEffect(() => {
     if (task) {
@@ -64,7 +68,7 @@ export const EditFindingDialog = ({ open, onOpenChange, task }: EditFindingDialo
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!task) return;
-    
+
     if (!title || !dueDate) {
       toast.error('Bitte Titel und Frist ausfüllen');
       return;
@@ -91,6 +95,7 @@ export const EditFindingDialog = ({ open, onOpenChange, task }: EditFindingDialo
   };
 
   const isFinding = task?.category === 'finding';
+  const activeConsultants = consultants.filter(c => c.is_active);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -100,7 +105,7 @@ export const EditFindingDialog = ({ open, onOpenChange, task }: EditFindingDialo
             {isFinding ? 'Feststellung bearbeiten' : 'Aufgabe bearbeiten'}
           </DialogTitle>
           <DialogDescription>
-            {isFinding 
+            {isFinding
               ? 'Nichtkonformität oder Feststellung bearbeiten'
               : 'Aufgabe bearbeiten'
             }
@@ -173,11 +178,22 @@ export const EditFindingDialog = ({ open, onOpenChange, task }: EditFindingDialo
 
           <div className="space-y-2">
             <Label htmlFor="edit-assigned">Zuständig</Label>
-            <Input
-              id="edit-assigned"
-              value={assignedTo}
-              onChange={(e) => setAssignedTo(e.target.value)}
-            />
+            <Select
+              value={assignedTo || NONE_VALUE}
+              onValueChange={(v) => setAssignedTo(v === NONE_VALUE ? '' : v)}
+            >
+              <SelectTrigger id="edit-assigned">
+                <SelectValue placeholder="Berater auswählen" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE_VALUE}>— Kein Berater —</SelectItem>
+                {activeConsultants.map(c => (
+                  <SelectItem key={c.id} value={c.name}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <DialogFooter>

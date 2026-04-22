@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -20,12 +20,14 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { useCreateAuditTask, DbAuditTaskInsert } from '@/hooks/useAuditTasks';
+import { useConsultants } from '@/hooks/useConsultants';
 
 interface NewFindingDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   auditId: string;
   category: 'task' | 'finding';
+  defaultAssignedTo?: string;
 }
 
 const SEVERITY_OPTIONS = [
@@ -34,7 +36,9 @@ const SEVERITY_OPTIONS = [
   { value: 'recommendation', label: 'Empfehlung' },
 ];
 
-export const NewFindingDialog = ({ open, onOpenChange, auditId, category }: NewFindingDialogProps) => {
+const NONE_VALUE = '__none__';
+
+export const NewFindingDialog = ({ open, onOpenChange, auditId, category, defaultAssignedTo }: NewFindingDialogProps) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
@@ -42,18 +46,25 @@ export const NewFindingDialog = ({ open, onOpenChange, auditId, category }: NewF
   const [severity, setSeverity] = useState<string>('minor');
 
   const createTask = useCreateAuditTask();
+  const { data: consultants = [] } = useConsultants();
+
+  useEffect(() => {
+    if (open) {
+      setAssignedTo(defaultAssignedTo || '');
+    }
+  }, [open, defaultAssignedTo]);
 
   const resetForm = () => {
     setTitle('');
     setDescription('');
     setDueDate('');
-    setAssignedTo('');
+    setAssignedTo(defaultAssignedTo || '');
     setSeverity('minor');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!title || !dueDate) {
       toast.error('Bitte Titel und Frist ausfüllen');
       return;
@@ -80,6 +91,8 @@ export const NewFindingDialog = ({ open, onOpenChange, auditId, category }: NewF
     }
   };
 
+  const activeConsultants = consultants.filter(c => c.is_active);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
@@ -88,7 +101,7 @@ export const NewFindingDialog = ({ open, onOpenChange, auditId, category }: NewF
             {category === 'finding' ? 'Neue Feststellung / NK' : 'Neue Aufgabe'}
           </DialogTitle>
           <DialogDescription>
-            {category === 'finding' 
+            {category === 'finding'
               ? 'Nichtkonformität oder Feststellung aus dem Audit erfassen'
               : 'Neue Aufgabe für dieses Audit erstellen'
             }
@@ -147,12 +160,22 @@ export const NewFindingDialog = ({ open, onOpenChange, auditId, category }: NewF
 
           <div className="space-y-2">
             <Label htmlFor="finding-assigned">Zuständig</Label>
-            <Input
-              id="finding-assigned"
-              value={assignedTo}
-              onChange={(e) => setAssignedTo(e.target.value)}
-              placeholder="z.B. Auditor, Berater"
-            />
+            <Select
+              value={assignedTo || NONE_VALUE}
+              onValueChange={(v) => setAssignedTo(v === NONE_VALUE ? '' : v)}
+            >
+              <SelectTrigger id="finding-assigned">
+                <SelectValue placeholder="Berater auswählen" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE_VALUE}>— Kein Berater —</SelectItem>
+                {activeConsultants.map(c => (
+                  <SelectItem key={c.id} value={c.name}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <DialogFooter>

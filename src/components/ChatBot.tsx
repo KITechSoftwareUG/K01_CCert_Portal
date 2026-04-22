@@ -1,13 +1,12 @@
 import { useState, useRef, useEffect, useCallback, memo } from 'react';
-import { MessageCircle, X, Send, Bot, User, Loader2, Paperclip, FileText, Image as ImageIcon } from 'lucide-react';
+import { MessageCircle, X, Send, Bot, User, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { streamChat, AgentInfo, ChatMessage } from '@/lib/chatUtils';
-import { processFile, ProcessedFile, ACCEPTED_EXTENSIONS } from '@/lib/fileProcessor';
+import { streamChat, AgentInfo } from '@/lib/chatUtils';
 import ReactMarkdown from 'react-markdown';
 
 interface Message {
@@ -16,13 +15,12 @@ interface Message {
   content: string;
   timestamp: Date;
   agent?: AgentInfo;
-  attachmentName?: string;
 }
 
 const INITIAL_MESSAGE: Message = {
   id: 'initial',
   role: 'assistant',
-  content: 'Hallo! Ich bin Ihr Audit-Assistent mit Zugriff auf Ihre Datenbank. Fragen Sie mich z.B.:\n\n• "Welche Aufgaben sind bei Firma XY offen?"\n• "Welche Audits stehen diese Woche an?"\n• "Zeige mir alle Kunden mit FSC-Zertifizierung"\n\nSie können auch Dateien anhängen (CSV, Excel, PDF, Bilder).',
+  content: 'Hallo! Ich bin Ihr Audit-Assistent mit Zugriff auf Ihre Datenbank. Fragen Sie mich z.B.:\n\n• "Welche Aufgaben sind bei Firma XY offen?"\n• "Welche Audits stehen diese Woche an?"\n• "Zeige mir alle Kunden mit FSC-Zertifizierung"',
   timestamp: new Date(),
 };
 
@@ -35,7 +33,12 @@ const AgentBadge = memo(({ agent }: { agent: AgentInfo }) => (
 AgentBadge.displayName = 'AgentBadge';
 
 const MessageBubble = memo(({ message }: { message: Message }) => (
-  <div className={cn('flex gap-2', message.role === 'user' ? 'justify-end' : 'justify-start')}>
+  <div
+    className={cn(
+      'flex gap-2',
+      message.role === 'user' ? 'justify-end' : 'justify-start'
+    )}
+  >
     {message.role === 'assistant' && (
       <div className="bg-primary/10 p-1.5 rounded-full h-fit flex-shrink-0">
         <Bot className="h-4 w-4 text-primary" />
@@ -50,15 +53,9 @@ const MessageBubble = memo(({ message }: { message: Message }) => (
           'px-3 py-2 rounded-xl text-sm',
           message.role === 'user'
             ? 'bg-primary text-primary-foreground rounded-br-sm whitespace-pre-line'
-            : 'bg-muted text-foreground rounded-bl-sm',
+            : 'bg-muted text-foreground rounded-bl-sm'
         )}
       >
-        {message.attachmentName && (
-          <div className="flex items-center gap-1 mb-1 text-xs opacity-70">
-            <Paperclip className="h-3 w-3" />
-            <span>{message.attachmentName}</span>
-          </div>
-        )}
         {message.role === 'assistant' ? (
           <div className="prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0.5 leading-relaxed">
             <ReactMarkdown
@@ -95,6 +92,7 @@ const MessageBubble = memo(({ message }: { message: Message }) => (
     )}
   </div>
 ));
+
 MessageBubble.displayName = 'MessageBubble';
 
 const TypingIndicator = memo(({ agent }: { agent?: AgentInfo | null }) => (
@@ -114,32 +112,8 @@ const TypingIndicator = memo(({ agent }: { agent?: AgentInfo | null }) => (
     </div>
   </div>
 ));
-TypingIndicator.displayName = 'TypingIndicator';
 
-const FilePreview = memo(({
-  file,
-  onRemove,
-}: {
-  file: ProcessedFile;
-  onRemove: () => void;
-}) => (
-  <div className="flex items-center gap-1.5 px-2 py-1 bg-muted rounded-lg text-xs text-muted-foreground border border-border/50 max-w-full">
-    {file.kind === 'image' ? (
-      <ImageIcon className="h-3 w-3 flex-shrink-0 text-primary" />
-    ) : (
-      <FileText className="h-3 w-3 flex-shrink-0 text-primary" />
-    )}
-    <span className="truncate max-w-[160px]">{file.name}</span>
-    <button
-      onClick={onRemove}
-      className="ml-auto flex-shrink-0 hover:text-destructive transition-colors"
-      aria-label="Anhang entfernen"
-    >
-      <X className="h-3 w-3" />
-    </button>
-  </div>
-));
-FilePreview.displayName = 'FilePreview';
+TypingIndicator.displayName = 'TypingIndicator';
 
 const ChatBot = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -147,10 +121,7 @@ const ChatBot = () => {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [activeAgent, setActiveAgent] = useState<AgentInfo | null>(null);
-  const [attachedFile, setAttachedFile] = useState<ProcessedFile | null>(null);
-  const [isProcessingFile, setIsProcessingFile] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -158,65 +129,44 @@ const ChatBot = () => {
     }
   }, [messages, isTyping]);
 
-  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = '';
-
-    setIsProcessingFile(true);
-    try {
-      const processed = await processFile(file);
-      setAttachedFile(processed);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Datei konnte nicht verarbeitet werden');
-    } finally {
-      setIsProcessingFile(false);
-    }
-  }, []);
-
   const handleSend = useCallback(async () => {
-    if ((!input.trim() && !attachedFile) || isTyping) return;
-
-    const userText = input.trim() || (attachedFile ? `Analysiere diese Datei: ${attachedFile.name}` : '');
+    if (!input.trim() || isTyping) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: userText,
+      content: input.trim(),
       timestamp: new Date(),
-      attachmentName: attachedFile?.name,
     };
 
     setMessages((prev) => [...prev, userMessage]);
     const userInput = input;
-    const fileToSend = attachedFile;
     setInput('');
-    setAttachedFile(null);
     setIsTyping(true);
     setActiveAgent(null);
 
-    const conversationHistory: ChatMessage[] = messages
-      .filter((m) => m.id !== 'initial')
-      .map((m) => ({ role: m.role, content: m.content }));
-    conversationHistory.push({ role: 'user', content: userInput || userText });
+    const conversationHistory = messages
+      .filter(m => m.id !== 'initial')
+      .map(m => ({ role: m.role, content: m.content }));
+    conversationHistory.push({ role: 'user', content: userInput });
 
-    let assistantContent = '';
+    let assistantContent = "";
     let selectedAgent: AgentInfo | undefined;
 
     const upsertAssistant = (chunk: string) => {
       assistantContent += chunk;
       setMessages((prev) => {
         const last = prev[prev.length - 1];
-        if (last?.role === 'assistant' && last.id !== 'initial') {
+        if (last?.role === "assistant" && last.id !== "initial") {
           return prev.map((m, i) =>
-            i === prev.length - 1 ? { ...m, content: assistantContent, agent: selectedAgent || m.agent } : m,
+            i === prev.length - 1 ? { ...m, content: assistantContent, agent: selectedAgent || m.agent } : m
           );
         }
         return [
           ...prev,
           {
             id: (Date.now() + 1).toString(),
-            role: 'assistant' as const,
+            role: "assistant" as const,
             content: assistantContent,
             timestamp: new Date(),
             agent: selectedAgent,
@@ -227,7 +177,6 @@ const ChatBot = () => {
 
     await streamChat({
       messages: conversationHistory,
-      attachedFile: fileToSend,
       onAgentSelected: (agent) => {
         selectedAgent = agent;
         setActiveAgent(agent);
@@ -243,7 +192,7 @@ const ChatBot = () => {
           ...prev,
           {
             id: (Date.now() + 1).toString(),
-            role: 'assistant',
+            role: "assistant",
             content: `Entschuldigung, es gab einen Fehler: ${error}`,
             timestamp: new Date(),
           },
@@ -252,21 +201,16 @@ const ChatBot = () => {
         setActiveAgent(null);
       },
     });
-  }, [input, attachedFile, isTyping, messages]);
+  }, [input, isTyping, messages]);
 
-  const handleKeyPress = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        handleSend();
-      }
-    },
-    [handleSend],
-  );
+  const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  }, [handleSend]);
 
-  const toggleChat = useCallback(() => setIsOpen((prev) => !prev), []);
-
-  const canSend = (input.trim().length > 0 || attachedFile !== null) && !isTyping;
+  const toggleChat = useCallback(() => setIsOpen(prev => !prev), []);
 
   return (
     <>
@@ -274,7 +218,7 @@ const ChatBot = () => {
         onClick={toggleChat}
         className={cn(
           'fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50 transition-all duration-300',
-          isOpen ? 'bg-destructive hover:bg-destructive/90' : 'bg-primary hover:bg-primary/90',
+          isOpen ? 'bg-destructive hover:bg-destructive/90' : 'bg-primary hover:bg-primary/90'
         )}
         size="icon"
         aria-label={isOpen ? 'Chat schließen' : 'Chat öffnen'}
@@ -305,34 +249,8 @@ const ChatBot = () => {
             </div>
           </ScrollArea>
 
-          <div className="p-3 border-t border-border bg-background space-y-2">
-            {attachedFile && (
-              <FilePreview file={attachedFile} onRemove={() => setAttachedFile(null)} />
-            )}
+          <div className="p-3 border-t border-border bg-background">
             <div className="flex gap-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept={ACCEPTED_EXTENSIONS}
-                onChange={handleFileSelect}
-                className="hidden"
-                aria-label="Datei auswählen"
-              />
-              <Button
-                variant="outline"
-                size="icon"
-                className="flex-shrink-0 h-9 w-9"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isTyping || isProcessingFile}
-                aria-label="Datei anhängen"
-                title="Datei anhängen (CSV, Excel, PDF, Bilder)"
-              >
-                {isProcessingFile ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Paperclip className="h-4 w-4" />
-                )}
-              </Button>
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -345,7 +263,7 @@ const ChatBot = () => {
               <Button
                 onClick={handleSend}
                 size="icon"
-                disabled={!canSend}
+                disabled={!input.trim() || isTyping}
                 aria-label="Nachricht senden"
               >
                 {isTyping ? (

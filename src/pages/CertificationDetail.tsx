@@ -270,7 +270,7 @@ const CertificationDetail = () => {
       <>
         <div className="p-8">
           <div className="text-center py-12">
-            <p className="text-muted-foreground">System nicht gefunden</p>
+            <p className="text-muted-foreground">Zertifizierung nicht gefunden</p>
             <Button onClick={() => navigate('/clients')} className="mt-4">
               Zurück zu Kunden
             </Button>
@@ -280,7 +280,7 @@ const CertificationDetail = () => {
     );
   }
 
-  const certName = certification.certifications?.name || 'System';
+  const certName = certification.certifications?.name || 'Zertifizierung';
 
   return (
     <>
@@ -349,7 +349,7 @@ const CertificationDetail = () => {
             {/* Certificate Details Card */}
             <Card>
               <CardHeader>
-                <CardTitle>Systemdaten</CardTitle>
+                <CardTitle>Zertifizierungsdaten</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {isEditing ? (
@@ -705,14 +705,14 @@ const CertificationDetail = () => {
                       className="w-full justify-start gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
                     >
                       <Trash2 className="h-4 w-4" />
-                      System löschen
+                      Zertifizierung löschen
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>System löschen?</AlertDialogTitle>
+                      <AlertDialogTitle>Zertifizierung löschen?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Das System "{certName}" für {client?.name || 'diesen Kunden'} wird dauerhaft gelöscht.
+                        Die Zertifizierung "{certName}" für {client?.name || 'diesen Kunden'} wird dauerhaft gelöscht.
                         Alle verknüpften Dokumente und Audits bleiben erhalten, verlieren aber die Verknüpfung.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
@@ -722,7 +722,7 @@ const CertificationDetail = () => {
                         onClick={async () => {
                           try {
                             await deleteCertification.mutateAsync(id!);
-                            toast.success('System erfolgreich gelöscht');
+                            toast.success('Zertifizierung erfolgreich gelöscht');
                             navigate(client ? `/clients/${client.id}` : '/clients');
                           } catch (error) {
                             console.error('Error deleting certification:', error);

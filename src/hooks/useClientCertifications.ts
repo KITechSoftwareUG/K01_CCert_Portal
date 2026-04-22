@@ -98,6 +98,8 @@ export const useCreateClientCertification = () => {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['client_certifications'] });
       queryClient.invalidateQueries({ queryKey: ['clients', variables.client_id] });
+      queryClient.invalidateQueries({ queryKey: ['audits'] });
+      queryClient.invalidateQueries({ queryKey: ['certification-audits'] });
       logActivity({ action: 'created', entity_type: 'client_certification', entity_id: data.id, entity_name: data.certifications?.name });
     },
   });
@@ -125,6 +127,8 @@ export const useUpdateClientCertification = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['client_certifications'] });
+      queryClient.invalidateQueries({ queryKey: ['audits'] });
+      queryClient.invalidateQueries({ queryKey: ['certification-audits'] });
       logActivity({ action: 'updated', entity_type: 'client_certification', entity_id: data.id, entity_name: data.certifications?.name });
     },
   });

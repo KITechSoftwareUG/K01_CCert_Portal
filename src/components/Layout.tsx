@@ -54,7 +54,7 @@ const mainNavigation = [
 ];
 
 const settingsNavigation = [
-  { name: 'Systeme', href: '/settings/certifications', icon: Award },
+  { name: 'Zertifizierungen', href: '/settings/certifications', icon: Award },
   { name: 'Audit-Vorlagen', href: '/settings/audit-templates', icon: ListChecks },
 ];
 

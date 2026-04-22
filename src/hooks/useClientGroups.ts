@@ -73,46 +73,14 @@ export const useCertificationsByClient = (allCertifications: RawClientCertificat
     });
 
     Object.entries(rawCertsByClient).forEach(([clientId, certs]) => {
-      const grouped: Record<string, CertificationInfo[]> = {};
-      const noNumber: CertificationInfo[] = [];
-
-      certs.forEach(cert => {
-        if (cert.certificateNumber) {
-          if (!grouped[cert.certificateNumber]) grouped[cert.certificateNumber] = [];
-          grouped[cert.certificateNumber].push(cert);
-        } else {
-          noNumber.push(cert);
-        }
-      });
-
-      map[clientId] = [];
-
-      Object.entries(grouped).forEach(([, groupedCerts]) => {
-        const earliestDate = groupedCerts
-          .map(c => c.validUntil)
-          .filter(Boolean)
-          .sort()[0] || null;
-
-        map[clientId].push({
-          clientId,
-          clientName: clientInfoMap[clientId].name,
-          clientNumber: clientInfoMap[clientId].number,
-          certifications: groupedCerts,
-          earliestValidUntil: earliestDate,
-          primaryCertificationId: groupedCerts[0].id,
-        });
-      });
-
-      noNumber.forEach(cert => {
-        map[clientId].push({
-          clientId,
-          clientName: clientInfoMap[clientId].name,
-          clientNumber: clientInfoMap[clientId].number,
-          certifications: [cert],
-          earliestValidUntil: cert.validUntil,
-          primaryCertificationId: cert.id,
-        });
-      });
+      map[clientId] = certs.map(cert => ({
+        clientId,
+        clientName: clientInfoMap[clientId].name,
+        clientNumber: clientInfoMap[clientId].number,
+        certifications: [cert],
+        earliestValidUntil: cert.validUntil,
+        primaryCertificationId: cert.id,
+      }));
     });
 
     return map;

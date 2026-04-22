@@ -649,7 +649,7 @@ const ClientDetail = () => {
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <Award className="h-5 w-5" />
-                  Systeme
+                  Zertifizierungen
                 </CardTitle>
                 <Dialog open={showAddCertDialog} onOpenChange={(open) => { setShowAddCertDialog(open); if (!open) { setSelectedCertificationId(''); setSelectedCertBodyId(''); } }}>
                   <DialogTrigger asChild>
@@ -715,9 +715,9 @@ const ClientDetail = () => {
               </CardHeader>
               <CardContent>
                 {certificationsLoading ? (
-                  <div className="flex gap-2">
-                    <Skeleton className="h-8 w-20" />
-                    <Skeleton className="h-8 w-20" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
                   </div>
                 ) : clientCertifications.length > 0 ? (
                   <div className="space-y-2">

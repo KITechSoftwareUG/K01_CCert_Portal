@@ -368,7 +368,7 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
 
           {/* Certifications */}
           <div className="space-y-2">
-            <Label>Systeme *</Label>
+            <Label>Zertifizierungen *</Label>
             <div className="grid grid-cols-2 gap-3 p-4 border rounded-lg max-h-60 overflow-y-auto">
               {certifications.map((cert) => (
                 <div key={cert.id} className="flex items-center space-x-2">
