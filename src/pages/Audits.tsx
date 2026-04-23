@@ -288,8 +288,6 @@ const Audits = () => {
       const containerTop = container.getBoundingClientRect().top;
       const offset = elementTop - containerTop + container.scrollTop;
       container.scrollTo({ top: offset, behavior: 'smooth' });
-    } else {
-      toast.info('Keine Audits in nächster Zeit geplant');
     }
   }, [scrollRef, filteredAudits]);
 
