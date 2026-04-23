@@ -448,6 +448,32 @@ const Clients = () => {
               )}
               <span className={cn('truncate', indent ? '' : 'font-medium')}>{client.name}</span>
               <ClientNumberBadge clientNumber={client.client_number} />
+              {!isMobile && (
+                <>
+                  {!clientIsActive && (
+                    <Badge variant="destructive" className="text-xs">Inaktiv</Badge>
+                  )}
+                  {hasCerts && (
+                    legacyCerts.length > 0 && certs.length === 0 ? (
+                      <Badge variant="outline" className="text-xs border-warning text-warning">
+                        {legacyCerts.length} (Migration)
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-xs">
+                        {certs.length} Zertifikat{certs.length !== 1 ? 'e' : ''}
+                      </Badge>
+                    )
+                  )}
+                  {(() => {
+                    const cfg = getAuditModeConfig(client.audit_mode);
+                    return (
+                      <Badge variant="outline" className={`text-xs gap-1 font-medium ${cfg.modeBadge}`}>
+                        <cfg.Icon className="h-3 w-3" /> {cfg.label}
+                      </Badge>
+                    );
+                  })()}
+                </>
+              )}
             </div>
             {/* Mobile: show badges below name */}
             {isMobile && (
@@ -477,40 +503,16 @@ const Clients = () => {
               </div>
             )}
           </div>
-          {/* Desktop: inline badges + actions */}
+          {/* Desktop: contact + actions */}
           <div className="flex items-center gap-2 shrink-0">
             {!isMobile && (
-              <>
-                {!clientIsActive && (
-                  <Badge variant="destructive" className="text-xs">Inaktiv</Badge>
-                )}
-                {hasCerts && (
-                  legacyCerts.length > 0 && certs.length === 0 ? (
-                    <Badge variant="outline" className="text-xs border-warning text-warning">
-                      {legacyCerts.length} (Migration)
-                    </Badge>
-                  ) : (
-                    <Badge variant="secondary" className="text-xs">
-                      {certs.length} Zertifikat{certs.length !== 1 ? 'e' : ''}
-                    </Badge>
-                  )
-                )}
-                {(() => {
-                  const cfg = getAuditModeConfig(client.audit_mode);
-                  return (
-                    <Badge variant="outline" className={`text-xs gap-1 font-medium ${cfg.modeBadge}`}>
-                      <cfg.Icon className="h-3 w-3" /> {cfg.label}
-                    </Badge>
-                  );
-                })()}
-                <ContactPopover
-                  legacyName={client.contact_person}
-                  legacyPhone={client.phone}
-                  legacyEmail={client.email}
-                  contacts={contacts}
-                  clientId={client.id}
-                />
-              </>
+              <ContactPopover
+                legacyName={client.contact_person}
+                legacyPhone={client.phone}
+                legacyEmail={client.email}
+                contacts={contacts}
+                clientId={client.id}
+              />
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -765,7 +767,22 @@ const Clients = () => {
                                           )}
                                         </>
                                       ) : (
-                                        <ClientNumberBadge clientNumber={headerClient.client_number} />
+                                        <>
+                                          <ClientNumberBadge clientNumber={headerClient.client_number} />
+                                          {totalCerts > 0 && (
+                                            <Badge variant="secondary" className="text-xs h-5">
+                                              {totalCerts} Zertifikat{totalCerts !== 1 ? 'e' : ''}
+                                            </Badge>
+                                          )}
+                                          {(() => {
+                                            const cfg = getAuditModeConfig(headerClient.audit_mode);
+                                            return (
+                                              <Badge variant="outline" className={`text-xs gap-1 font-medium ${cfg.modeBadge}`}>
+                                                <cfg.Icon className="h-3 w-3" /> {cfg.label}
+                                              </Badge>
+                                            );
+                                          })()}
+                                        </>
                                       )}
                                     </div>
                                   )}
@@ -798,28 +815,13 @@ const Clients = () => {
                               {/* Actions on the right */}
                               <div className="flex items-center gap-2 shrink-0">
                                 {!isMultiClient && !isMobile && (
-                                  <>
-                                    {totalCerts > 0 && (
-                                      <Badge variant="secondary" className="text-xs h-5">
-                                        {totalCerts} Zertifikat{totalCerts !== 1 ? 'e' : ''}
-                                      </Badge>
-                                    )}
-                                    {(() => {
-                                      const cfg = getAuditModeConfig(headerClient.audit_mode);
-                                      return (
-                                        <Badge variant="outline" className={`text-xs gap-1 font-medium ${cfg.modeBadge}`}>
-                                          <cfg.Icon className="h-3 w-3" /> {cfg.label}
-                                        </Badge>
-                                      );
-                                    })()}
-                                    <ContactPopover
-                                      legacyName={headerClient.contact_person}
-                                      legacyPhone={headerClient.phone}
-                                      legacyEmail={headerClient.email}
-                                      contacts={headerContacts}
-                                      clientId={headerClient.id}
-                                    />
-                                  </>
+                                  <ContactPopover
+                                    legacyName={headerClient.contact_person}
+                                    legacyPhone={headerClient.phone}
+                                    legacyEmail={headerClient.email}
+                                    contacts={headerContacts}
+                                    clientId={headerClient.id}
+                                  />
                                 )}
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
@@ -935,13 +937,6 @@ const Clients = () => {
                                                         </Badge>
                                                       );
                                                     })()}
-                                                    <ContactPopover
-                                                      legacyName={client.contact_person}
-                                                      legacyPhone={client.phone}
-                                                      legacyEmail={client.email}
-                                                      contacts={contacts}
-                                                      clientId={client.id}
-                                                    />
                                                   </>
                                                 )}
                                               </div>
@@ -967,6 +962,15 @@ const Clients = () => {
                                               )}
                                             </div>
                                             <div className="flex items-center gap-2 shrink-0">
+                                              {!isMobile && (
+                                                <ContactPopover
+                                                  legacyName={client.contact_person}
+                                                  legacyPhone={client.phone}
+                                                  legacyEmail={client.email}
+                                                  contacts={contacts}
+                                                  clientId={client.id}
+                                                />
+                                              )}
                                               <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
                                                   <Button
