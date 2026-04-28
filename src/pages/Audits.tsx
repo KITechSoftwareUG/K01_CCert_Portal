@@ -212,7 +212,7 @@ const Audits = () => {
   const { data: dbAudits = [], isLoading: auditsLoading, error: auditsError } = useAudits();
   const deleteAudit = useDeleteAudit();
   const { data: tasks = [], isLoading: tasksLoading } = useAuditTasks();
-  const { data: clients = [] } = useClients();
+  const { data: clients = [], isLoading: clientsLoading } = useClients();
   const { data: auditors = [] } = useAuditors();
   const { data: certificationBodies = [] } = useCertificationBodies();
   const scrollRef = useScrollPersistence();
@@ -382,7 +382,7 @@ const Audits = () => {
     });
   };
 
-  const isLoading = auditsLoading || tasksLoading;
+  const isLoading = auditsLoading || tasksLoading || clientsLoading;
 
   return (
     <>
