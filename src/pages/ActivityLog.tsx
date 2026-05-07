@@ -8,8 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { History, User, Search, FileCheck, Users, Award, Building2, UserCheck, MessageSquare } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 const ACTION_LABELS: Record<string, string> = {
   created: 'Erstellt',
@@ -65,6 +66,27 @@ const ActivityLog = () => {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [entityFilter, setEntityFilter] = useState<string>('all');
+
+  const handleActivityClick = useCallback(async (
+    entityType: string,
+    entityId: string | null,
+    details: Record<string, unknown> | null
+  ) => {
+    if (!entityId) return;
+    const link = getEntityLink(entityType, entityId, details);
+    if (link) {
+      navigate(link);
+      return;
+    }
+    if (entityType === 'audit_task') {
+      const { data } = await supabase
+        .from('audit_tasks')
+        .select('audit_id')
+        .eq('id', entityId)
+        .maybeSingle();
+      if (data?.audit_id) navigate(`/audits/${data.audit_id}`);
+    }
+  }, [navigate]);
 
   const filtered = useMemo(() => {
     return activities.filter(a => {
@@ -155,12 +177,14 @@ const ActivityLog = () => {
                       </div>
                       {entries.map((activity) => {
                         const Icon = ENTITY_ICONS[activity.entity_type] || History;
-                        const link = getEntityLink(activity.entity_type, activity.entity_id, activity.details as Record<string, unknown> | null);
+                        const details = activity.details as Record<string, unknown> | null;
+                        const link = getEntityLink(activity.entity_type, activity.entity_id, details);
+                        const isClickable = !!link || (activity.entity_type === 'audit_task' && !!activity.entity_id);
                         return (
                           <div
                             key={activity.id}
-                            onClick={() => link && navigate(link)}
-                            className={`flex items-start gap-3 p-3 rounded-lg bg-muted/50 transition-colors ${link ? 'hover:bg-primary/10 cursor-pointer' : ''}`}
+                            onClick={() => isClickable && handleActivityClick(activity.entity_type, activity.entity_id, details)}
+                            className={`flex items-start gap-3 p-3 rounded-lg bg-muted/50 transition-colors ${isClickable ? 'hover:bg-primary/10 cursor-pointer' : ''}`}
                           >
                             <div className="p-2 bg-background rounded-lg shadow-sm mt-0.5">
                               <Icon className="h-4 w-4 text-muted-foreground" />
