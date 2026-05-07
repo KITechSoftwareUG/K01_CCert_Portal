@@ -139,7 +139,7 @@ export const useCreateAuditTask = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['audit_tasks'] });
-      logActivity({ action: 'created', entity_type: 'audit_task', entity_id: data.id, entity_name: data.title });
+      logActivity({ action: 'created', entity_type: 'audit_task', entity_id: data.id, entity_name: data.title, details: { audit_id: data.audit_id } });
     },
   });
 };
@@ -161,7 +161,7 @@ export const useUpdateAuditTask = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['audit_tasks'] });
-      logActivity({ action: 'updated', entity_type: 'audit_task', entity_id: data.id, entity_name: data.title });
+      logActivity({ action: 'updated', entity_type: 'audit_task', entity_id: data.id, entity_name: data.title, details: { audit_id: data.audit_id } });
     },
   });
 };
@@ -170,7 +170,7 @@ export const useDeleteAuditTask = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id }: { id: string; audit_id: string }) => {
       const { error } = await supabase
         .from('audit_tasks')
         .delete()
@@ -178,9 +178,9 @@ export const useDeleteAuditTask = () => {
 
       if (error) throw error;
     },
-    onSuccess: (_, id) => {
+    onSuccess: (_, { id, audit_id }) => {
       queryClient.invalidateQueries({ queryKey: ['audit_tasks'] });
-      logActivity({ action: 'deleted', entity_type: 'audit_task', entity_id: id });
+      logActivity({ action: 'deleted', entity_type: 'audit_task', entity_id: id, details: { audit_id } });
     },
   });
 };

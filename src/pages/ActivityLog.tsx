@@ -49,11 +49,12 @@ const ACTION_COLORS: Record<string, string> = {
   imported: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
 };
 
-const getEntityLink = (entityType: string, entityId: string | null): string | null => {
+const getEntityLink = (entityType: string, entityId: string | null, details?: Record<string, unknown> | null): string | null => {
   if (!entityId) return null;
   switch (entityType) {
     case 'client': return `/clients/${entityId}`;
-    case 'audit': case 'audit_task': return `/audits/${entityId}`;
+    case 'audit': return `/audits/${entityId}`;
+    case 'audit_task': return details?.audit_id ? `/audits/${details.audit_id}` : null;
     case 'client_certification': return `/certifications/${entityId}`;
     default: return null;
   }
@@ -154,7 +155,7 @@ const ActivityLog = () => {
                       </div>
                       {entries.map((activity) => {
                         const Icon = ENTITY_ICONS[activity.entity_type] || History;
-                        const link = getEntityLink(activity.entity_type, activity.entity_id);
+                        const link = getEntityLink(activity.entity_type, activity.entity_id, activity.details as Record<string, unknown> | null);
                         return (
                           <div
                             key={activity.id}

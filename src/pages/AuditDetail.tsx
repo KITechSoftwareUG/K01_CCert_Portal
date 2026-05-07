@@ -420,7 +420,7 @@ const AuditDetail = () => {
   }, [updateTask]);
 
   const handleDeleteTask = useCallback((taskId: string) => {
-    deleteTask.mutate(taskId, {
+    deleteTask.mutate({ id: taskId, audit_id: id! }, {
       onSuccess: () => toast.success('Eintrag gelöscht'),
       onError: () => toast.error('Fehler beim Löschen'),
     });
