@@ -12,7 +12,7 @@ import ReactMarkdown from 'react-markdown';
 import { streamChat, AgentInfo } from '@/lib/chatUtils';
 import { useNavigate } from 'react-router-dom';
 
-const DAILY_GREETING_HOUR = 5;
+const GREETING_TTL_MS = 8 * 60 * 60 * 1000; // 8 Stunden
 
 const markdownLinkComponents = {
   a: ({ href, children }: { href?: string; children?: React.ReactNode }) => (
@@ -44,7 +44,7 @@ interface Message {
 
 interface CachedGreeting {
   content: string;
-  refreshKey: string;
+  cachedAt: number;
 }
 
 const EXAMPLE_PROMPTS = [
@@ -54,17 +54,6 @@ const EXAMPLE_PROMPTS = [
   "Erstelle eine Übersicht aller Kunden in Mecklenburg-Vorpommern",
 ];
 
-const getGreetingRefreshKey = (now: Date) => {
-  const refreshDate = new Date(now);
-  if (now.getHours() < DAILY_GREETING_HOUR) {
-    refreshDate.setDate(refreshDate.getDate() - 1);
-  }
-  const year = refreshDate.getFullYear();
-  const month = String(refreshDate.getMonth() + 1).padStart(2, '0');
-  const day = String(refreshDate.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
-
 const getGreetingStorageKey = (userId?: string) => `dashboard-ai-greeting:${userId ?? 'anonymous'}`;
 
 const readCachedGreeting = (userId?: string): CachedGreeting | null => {
@@ -73,17 +62,22 @@ const readCachedGreeting = (userId?: string): CachedGreeting | null => {
     const raw = window.localStorage.getItem(getGreetingStorageKey(userId));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as CachedGreeting;
-    if (!parsed.content || !parsed.refreshKey) return null;
+    if (!parsed.content || !parsed.cachedAt) return null;
     return parsed;
   } catch {
     return null;
   }
 };
 
-const writeCachedGreeting = (userId: string | undefined, cachedGreeting: CachedGreeting) => {
+const isGreetingFresh = (cached: CachedGreeting) => Date.now() - cached.cachedAt < GREETING_TTL_MS;
+
+const writeCachedGreeting = (userId: string | undefined, content: string) => {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.setItem(getGreetingStorageKey(userId), JSON.stringify(cachedGreeting));
+    window.localStorage.setItem(
+      getGreetingStorageKey(userId),
+      JSON.stringify({ content, cachedAt: Date.now() })
+    );
   } catch { /* ignore */ }
 };
 
@@ -111,14 +105,14 @@ export const DashboardAIChat = ({ className }: DashboardAIChatProps) => {
   }, [user]);
 
   useEffect(() => {
-    const refreshKey = getGreetingRefreshKey(new Date());
+    if (greetingLoaded) return;
+
     const cachedGreeting = readCachedGreeting(user?.id);
-    if (cachedGreeting?.refreshKey === refreshKey && cachedGreeting.content) {
+    if (cachedGreeting && isGreetingFresh(cachedGreeting)) {
       setGreeting(cachedGreeting.content);
       setGreetingLoaded(true);
       return;
     }
-    if (greetingLoaded) return;
 
     const loadGreeting = async () => {
       const userName = getUserName();
@@ -141,14 +135,14 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
         onDone: () => {
           const finalGreeting = greetingContent.trim();
           if (finalGreeting) {
-            writeCachedGreeting(user?.id, { content: finalGreeting, refreshKey });
+            writeCachedGreeting(user?.id, finalGreeting);
             setGreeting(finalGreeting);
           }
           setGreetingLoaded(true);
         },
         onError: () => {
-          const fallbackGreeting = `Hey ${getUserName()}, willkommen zurück! 👋`;
-          writeCachedGreeting(user?.id, { content: fallbackGreeting, refreshKey });
+          const fallbackGreeting = `Hey ${getUserName()}, willkommen zurück!`;
+          writeCachedGreeting(user?.id, fallbackGreeting);
           setGreeting(fallbackGreeting);
           setGreetingLoaded(true);
         },
@@ -157,7 +151,7 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
 
     const timer = window.setTimeout(loadGreeting, 500);
     return () => window.clearTimeout(timer);
-  }, [getUserName, greetingLoaded, user?.id]);
+  }, [getUserName, user?.id]);
 
   useEffect(() => {
     if (scrollRef.current) {
