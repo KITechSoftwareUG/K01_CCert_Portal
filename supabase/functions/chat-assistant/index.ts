@@ -1,11 +1,40 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+async function sendAlertEmail(subject: string, html: string) {
+  const key = Deno.env.get("RESEND_API_KEY");
+  if (!key) return;
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: "ccert-alerts@kitech-software.de",
+      to: "aalkh@kitech-software.de",
+      subject,
+      html,
+    }),
+  }).catch(() => {});
+}
+
 const CORS_HEADERS =
   "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version";
 
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 const MODEL = "gpt-4o";
 const MAX_ITERATIONS = 10;
+
+const fetchOpenAI = async (apiKey: string, body: object, retries = 2): Promise<Response> => {
+  const res = await fetch(OPENAI_URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (res.status === 429 && retries > 0) {
+    const retryAfter = Math.max(parseInt(res.headers.get("Retry-After") ?? "4", 10), 4);
+    await new Promise<void>((r) => setTimeout(r, Math.min(retryAfter * 1000, 10_000)));
+    return fetchOpenAI(apiKey, body, retries - 1);
+  }
+  return res;
+};
 
 // ─── System Prompt ────────────────────────────────────────────────────────────
 
@@ -249,15 +278,11 @@ Deno.serve(async (req) => {
     const queriesExecuted: string[] = [];
 
     for (let iter = 0; iter < MAX_ITERATIONS; iter++) {
-      const res = await fetch(OPENAI_URL, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: MODEL,
-          messages: callMessages,
-          tools: TOOLS,
-          tool_choice: iter === MAX_ITERATIONS - 1 ? "none" : "auto", // force answer on last iteration
-        }),
+      const res = await fetchOpenAI(OPENAI_API_KEY, {
+        model: MODEL,
+        messages: callMessages,
+        tools: TOOLS,
+        tool_choice: iter === MAX_ITERATIONS - 1 ? "none" : "auto",
       });
 
       if (!res.ok) {
@@ -340,11 +365,7 @@ Deno.serve(async (req) => {
     }
 
     // Fallback: one more streaming call for the final answer
-    const streamRes = await fetch(OPENAI_URL, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: MODEL, messages: callMessages, stream: true }),
-    });
+    const streamRes = await fetchOpenAI(OPENAI_API_KEY, { model: MODEL, messages: callMessages, stream: true });
 
     if (!streamRes.ok) {
       throw new Error(`Stream call failed: ${streamRes.status}`);
@@ -371,6 +392,10 @@ Deno.serve(async (req) => {
   } catch (e) {
     const msg = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
     console.error("chat-assistant FATAL:", msg);
+    await sendAlertEmail(
+      "⚠️ ccert KI-Assistent — Kritischer Fehler",
+      `<p><b>Fehler:</b> ${msg}</p><p><b>Zeit:</b> ${new Date().toISOString()}</p><p>Bitte prüfe den OpenAI API-Key und die Edge Function Logs im Supabase Dashboard.</p>`,
+    );
     return new Response(JSON.stringify({ error: msg }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
