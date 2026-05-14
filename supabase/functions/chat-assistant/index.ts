@@ -289,7 +289,14 @@ Deno.serve(async (req) => {
         const err = await res.text();
         console.error(`OpenAI error (iter ${iter}):`, res.status, err);
         if (res.status === 429) {
-          return new Response(JSON.stringify({ error: "Zu viele Anfragen. Bitte warten." }), {
+          let errMsg = "Zu viele Anfragen. Bitte warten.";
+          try {
+            const parsed = JSON.parse(err);
+            if (parsed?.error?.code === "insufficient_quota") {
+              errMsg = "OpenAI-Guthaben aufgebraucht. Bitte Konto unter platform.openai.com aufladen.";
+            }
+          } catch { /* ignore */ }
+          return new Response(JSON.stringify({ error: errMsg }), {
             status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
