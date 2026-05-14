@@ -109,51 +109,42 @@ export const DashboardAIChat = ({ className }: DashboardAIChatProps) => {
 
   useEffect(() => {
     if (greetingLoaded) return;
-
     const cachedGreeting = readCachedGreeting(user?.id);
     if (cachedGreeting && isGreetingFresh(cachedGreeting)) {
       setGreeting(cachedGreeting.content);
-      setGreetingLoaded(true);
+    }
+    setGreetingLoaded(true);
+  }, [greetingLoaded, user?.id]);
+
+  const loadGreeting = useCallback(async () => {
+    const cachedGreeting = readCachedGreeting(user?.id);
+    if (cachedGreeting && isGreetingFresh(cachedGreeting)) {
+      setGreeting(cachedGreeting.content);
       return;
     }
-
-    const loadGreeting = async () => {
-      const userName = getUserName();
-      let greetingContent = '';
-      setGreeting(null);
-
-      await streamChat({
-        messages: [{
-          role: 'user',
-          content: `Erstelle eine sehr kurze, freundliche Begrüßung (max. 2 Sätze) für ${userName}.
+    const userName = getUserName();
+    let greetingContent = '';
+    setGreeting(null);
+    await streamChat({
+      messages: [{
+        role: 'user',
+        content: `Erstelle eine sehr kurze, freundliche Begrüßung (max. 2 Sätze) für ${userName}.
 Erwähne dabei kurz die wichtigste anstehende Aufgabe oder das nächste Audit, das bald fällig ist.
 Beginne mit "Hey ${userName}" und sei locker und persönlich. Keine formellen Floskeln.
 Wenn es überfällige Aufgaben gibt, erwähne das kurz als Erinnerung.
 Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
-        }],
-        onDelta: (chunk) => {
-          greetingContent += chunk;
-          setGreeting(greetingContent);
-        },
-        onDone: () => {
-          const finalGreeting = greetingContent.trim();
-          if (finalGreeting) {
-            writeCachedGreeting(user?.id, finalGreeting);
-            setGreeting(finalGreeting);
-          }
-          setGreetingLoaded(true);
-        },
-        onError: () => {
-          const fallbackGreeting = `Hey ${getUserName()}, willkommen zurück!`;
-          writeCachedGreeting(user?.id, fallbackGreeting);
-          setGreeting(fallbackGreeting);
-          setGreetingLoaded(true);
-        },
-      });
-    };
-
-    const timer = window.setTimeout(loadGreeting, 500);
-    return () => window.clearTimeout(timer);
+      }],
+      onDelta: (chunk) => { greetingContent += chunk; setGreeting(greetingContent); },
+      onDone: () => {
+        const finalGreeting = greetingContent.trim();
+        if (finalGreeting) { writeCachedGreeting(user?.id, finalGreeting); setGreeting(finalGreeting); }
+      },
+      onError: () => {
+        const fallback = `Hey ${getUserName()}, willkommen zurück!`;
+        writeCachedGreeting(user?.id, fallback);
+        setGreeting(fallback);
+      },
+    });
   }, [getUserName, user?.id]);
 
   useEffect(() => {
@@ -208,6 +199,7 @@ Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
 
   const handleHeroInputFocus = () => {
     setChatOpen(true);
+    loadGreeting();
     setTimeout(() => {
       if (dialogInputRef.current) {
         dialogInputRef.current.focus();
