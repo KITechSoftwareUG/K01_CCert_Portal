@@ -61,9 +61,12 @@ const readCachedGreeting = (userId?: string): CachedGreeting | null => {
   try {
     const raw = window.localStorage.getItem(getGreetingStorageKey(userId));
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as CachedGreeting;
-    if (!parsed.content || !parsed.cachedAt) return null;
-    return parsed;
+    const parsed = JSON.parse(raw);
+    if (!parsed.content) return null;
+    if (typeof parsed.cachedAt === 'number') return parsed as CachedGreeting;
+    // Altes Format (refreshKey) → als gerade generiert behandeln
+    if (typeof parsed.refreshKey === 'string') return { content: parsed.content, cachedAt: Date.now() };
+    return null;
   } catch {
     return null;
   }
