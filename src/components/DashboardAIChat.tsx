@@ -169,11 +169,16 @@ Nur fließender Text, keine Listen.`
     const updatedHistory = [...conversationHistory, userMessage];
     setConversationHistory(updatedHistory);
 
+    // Begrüßung als Kontext für die API mitgeben (nur beim ersten Senden)
+    const messagesForAPI = conversationHistory.length === 0 && greeting
+      ? [{ role: 'assistant' as const, content: greeting }, ...updatedHistory]
+      : updatedHistory;
+
     let responseContent = '';
     let selectedAgent: AgentInfo | undefined;
 
     await streamChat({
-      messages: updatedHistory,
+      messages: messagesForAPI,
       onAgentSelected: (agent) => {
         selectedAgent = agent;
         setCurrentAgent(agent);
