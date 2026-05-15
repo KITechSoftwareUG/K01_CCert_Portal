@@ -54,7 +54,7 @@ const EXAMPLE_PROMPTS = [
   "Erstelle eine Übersicht aller Kunden in Mecklenburg-Vorpommern",
 ];
 
-const getGreetingStorageKey = (userId?: string) => `dashboard-ai-greeting:${userId ?? 'anonymous'}`;
+const getGreetingStorageKey = (userId?: string) => `dashboard-ai-greeting:v2:${userId ?? 'anonymous'}`;
 
 const readCachedGreeting = (userId?: string): CachedGreeting | null => {
   if (typeof window === 'undefined') return null;
