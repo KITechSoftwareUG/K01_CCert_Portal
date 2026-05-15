@@ -128,11 +128,14 @@ export const DashboardAIChat = ({ className }: DashboardAIChatProps) => {
     await streamChat({
       messages: [{
         role: 'user',
-        content: `Erstelle eine sehr kurze, freundliche Begrüßung (max. 2 Sätze) für ${userName}.
-Erwähne dabei kurz die wichtigste anstehende Aufgabe oder das nächste Audit, das bald fällig ist.
-Beginne mit "Hey ${userName}" und sei locker und persönlich. Keine formellen Floskeln.
-Wenn es überfällige Aufgaben gibt, erwähne das kurz als Erinnerung.
-Formatiere nichts mit Listen - nur 1-2 fließende Sätze.`
+        content: `Schau zuerst in der Datenbank nach:
+1. Gibt es überfällige Aufgaben? (audit_tasks: due_date < CURRENT_DATE AND status IN ('pending','in-progress'))
+2. Welche Audits stehen in den nächsten 14 Tagen an? (audits: scheduled_date >= CURRENT_DATE AND scheduled_date < CURRENT_DATE + INTERVAL '14 days' AND status IN ('scheduled','in-progress'))
+
+Erstelle dann eine sehr kurze, freundliche Begrüßung (max. 2 Sätze) für ${userName} basierend auf diesen echten Daten.
+Beginne mit "Hey ${userName}", sei locker und persönlich, keine Floskeln.
+Wenn es überfällige Aufgaben oder bald anstehende Audits gibt, erwähne das konkret (z.B. Kundenname oder Aufgabentitel).
+Nur fließender Text, keine Listen.`
       }],
       onDelta: (chunk) => { greetingContent += chunk; setGreeting(greetingContent); },
       onDone: () => {
