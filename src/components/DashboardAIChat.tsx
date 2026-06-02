@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import ReactMarkdown from 'react-markdown';
 import { streamChat, AgentInfo } from '@/lib/chatUtils';
-import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 const GREETING_TTL_MS = 8 * 60 * 60 * 1000; // 8 Stunden
 
@@ -123,19 +123,32 @@ export const DashboardAIChat = ({ className }: DashboardAIChatProps) => {
       return;
     }
     const userName = getUserName();
-    let greetingContent = '';
     setGreeting(null);
+
+    // Daten direkt von Supabase holen — kein KI-Tool-Loop nötig
+    const today = new Date().toISOString().split('T')[0];
+    const in14Days = new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0];
+    const [{ data: overdueTasks }, { data: upcomingAudits }] = await Promise.all([
+      supabase.from('audit_tasks').select('title, due_date').lt('due_date', today).in('status', ['pending', 'in-progress']).order('due_date').limit(3),
+      supabase.from('audits').select('type, scheduled_date, clients(name)').gte('scheduled_date', today).lt('scheduled_date', in14Days).in('status', ['scheduled', 'in-progress']).order('scheduled_date').limit(3),
+    ]);
+
+    const taskLines = overdueTasks?.map(t => `"${t.title}" (fällig: ${t.due_date})`).join(', ') ?? '';
+    const auditLines = upcomingAudits?.map(a => {
+      const client = (a.clients as { name?: string } | null)?.name ?? '';
+      return `${a.type}${client ? ` bei ${client}` : ''} am ${a.scheduled_date?.split('T')[0]}`;
+    }).join(', ') ?? '';
+
+    const context = [
+      overdueTasks?.length ? `Überfällige Aufgaben: ${taskLines}` : '',
+      upcomingAudits?.length ? `Audits in 14 Tagen: ${auditLines}` : '',
+    ].filter(Boolean).join('. ');
+
+    let greetingContent = '';
     await streamChat({
       messages: [{
         role: 'user',
-        content: `Schau zuerst in der Datenbank nach:
-1. Gibt es überfällige Aufgaben? (audit_tasks: due_date < CURRENT_DATE AND status IN ('pending','in-progress'))
-2. Welche Audits stehen in den nächsten 14 Tagen an? (audits: scheduled_date >= CURRENT_DATE AND scheduled_date < CURRENT_DATE + INTERVAL '14 days' AND status IN ('scheduled','in-progress'))
-
-Erstelle dann eine sehr kurze, freundliche Begrüßung (max. 2 Sätze) für ${userName} basierend auf diesen echten Daten.
-Beginne mit "Hey ${userName}", sei locker und persönlich, keine Floskeln.
-Wenn es überfällige Aufgaben oder bald anstehende Audits gibt, erwähne das konkret (z.B. Kundenname oder Aufgabentitel).
-Nur fließender Text, keine Listen.`
+        content: `${context ? `Aktuelle Daten aus dem System: ${context}.\n\n` : ''}Erstelle eine sehr kurze, freundliche Begrüßung (max. 2 Sätze) für ${userName}. Beginne mit "Hey ${userName}", sei locker und persönlich. Wenn Daten vorhanden sind, erwähne das Wichtigste konkret. Nur fließender Text, keine Listen. Nutze KEINE SQL-Abfragen.`,
       }],
       onDelta: (chunk) => { greetingContent += chunk; setGreeting(greetingContent); },
       onDone: () => {
