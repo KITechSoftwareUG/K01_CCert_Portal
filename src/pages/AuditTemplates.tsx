@@ -585,7 +585,7 @@ export default function AuditTemplates() {
   const [deleteDialogTemplate, setDeleteDialogTemplate] = useState<AuditTemplate | null>(null);
   const [newTemplate, setNewTemplate] = useState({
     certification_id: '',
-    audit_type: '' as 'initial' | 'surveillance' | 'recertification' | 'six-month' | '',
+    audit_type: '' as 'initial' | 'surveillance' | 'recertification' | 'six-month' | 'internal' | 'training' | '',
     name: '',
     description: '',
   });
@@ -599,7 +599,7 @@ export default function AuditTemplates() {
     try {
       await createTemplate.mutateAsync({
         certification_id: newTemplate.certification_id,
-        audit_type: newTemplate.audit_type as 'initial' | 'surveillance' | 'recertification' | 'six-month',
+        audit_type: newTemplate.audit_type as 'initial' | 'surveillance' | 'recertification' | 'six-month' | 'internal',
         name: newTemplate.name.trim() || null,
         description: newTemplate.description.trim() || null,
       });

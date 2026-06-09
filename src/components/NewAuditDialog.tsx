@@ -34,12 +34,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { toast } from 'sonner';
 import { useClients, CertificationStandard } from '@/hooks/useClients';
 import { useCreateAudit, AuditType } from '@/hooks/useAudits';
-import { useCreateBulkAuditTasks, useAllAuditTasks, DbAuditTask, DbAuditTaskInsert } from '@/hooks/useAuditTasks';
-import { Tables } from '@/integrations/supabase/types';
-
-interface AuditTaskWithAudit extends DbAuditTask {
-  audits: (Tables<'audits'> & { clients: Tables<'clients'> | null }) | null;
-}
+import { useCreateBulkAuditTasks, useAllAuditTasks, DbAuditTaskFull, DbAuditTaskInsert } from '@/hooks/useAuditTasks';
 import { useCertifications } from '@/hooks/useCertifications';
 import { useCreateClientCertification, useAllClientCertifications } from '@/hooks/useClientCertifications';
 import { useAuditors } from '@/hooks/useAuditors';
@@ -145,7 +140,7 @@ export const NewAuditDialog = ({ open, onOpenChange }: NewAuditDialogProps) => {
   // Open findings for selected client
   const openFindings = useMemo(() => {
     if (!selectedClient) return [];
-    return (allTasks as AuditTaskWithAudit[]).filter((t) =>
+    return (allTasks as DbAuditTaskFull[]).filter((t) =>
       t.category === 'finding' &&
       t.status !== 'completed' &&
       t.audits?.client_id === selectedClient

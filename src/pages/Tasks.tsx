@@ -1,4 +1,4 @@
-import { memo, useState, useMemo, useCallback, useEffect, useTransition } from 'react';
+import { memo, useState, useMemo, useCallback, useEffect, useTransition, type Dispatch, type SetStateAction } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   format, parseISO, isBefore, startOfDay,
@@ -420,7 +420,7 @@ export default function Tasks() {
 
   // ── Persisted setters (Filter-Updates als Transition — UI bleibt sofort responsiv) ──
 
-  const persist = useCallback(<T extends string>(setter: (v: T) => void, key: string) =>
+  const persist = useCallback(<T extends string>(setter: Dispatch<SetStateAction<T>>, key: string) =>
     (v: T) => { sessionStorage.setItem(key, v); startTransition(() => setter(v)); }, [startTransition]);
 
   const setSearch    = useCallback((v: string) => { setSearchQuery(v); sessionStorage.setItem(SS_SEARCH, v); }, []);

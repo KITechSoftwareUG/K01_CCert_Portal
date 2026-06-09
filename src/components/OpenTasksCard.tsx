@@ -4,14 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ClipboardCheck, Calendar, Building2, ChevronRight } from 'lucide-react';
-import { useAllAuditTasks, DbAuditTask } from '@/hooks/useAuditTasks';
-import { Tables } from '@/integrations/supabase/types';
-
-interface AuditTaskWithAudit extends DbAuditTask {
-  audits: (Tables<'audits'> & {
-    clients: Tables<'clients'> | null;
-  }) | null;
-}
+import { useAllAuditTasks, DbAuditTaskFull } from '@/hooks/useAuditTasks';
 import { format, isPast, isToday } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -19,7 +12,7 @@ import { cn } from '@/lib/utils';
 export const OpenTasksCard = () => {
     const navigate = useNavigate();
     const { data: rawTasks = [], isLoading } = useAllAuditTasks();
-    const allTasks = rawTasks as AuditTaskWithAudit[];
+    const allTasks = rawTasks as DbAuditTaskFull[];
 
     const openTasks = useMemo(() => {
         return allTasks
@@ -66,7 +59,7 @@ export const OpenTasksCard = () => {
                     ) : (
                         <div className="space-y-2 py-1">
                             {Object.entries(
-                                openTasks.reduce<Record<string, AuditTaskWithAudit[]>>((acc, task) => {
+                                openTasks.reduce<Record<string, DbAuditTaskFull[]>>((acc, task) => {
                                     const monthKey = format(new Date(task.due_date), 'MMMM yyyy', { locale: de });
                                     if (!acc[monthKey]) acc[monthKey] = [];
                                     acc[monthKey].push(task);
