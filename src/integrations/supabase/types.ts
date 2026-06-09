@@ -94,6 +94,50 @@ export type Database = {
           },
         ]
       }
+      audit_task_documents: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number | null
+          id: string
+          mime_type: string | null
+          task_id: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          task_id: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          task_id?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_task_documents_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "audit_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_tasks: {
         Row: {
           assigned_to: string | null
@@ -143,50 +187,6 @@ export type Database = {
             columns: ["audit_id"]
             isOneToOne: false
             referencedRelation: "audits"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      audit_task_documents: {
-        Row: {
-          created_at: string
-          file_name: string
-          file_path: string
-          file_size: number | null
-          id: string
-          mime_type: string | null
-          task_id: string
-          updated_at: string
-          uploaded_by: string | null
-        }
-        Insert: {
-          created_at?: string
-          file_name: string
-          file_path: string
-          file_size?: number | null
-          id?: string
-          mime_type?: string | null
-          task_id: string
-          updated_at?: string
-          uploaded_by?: string | null
-        }
-        Update: {
-          created_at?: string
-          file_name?: string
-          file_path?: string
-          file_size?: number | null
-          id?: string
-          mime_type?: string | null
-          task_id?: string
-          updated_at?: string
-          uploaded_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "audit_task_documents_task_id_fkey"
-            columns: ["task_id"]
-            isOneToOne: false
-            referencedRelation: "audit_tasks"
             referencedColumns: ["id"]
           },
         ]
@@ -385,6 +385,47 @@ export type Database = {
           },
         ]
       }
+      certification_audit_sequences: {
+        Row: {
+          audit_type: Database["public"]["Enums"]["audit_type"]
+          certification_id: string
+          created_at: string
+          id: string
+          label: string | null
+          offset_months: number
+          sequence_order: number
+          updated_at: string
+        }
+        Insert: {
+          audit_type: Database["public"]["Enums"]["audit_type"]
+          certification_id: string
+          created_at?: string
+          id?: string
+          label?: string | null
+          offset_months: number
+          sequence_order: number
+          updated_at?: string
+        }
+        Update: {
+          audit_type?: Database["public"]["Enums"]["audit_type"]
+          certification_id?: string
+          created_at?: string
+          id?: string
+          label?: string | null
+          offset_months?: number
+          sequence_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certification_audit_sequences_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "certifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       certification_bodies: {
         Row: {
           address: string | null
@@ -471,6 +512,30 @@ export type Database = {
           },
         ]
       }
+      certifications: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       client_certification_audit_sequences: {
         Row: {
           audit_type: Database["public"]["Enums"]["audit_type"]
@@ -504,78 +569,13 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "client_certification_audit_sequences_client_certification_id_fkey"
+            foreignKeyName: "client_certification_audit_sequenc_client_certification_id_fkey"
             columns: ["client_certification_id"]
             isOneToOne: false
             referencedRelation: "client_certifications"
             referencedColumns: ["id"]
           },
         ]
-      }
-      certification_audit_sequences: {
-        Row: {
-          audit_type: Database["public"]["Enums"]["audit_type"]
-          certification_id: string
-          created_at: string
-          id: string
-          label: string | null
-          offset_months: number
-          sequence_order: number
-          updated_at: string
-        }
-        Insert: {
-          audit_type: Database["public"]["Enums"]["audit_type"]
-          certification_id: string
-          created_at?: string
-          id?: string
-          label?: string | null
-          offset_months: number
-          sequence_order: number
-          updated_at?: string
-        }
-        Update: {
-          audit_type?: Database["public"]["Enums"]["audit_type"]
-          certification_id?: string
-          created_at?: string
-          id?: string
-          label?: string | null
-          offset_months?: number
-          sequence_order?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "certification_audit_sequences_certification_id_fkey"
-            columns: ["certification_id"]
-            isOneToOne: false
-            referencedRelation: "certifications"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      certifications: {
-        Row: {
-          created_at: string
-          description: string | null
-          id: string
-          name: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          name: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          name?: string
-          updated_at?: string
-        }
-        Relationships: []
       }
       client_certifications: {
         Row: {
@@ -927,6 +927,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      chat_execute_sql: { Args: { query: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
