@@ -695,6 +695,34 @@ const Clients = () => {
                 <SelectItem value="inactive">Nur inaktive</SelectItem>
               </SelectContent>
             </Select>
+
+            {/* Consultant Filter */}
+            <Select
+              value={consultantFilter}
+              onValueChange={(val) => {
+                setConsultantFilter(val);
+                sessionStorage.setItem('clients-consultant-filter', val);
+              }}
+            >
+              <SelectTrigger className="h-10 sm:h-9 bg-background/50">
+                <div className="flex items-center gap-2 truncate">
+                  <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <SelectValue placeholder="Berater" />
+                </div>
+              </SelectTrigger>
+              <SelectContent className="bg-background border shadow-xl z-50">
+                <SelectItem value="all">Alle Berater</SelectItem>
+                <SelectItem value="none">
+                  <span className="flex items-center gap-1.5 text-warning">
+                    <AlertTriangle className="h-3 w-3" />
+                    Ohne Berater
+                  </span>
+                </SelectItem>
+                {allConsultants.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
