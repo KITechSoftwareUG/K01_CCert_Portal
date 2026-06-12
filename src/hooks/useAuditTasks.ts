@@ -82,6 +82,7 @@ const ALL_TASKS_SELECT = `
     type,
     scheduled_date,
     client_id,
+    client_certification_id,
     auditor_id,
     clients (
       id,
