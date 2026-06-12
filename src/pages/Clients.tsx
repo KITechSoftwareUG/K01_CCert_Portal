@@ -12,6 +12,7 @@ import { useAllClientCertifications } from '@/hooks/useClientCertifications';
 import { useContactsByClientIds } from '@/hooks/useContacts';
 import { useAuditorsForCertifications } from '@/hooks/useAuditorsForCertifications';
 import { useAuditors } from '@/hooks/useAuditors';
+import { useConsultants } from '@/hooks/useConsultants';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
