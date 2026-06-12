@@ -12,6 +12,7 @@ import { useAllClientCertifications } from '@/hooks/useClientCertifications';
 import { useContactsByClientIds } from '@/hooks/useContacts';
 import { useAuditorsForCertifications } from '@/hooks/useAuditorsForCertifications';
 import { useAuditors } from '@/hooks/useAuditors';
+import { useConsultants } from '@/hooks/useConsultants';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -129,12 +130,16 @@ const Clients = () => {
   const [auditorFilter, setAuditorFilter] = useState<string>(() =>
     sessionStorage.getItem('clients-auditor-filter') || 'all'
   );
+  const [consultantFilter, setConsultantFilter] = useState<string>(() =>
+    sessionStorage.getItem('clients-consultant-filter') || 'all'
+  );
 
   const { data: clients = [], isLoading, error } = useClients();
   const deleteClient = useDeleteClient();
   const updateClient = useUpdateClient();
   const { data: allCertifications = [] } = useAllClientCertifications();
   const { data: allAuditors = [] } = useAuditors();
+  const { data: allConsultants = [] } = useConsultants();
 
   // Get all client IDs for bulk contact fetch
   const clientIds = useMemo(() => clients.map(c => c.id), [clients]);
@@ -184,6 +189,22 @@ const Clients = () => {
       clients.forEach(c => { if (clientIdsWithAuditor.has(c.id)) audMatches.add(c.id); });
     }
 
+    // Consultant filter — match own consultant or inherit from parent
+    const directConsultantMatches = new Set<string>();
+    if (consultantFilter === 'all') {
+      clients.forEach(c => directConsultantMatches.add(c.id));
+    } else if (consultantFilter === 'none') {
+      clients.forEach(c => { if (!c.consultant_id && !c.consultant) directConsultantMatches.add(c.id); });
+    } else {
+      clients.forEach(c => { if (c.consultant_id === consultantFilter) directConsultantMatches.add(c.id); });
+    }
+    const consMatches = new Set<string>();
+    clients.forEach(c => {
+      if (directConsultantMatches.has(c.id) || (c.parent_client_id && directConsultantMatches.has(c.parent_client_id))) {
+        consMatches.add(c.id);
+      }
+    });
+
     // Stage 2: Hierarchy Application
     // A client is kept if:
     // 1. It matches all active filters (Status, Auditor, and Search/ParentSearch)
@@ -193,7 +214,7 @@ const Clients = () => {
       const matchesSearch = directSearchMatches.has(c.id) || (c.parent_client_id && directSearchMatches.has(c.parent_client_id));
 
       // Must match ALL filters to be a primary survivor
-      if (matchesSearch && statMatches.has(c.id) && audMatches.has(c.id)) {
+      if (matchesSearch && statMatches.has(c.id) && audMatches.has(c.id) && consMatches.has(c.id)) {
         survivors.add(c.id);
         // If it survives, its parent must also survive to provide the group header context
         if (c.parent_client_id) survivors.add(c.parent_client_id);
@@ -204,14 +225,14 @@ const Clients = () => {
     // even if they have no matching children (empty folder support)
     clients.forEach(c => {
       if (!c.parent_client_id && !survivors.has(c.id)) {
-        if (directSearchMatches.has(c.id) && statMatches.has(c.id) && audMatches.has(c.id)) {
+        if (directSearchMatches.has(c.id) && statMatches.has(c.id) && audMatches.has(c.id) && consMatches.has(c.id)) {
           survivors.add(c.id);
         }
       }
     });
 
     return clients.filter(c => survivors.has(c.id));
-  }, [searchQuery, clients, statusFilter, auditorFilter, certificationsByClient, auditorsByClientCertification]);
+  }, [searchQuery, clients, statusFilter, auditorFilter, consultantFilter, certificationsByClient, auditorsByClientCertification]);
 
   // Group clients by country → company groups
   const countryGroups = useCountryGroups(filteredClients, certificationsByClient);
@@ -672,6 +693,34 @@ const Clients = () => {
                 <SelectItem value="all">Alle Stati</SelectItem>
                 <SelectItem value="active">Nur aktive</SelectItem>
                 <SelectItem value="inactive">Nur inaktive</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Consultant Filter */}
+            <Select
+              value={consultantFilter}
+              onValueChange={(val) => {
+                setConsultantFilter(val);
+                sessionStorage.setItem('clients-consultant-filter', val);
+              }}
+            >
+              <SelectTrigger className="h-10 sm:h-9 bg-background/50">
+                <div className="flex items-center gap-2 truncate">
+                  <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <SelectValue placeholder="Berater" />
+                </div>
+              </SelectTrigger>
+              <SelectContent className="bg-background border shadow-xl z-50">
+                <SelectItem value="all">Alle Berater</SelectItem>
+                <SelectItem value="none">
+                  <span className="flex items-center gap-1.5 text-warning">
+                    <AlertTriangle className="h-3 w-3" />
+                    Ohne Berater
+                  </span>
+                </SelectItem>
+                {allConsultants.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

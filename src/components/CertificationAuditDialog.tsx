@@ -41,13 +41,9 @@ import {
 } from '@/hooks/useCertificationAudits';
 import { useAuditors } from '@/hooks/useAuditors';
 import { useCertificationBodies } from '@/hooks/useCertificationBodies';
-import { useCreateBulkAuditTasks, useAllAuditTasks, DbAuditTask, DbAuditTaskInsert } from '@/hooks/useAuditTasks';
+import { useCreateBulkAuditTasks, useAllAuditTasks, DbAuditTaskInsert } from '@/hooks/useAuditTasks';
 import { fetchTemplateTasksForAudit } from '@/hooks/useAuditTemplates';
 import { Tables } from '@/integrations/supabase/types';
-
-interface AuditTaskWithAudit extends DbAuditTask {
-  audits: (Tables<'audits'> & { clients: Tables<'clients'> | null }) | null;
-}
 import { AUDIT_TYPE_LABELS } from '@/lib/constants';
 import { parseGermanDate } from '@/lib/dateUtils';
 import { addDays, format, parse, isValid, isMatch } from 'date-fns';
@@ -125,7 +121,7 @@ export const CertificationAuditDialog = ({
   // Open findings for this specific client_certification_id
   const openFindings = useMemo(() => {
     if (isEditMode) return [];
-    return (allTasks as AuditTaskWithAudit[]).filter((t) =>
+    return allTasks.filter((t) =>
       t.category === 'finding' &&
       t.status !== 'completed' &&
       t.audits?.client_certification_id === clientCertificationId
