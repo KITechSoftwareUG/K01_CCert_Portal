@@ -1,0 +1,4 @@
+-- Edge Function 'agents' manuell deployen:
+-- Supabase Dashboard → Edge Functions → "agents" → Edit/Deploy
+-- Benötigte Env-Variablen (bereits gesetzt): OPENAI_API_KEY, SUPABASE_SERVICE_ROLE_KEY
+-- Keine DB-Änderungen erforderlich
