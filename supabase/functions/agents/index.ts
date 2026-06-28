@@ -120,7 +120,10 @@ Deno.serve(async (req) => {
 
     const jwt = authHeader.replace("Bearer ", "");
     const authSupabase = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!);
-    const { data: { user }, error: authErr } = await authSupabase.auth.getUser(jwt);
+    const {
+      data: { user },
+      error: authErr,
+    } = await authSupabase.auth.getUser(jwt);
     if (authErr || !user) {
       return new Response(JSON.stringify({ error: "Ungültiger Token." }), {
         status: 401,
